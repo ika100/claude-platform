@@ -14,7 +14,8 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 | `plugins/<name>/.claude-plugin/plugin.json` | Per-plugin manifest. Mirror the version in the marketplace catalog. |
 | `plugins/<name>/agents/*.md` | Subagent definitions (YAML frontmatter + system prompt). |
 | `plugins/<name>/commands/*.md` | Slash commands (description frontmatter + body using `$ARGUMENTS`). |
-| `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks (currently: svc SessionStart syncs uv). |
+| `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks. All three plugins ship a SessionStart hook that checks devbox is on PATH and runs `devbox install` if a `devbox.json` is present. |
+| `devbox.json` | Repo-root devbox env (jq, uv, python, copier) + smoke-test scripts (`validate`, `smoke-service`, `smoke-library`). |
 | `plugins/<name>/settings.json` | Plugin-scoped permission allowlists. |
 | `templates/service-python/{{ project_name }}/` | Copier-templated service repo skeleton. |
 | `templates/library-python/{{ project_name }}/` | Copier-templated library repo skeleton. |
@@ -53,16 +54,14 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 
 ## Smoke test before pushing
 
+This repo itself ships a `devbox.json` so the smoke-test runs through the same `devbox run <script>` entry point used everywhere else.
+
 ```bash
-# Validate marketplace + plugin manifests (CI does this; also run locally)
-jq -e . .claude-plugin/marketplace.json
-for f in plugins/*/.claude-plugin/plugin.json; do jq -e . "$f"; done
-
-# Smoke-test the Copier template
-copier copy ./templates/service-python /tmp/test-svc \
-  --defaults --data project_name=test-svc --data module_name=test_svc --data description=test
-
-cd /tmp/test-svc && devbox install && devbox run quality
+devbox install          # one-time: pulls jq, uv, python, gh, copier
+devbox run validate     # jq-checks marketplace.json + every plugin.json + every hook.json
+devbox run smoke-service  # copier copy → devbox install → devbox run quality
+devbox run smoke-library  # same, for the library template
+devbox run smoke        # all of the above
 ```
 
-(`copier`, `devbox`, and `jq` must be available on the host. `copier` install: `uv tool install copier`.)
+(`devbox` must be available on the host — everything else is provided by `devbox install`. Host install: `curl -fsSL https://get.jetify.com/devbox/install.sh | bash`.)

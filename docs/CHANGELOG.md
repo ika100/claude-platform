@@ -4,6 +4,22 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [0.3.0] — 2026-05-19
+
+Devbox awareness extended to every plugin and the platform repo itself. No breaking changes — repos without `devbox.json` see the new hooks as a silent no-op.
+
+### Plugins
+
+- **shared 0.3.0**: new `hooks/hooks.json` with a `SessionStart` hook. Checks `devbox` is on `PATH` (prints install URL if missing, exits 0 — non-blocking) and runs `devbox install` if a `devbox.json` is present. Makes any consumer repo that uses the `shared` plugin (library repos, GitOps repos, the platform repo) devbox-aware out of the box.
+- **gitops 0.2.0**: same new `hooks/hooks.json` as `shared`. GitOps repos that add a `devbox.json` (for `kubectl`, `argocd`, `kustomize`) get automatic sync; older GitOps repos see a no-op.
+- **svc 0.1.3**: existing `SessionStart` hook hardened with the same `command -v devbox` host-check, plus a `[ -f devbox.json ]` guard so it no-ops cleanly in non-devbox directories.
+
+### Platform repo
+
+- New root `devbox.json`: pins `jq`, `python@3.13`, `uv`, `git`, `gh`, and `init_hook`-installs `copier` (invoked at runtime via `uv tool run --from copier copier ...` so it's reachable from inside the devbox PATH). New scripts: `validate` (jq-checks marketplace + plugin manifests + hook files), `smoke-service`, `smoke-library`, `smoke` (runs all three). Smoke recipes run individual `devbox run lint` + `devbox run typecheck` instead of the chained `devbox run quality` recipe — devbox 0.17.2 has a wrapper bug that mis-evaluates the chained recipe even though both children succeed; tracked separately.
+- `CLAUDE.md` smoke-test section rewritten to use `devbox run validate` / `smoke-service` / `smoke-library` instead of host-installed `jq` + `copier`. Only host requirement is `devbox` itself.
+- `docs/AGENTS.md` documents the new SessionStart hooks under the golden-rule section.
+
 ## [0.2.1] — 2026-05-19
 
 Bugfix release. Resolves the two issues raised after the `/shared:new-service` UX overhaul ([#1](https://github.com/ika100/claude-platform/issues/1), [#2](https://github.com/ika100/claude-platform/issues/2)).

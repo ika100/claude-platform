@@ -10,6 +10,15 @@ Every agent — human, CI, or AI — runs shell commands via `devbox run <script
 
 If a recipe is missing, **add it to `devbox.json` and commit** — never run an ad-hoc `pip install`, `uv add`, `pytest …`, `ruff …`, or similar. This keeps the dev shell, CI pipeline, and agents producing identical results.
 
+### SessionStart hooks
+
+All three plugins (`svc`, `gitops`, `shared`) ship a `hooks/hooks.json` with a `SessionStart` hook that:
+
+- **Warns if `devbox` is missing from `PATH`** and prints the install command: `curl -fsSL https://get.jetify.com/devbox/install.sh | bash`. The hook exits 0 — it never blocks the session.
+- **Runs `devbox install` (idempotent)** if a `devbox.json` is present in the working directory, so the dev environment is ready before any agent touches it. The `svc` hook additionally runs `uv sync --all-extras` for Python service/library repos.
+
+A consumer repo that installs any one of the three plugins is therefore devbox-aware out of the box; a repo with no `devbox.json` sees the hook as a silent no-op.
+
 ---
 
 ## Permissions allowlist

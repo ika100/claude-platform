@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "devbox run -- uv sync --all-extras >/dev/null 2>&1 || true",
+            "command": "if ! command -v devbox >/dev/null 2>&1; then echo 'devbox not found on PATH — install: curl -fsSL https://get.jetify.com/devbox/install.sh | bash'; exit 0; fi; [ -f devbox.json ] && devbox run -- uv sync --all-extras >/dev/null 2>&1 || true",
             "timeout": 60,
             "statusMessage": "Syncing devbox + uv dev environment"
           }
