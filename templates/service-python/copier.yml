@@ -18,6 +18,13 @@ _skip_if_exists:
   - tests/**
   - migrations/**
   - docs/adr/**
+  - docs/env-vars.md
+  - k8s/monitoring/**
+
+_exclude:
+  - "copier.yml"
+  - "{% if not needs_migrations %}alembic.ini{% endif %}"
+  - "{% if not needs_migrations %}migrations{% endif %}"
 
 _tasks:
   - "git init -q"

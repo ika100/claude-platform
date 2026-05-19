@@ -4,6 +4,30 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [0.4.0] — 2026-05-19
+
+Phase 2 of the agentic efficiency overhaul: boilerplate that the `svc` agents used to regenerate on every invocation is now part of the `service-python` Copier template. Agents become verify-and-extend instead of generate-from-scratch. Non-breaking for consumers — run `copier update` to pull the new template files.
+
+### Templates
+
+- **service-python**: new pre-rendered observability files under `src/{{ module_name }}/`:
+  - `tracing.py` — OpenTelemetry OTLP exporter wired via `OTLP_ENDPOINT` env var.
+  - `main.py` now exposes `/metrics` (Prometheus `generate_latest`) and conditionally calls `configure_tracing()`.
+  - `k8s/monitoring/alerts.yaml` — default PrometheusRule with `HighErrorRate`, `HighLatencyP95`, `PodRestarting`.
+  - `docs/env-vars.md` — documents `LOG_LEVEL`, `OTLP_ENDPOINT`, `METRICS_PORT`, and `DATABASE_URL` when applicable.
+- **service-python**: new pre-rendered Alembic scaffolding (gated by `needs_migrations`):
+  - `alembic.ini` with `script_location = migrations`.
+  - `migrations/env.py` that requires `DATABASE_URL` from env and leaves a TODO for wiring `target_metadata`.
+  - `migrations/script.py.mako` with typed `upgrade()` / `downgrade()` signatures.
+- **service-python copier.yml**: new `_exclude` block skips `alembic.ini` and `migrations/` when `needs_migrations=false`. `_skip_if_exists` extended with `docs/env-vars.md` and `k8s/monitoring/**` so they're project-owned after bootstrap.
+
+### Plugins
+
+- **svc 0.2.0**: three agents slimmed against the template now owning the boilerplate:
+  - `observability.md`: 158 → 45 lines. Verifies the templated logging/metrics/tracing files exist, then focuses on service-specific instrumentation and alert tuning.
+  - `deployment.md`: 100 → 61 lines. References the template's `Dockerfile` + `.github/workflows/ci.yml` instead of restating the YAML; verifies CI integrity and the dry-run gate.
+  - `migrations.md`: 139 → 77 lines. Skips the `alembic init` boilerplate (template handles it); focuses on wiring `target_metadata`, generating + verifying migrations, and maintaining the runbook.
+
 ## [0.3.0] — 2026-05-19
 
 Devbox awareness extended to every plugin and the platform repo itself. No breaking changes — repos without `devbox.json` see the new hooks as a silent no-op.
