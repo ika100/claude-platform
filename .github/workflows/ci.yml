@@ -52,6 +52,7 @@ jobs:
         run: |
           copier copy ./templates/${{ matrix.template }} /tmp/test-${{ matrix.template }} \
             --defaults \
+            --trust \
             --data project_name=test-${{ matrix.template }} \
             --data module_name=test_${{ matrix.template == 'service-python' && 'svc' || 'lib' }} \
             --data description="Smoke test"
