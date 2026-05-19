@@ -21,7 +21,10 @@ _skip_if_exists:
 
 _tasks:
   - "git init -q"
-  - "echo 'Bootstrap complete. Run: cd {{ project_name }} && devbox install && devbox run quality'"
+  - "devbox install"
+  - "devbox run -- uv sync --all-extras"
+  - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from service-python template'"
+  - "echo 'Bootstrap complete. Repo committed at HEAD. Run: cd {{ project_name }} && devbox run quality'"
 
 project_name:
   type: str

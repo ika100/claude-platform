@@ -4,6 +4,19 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [0.2.1] — 2026-05-19
+
+Bugfix release. Resolves the two issues raised after the `/shared:new-service` UX overhaul ([#1](https://github.com/ika100/claude-platform/issues/1), [#2](https://github.com/ika100/claude-platform/issues/2)).
+
+### Templates
+
+- **service-python + library-python (#1)**: `_tasks` in `copier.yml` now runs `devbox install` and `devbox run -- uv sync --all-extras` to materialize `devbox.lock` and `uv.lock`, then makes an initial `chore: bootstrap` commit. A fresh `copier copy …` now leaves `git status` clean instead of two lockfiles untracked. Requires `devbox` on `PATH` at template-render time (already a prerequisite for all other recipes in the template).
+- **service-python (#2)**: tightened the `docker` job's login and `build-push-action` conditions from `github.event_name != 'pull_request'` to `github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))`. Feature-branch pushes now build only, matching the policy documented in the template's `CLAUDE.md` (and avoiding the 403 from a brand-new repo's `GITHUB_TOKEN` lacking `packages: write`).
+
+### Plugins
+
+- **shared 0.2.1**: `/shared:new-service` Phase 3 rewritten for the new copier-side commit. Instead of `git add -A && git commit`, it now `git commit --amend --reset-author`s the bootstrap commit produced by `_tasks` so the user owns it with the richer `/shared:new-service` commit message. Falls back to the legacy `add && commit` path if `_tasks` didn't produce a commit (older templates).
+
 ## [0.2.0] — 2026-05-19
 
 UX overhaul for `/shared:new-service` based on dogfooding feedback. Non-breaking — old flag form (`--description "..."`) still works.
