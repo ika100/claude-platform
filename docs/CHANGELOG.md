@@ -4,6 +4,25 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [0.2.0] — 2026-05-19
+
+UX overhaul for `/shared:new-service` based on dogfooding feedback. Non-breaking — old flag form (`--description "..."`) still works.
+
+### Plugins
+
+- **shared 0.2.0**: `/shared:new-service` rewritten for fewer interactions:
+  - **Natural-language args.** First token = project name, the rest = description. `/shared:new-service hello-world a simple rest api` now scaffolds end-to-end with zero further prompts. Old `--description "..."` flag still accepted.
+  - **Auto-preflight.** Silently runs `uv tool install copier` if `copier` is missing. If `gh` is missing, automatically falls back to "skip GitHub steps" mode and emits the exact `gh repo create` / `gh repo edit` commands in the final report (instead of aborting).
+  - **Auto-detect `GITHUB_ORG`.** Tries `gh api user -q .login`, falls back to the copier template's `ika100` default. No prompt.
+  - **No confirmation table.** Resolved inputs go on one compact line; bootstrap proceeds immediately. The user can correct after the fact — everything is local and reversible until Phase 4.
+  - **Empty/stub directory auto-clean.** If `./<name>` is empty or contains only `.claude/`, removes it with one warning line. Non-empty directories still abort.
+  - **Single-round prompt when truly missing.** If both name and description are absent, asks once via plain text (`<name> <description>` on one line) — no `AskUserQuestion`, no batched dialog.
+  - **Handles missing git identity.** Falls back to one-off `-c user.name=... -c user.email=...` on the bootstrap commit so fresh hosts without global git config don't error out.
+
+### Templates
+
+No template changes in this release.
+
 ## [0.1.1] — 2026-05-19
 
 Bugfix release. All five issues found during the hello-world dogfood are resolved.

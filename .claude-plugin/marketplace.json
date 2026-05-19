@@ -26,7 +26,7 @@
     {
       "name": "shared",
       "source": "./plugins/shared",
-      "version": "0.1.2",
+      "version": "0.2.0",
       "description": "Common quality and security agents plus the /new-service bootstrap command.",
       "category": "agents",
       "tags": ["quality", "security", "bootstrap"]

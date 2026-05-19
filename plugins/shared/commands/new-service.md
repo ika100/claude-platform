@@ -1,63 +1,70 @@
 ---
-description: Bootstrap a new Python service repo from the service-python Copier template, create the GitHub repo, and tag it for GitOps auto-discovery. Usage: /shared:new-service <name> [--description "<one-liner>"] [--library]
+description: "Bootstrap a new Python service or library repo from a Copier template, init git, create the GitHub repo, and tag it for GitOps. Usage: /shared:new-service <name> [description words...] [--library] [--python 3.12|3.13] [--org <org>] [--ref <git-ref>]"
 ---
 
-You are the **bootstrap orchestrator**. Your job is to scaffold a new service (or library) repo end-to-end: collect inputs, run Copier, init git, create the GitHub repo, and apply the `deployable-service` topic so ArgoCD will auto-discover it.
+You are the **bootstrap orchestrator** for new Python repos. Goal: scaffold a repo end-to-end with as little user interaction as possible. Default to zero further questions once a project name is supplied.
 
 **Request:** $ARGUMENTS
 
 ---
 
-## Phase 1 — Parse inputs
+## Parsing rules
 
-Parse `$ARGUMENTS` into:
+Treat `$ARGUMENTS` as one free-form line. Extract in this order:
 
-| Field | Source |
-|---|---|
-| `PROJECT_NAME` | first positional argument (kebab-case, lowercase, ≤40 chars) |
-| `DESCRIPTION` | value of `--description` flag (default: prompt user) |
-| `TEMPLATE` | `library-python` if `--library` flag present, else `service-python` |
-| `MODULE_NAME` | derived: `$PROJECT_NAME` with hyphens replaced by underscores |
-| `GITHUB_ORG` | from `gh api user -q .login` (or user-provided override) |
-| `PYTHON_VERSION` | `3.12` (default; override with `--python <version>`) |
+1. **Flags** (consume wherever they appear, then strip from the stream):
+   - `--library` → `TEMPLATE=library-python` (else `service-python`)
+   - `--python <ver>` → `PYTHON_VERSION=<ver>` (default `3.12`)
+   - `--org <org>` → `GITHUB_ORG=<org>`
+   - `--description "<text>"` → legacy alias, appended to the description stream
+   - `--ref <git-ref>` → `PLATFORM_REF=<ref>` (default `main`)
+2. **First remaining token** → `PROJECT_NAME`. Must match `^[a-z][a-z0-9-]{1,39}$`. If invalid, stop and report.
+3. **All remaining tokens joined with single spaces** → `DESCRIPTION`.
+4. Derived: `MODULE_NAME = PROJECT_NAME.replace('-', '_')`.
 
-Validate `PROJECT_NAME` matches `^[a-z][a-z0-9-]{1,39}$`. If not, stop and report.
+**If `PROJECT_NAME` is missing OR `DESCRIPTION` is empty**, ask the user once via plain text — a single message like: *"Give me a project name (kebab-case) and a one-line description, on one line: `<name> <description>`."* Re-parse the reply and proceed. Do not loop more than once and do not use `AskUserQuestion` for this — free-form text input is faster.
 
-If `DESCRIPTION` is empty, ask the user for a one-liner before proceeding.
-
-Print the resolved inputs as a table for the user to confirm:
+**Never** ask the user to confirm resolved inputs. Print one compact line and proceed:
 
 ```
-| Field | Value |
-|---|---|
-| Project name | <PROJECT_NAME> |
-| Module name | <MODULE_NAME> |
-| Description | <DESCRIPTION> |
-| Template | <TEMPLATE> |
-| GitHub org | <GITHUB_ORG> |
-| Python | <PYTHON_VERSION> |
-| Target dir | ./<PROJECT_NAME> |
+Bootstrapping <TEMPLATE> "<PROJECT_NAME>" (module: <MODULE_NAME>, org: <GITHUB_ORG>, python: <PYTHON_VERSION>) — "<DESCRIPTION>"
 ```
 
-Wait for confirmation before continuing.
+---
+
+## Phase 1 — Preflight (silent unless something is missing)
+
+| Tool | Required | If missing |
+|---|---|---|
+| `copier` | yes | `uv tool install copier` automatically (one-shot, one info line). If `uv` is also missing, stop with a clear error. |
+| `git` | yes | Stop with error. |
+| `gh` | no | Set `SKIP_GITHUB=1`, print one warning line. Phases 4–5 will be skipped and the exact commands will go into the final report. |
+| `devbox` | no | Surface a note in the final report — does not block. |
+
+Resolve `GITHUB_ORG` if still unset:
+1. Try `gh api user -q .login` (skip if `gh` missing).
+2. Fall back to `ika100` (the copier template default). No prompt.
+
+**Target directory check** on `./<PROJECT_NAME>`:
+- Doesn't exist → proceed.
+- Exists, is empty, or contains only `.claude/` → remove it with one warning line and proceed.
+- Anything else → stop and list contents.
 
 ---
 
 ## Phase 2 — Run Copier
 
-Copier does not support subdirectory paths in `gh:` URLs. Shallow-clone the
-platform repo to a temp dir first, then point Copier at the template subdir:
+Copier does not accept subdirectory paths in `gh:` URLs. Shallow-clone first, then point Copier at the template subdir:
 
 ```bash
 PLATFORM_REF="${PLATFORM_REF:-main}"
 PLATFORM_DIR=$(mktemp -d)
 trap 'rm -rf "$PLATFORM_DIR"' EXIT
 git clone --depth 1 --branch "$PLATFORM_REF" \
-  https://github.com/ika100/claude-platform.git "$PLATFORM_DIR"
+  https://github.com/ika100/claude-platform.git "$PLATFORM_DIR" 2>&1 | tail -2
 
 copier copy "$PLATFORM_DIR/templates/<TEMPLATE>" ./<PROJECT_NAME> \
-  --defaults \
-  --trust \
+  --defaults --trust \
   --data project_name=<PROJECT_NAME> \
   --data module_name=<MODULE_NAME> \
   --data description="<DESCRIPTION>" \
@@ -66,27 +73,20 @@ copier copy "$PLATFORM_DIR/templates/<TEMPLATE>" ./<PROJECT_NAME> \
   --data platform_marketplace_ref="$PLATFORM_REF"
 ```
 
-`--trust` is required because the templates declare `_tasks` (which Copier
-treats as a potentially unsafe feature). The platform repo is your own
-trusted source, so this is safe.
+`--trust` is required because the templates declare `_tasks`. The platform repo is your own trusted source.
 
-If `copier` is not installed on the host:
-```bash
-uv tool install copier
-```
+If `copier` lives at `~/.local/bin/copier` and isn't on `PATH`, invoke it with the absolute path.
 
-(Run once per machine; copier ends up in `~/.local/bin/copier`. Make sure
-that's on the user's PATH or invoke with the absolute path.)
-
-If Copier emits warnings about merge conflicts or skipped files, surface them in the final report.
+Surface any merge-conflict or skipped-file warnings in the final report.
 
 ---
 
 ## Phase 3 — Initialize git
 
+Copier's `_tasks` already runs `git init -q`, but nothing is staged yet:
+
 ```bash
 cd <PROJECT_NAME>
-git init -q
 git add -A
 git commit -q -m "chore: bootstrap from <TEMPLATE> template
 
@@ -95,9 +95,11 @@ Template: ika100/claude-platform/templates/<TEMPLATE>
 Description: <DESCRIPTION>"
 ```
 
+If `git config user.name` / `user.email` are unset locally and globally, retry the commit with one-off `-c user.name=<name> -c user.email=<email>` derived from the session context (`${userEmail}` if available, else `claude-bootstrap@ika100.local`). Never fail the bootstrap on a missing git identity.
+
 ---
 
-## Phase 4 — Create the GitHub repo
+## Phase 4 — Create the GitHub repo (skip if `SKIP_GITHUB=1`)
 
 ```bash
 gh repo create <GITHUB_ORG>/<PROJECT_NAME> \
@@ -108,56 +110,49 @@ gh repo create <GITHUB_ORG>/<PROJECT_NAME> \
   --push
 ```
 
-This is pre-approved in the `shared` plugin's settings allowlist. If it fails (e.g. repo already exists), stop and report.
+If creation fails (e.g. repo already exists), surface the `gh` error and continue — do not unwind local state.
 
 ---
 
-## Phase 5 — Tag for GitOps discovery (service template only)
-
-If `TEMPLATE == service-python`:
+## Phase 5 — Tag for GitOps discovery (service-python only; skip if `SKIP_GITHUB=1`)
 
 ```bash
 gh repo edit <GITHUB_ORG>/<PROJECT_NAME> --add-topic deployable-service
 ```
 
-This tells the ArgoCD ApplicationSet in the gitops repo to discover this service on its next reconcile.
-
-For `library-python` skip this step.
+This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up on the next reconcile. For `library-python` skip this step.
 
 ---
 
 ## Phase 6 — Final report
 
-Print:
-
 ```
-## New <TEMPLATE> repo created: <PROJECT_NAME>
+## <TEMPLATE> repo bootstrapped: <PROJECT_NAME>
 
 | Item | Value |
 |---|---|
-| GitHub | https://github.com/<GITHUB_ORG>/<PROJECT_NAME> |
-| Local path | <pwd>/<PROJECT_NAME> |
-| Topic | deployable-service (service only) |
-| Argo discovery | within ~3 min (service only) |
+| GitHub | https://github.com/<GITHUB_ORG>/<PROJECT_NAME>   (or: "skipped — see commands below") |
+| Local path | <abs-path>/<PROJECT_NAME> |
+| Topic | deployable-service (service-python only) |
+| Argo discovery | ~3 min after the topic is applied |
 
 ### Next steps
-
 1. `cd <PROJECT_NAME> && devbox shell` — enter the dev environment
-2. `devbox run quality && devbox run test` — sanity-check the bootstrapped tree
-3. `/svc:plan-feature <your first feature>` — start designing the service
-
-The repo is live with:
-- 10 agents enabled (svc + shared plugins)
-- Conventional commits enforced by CI
-- Docker image pipeline → ghcr.io/<GITHUB_ORG>/<PROJECT_NAME>
-- k8s overlays for local/staging/prod (service template only)
+2. `devbox run quality && devbox run test` — sanity-check the tree
+3. `/svc:plan-feature <your first feature>` — start designing
 ```
+
+If `SKIP_GITHUB=1`, append a fenced block with the exact `gh repo create` + (for services) `gh repo edit --add-topic deployable-service` commands the user should run from inside `devbox shell` (which provisions `gh`).
+
+If `devbox` was missing on the host, note that the user needs to install it (`brew install jetify-com/devbox/devbox`) before step 1 will work.
 
 ---
 
 ## Rules
 
-- **Confirm before destructive remote ops.** `gh repo create` runs in this command's allowlist; still, abort if the target repo already exists.
-- **Never overwrite an existing directory.** If `./<PROJECT_NAME>` exists, stop.
-- **`deployable-service` topic is service-only.** Libraries don't get deployed and shouldn't appear in the ApplicationSet.
-- **Stay private by default.** Public release is a separate, explicit action.
+- **Default to zero further questions** once a project name is in hand. Ask only when an input is *required* and *missing*. Never ask for confirmation of resolved inputs.
+- **Auto-install `copier`; never auto-install `gh`.** `gh` requires interactive login; "skip GitHub steps and print commands" is a better fallback than aborting.
+- **Never overwrite a non-empty target directory.** Empty / `.claude`-only stubs may be removed.
+- **`deployable-service` topic is service-only.** Libraries don't appear in the ApplicationSet.
+- **Private by default.** Public release is a separate, explicit action.
+- **One progress line per phase.** No verbose narration — the user reads the diff/output, not your prose.
