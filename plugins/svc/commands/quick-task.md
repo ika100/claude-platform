@@ -38,10 +38,12 @@ Coder works on the current branch — no worktrees, no fan-out. This is a one-ta
 
 ## Step 2 — Quality gate
 
-Use the **quality** agent with:
+**Pre-pass (cheap):** before calling the quality agent, run `devbox run lint-fix` directly from the orchestrator. This auto-resolves ruff-fixable formatting/import issues without spawning the coder. If `lint-fix` leaves the tree dirty, stage the resulting changes so the eventual commit captures them.
+
+Then use the **quality** agent with:
 > Run `devbox run quality`. Report all violations.
 
-**Fix loop:** if violations exist, pass the report back to the **coder** with "fix only the lint/type issues, no logic changes." Re-run quality. Max 2 cycles — if still failing, escalate to the user.
+**Fix loop:** if violations remain, pass the report back to the **coder** with "fix only the lint/type issues, no logic changes." Re-run quality. Max 2 cycles — if still failing, escalate to the user.
 
 ---
 

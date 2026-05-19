@@ -23,20 +23,22 @@ Before any code is written:
 
 ---
 
-## Step 1 — Diagnose
+## Step 1 — Diagnose and fix
 
 Use the **coder** agent with the instruction:
-> "Read the relevant files, diagnose this bug: `$ARGUMENTS`. Identify the root cause and the minimal change needed to fix it. Do not fix yet — report your diagnosis."
+> "Bug report: `$ARGUMENTS`.
+>
+> Step 1: read the relevant files and identify the root cause. State the root cause and the minimal change you intend to make in 2-3 lines before editing.
+>
+> Step 2: apply the minimal fix. Do not refactor surrounding code or add unrelated changes.
+>
+> Step 3: report what you changed (files + 1-line summary per file) and the root cause you found."
+
+This collapses the previous diagnose-then-fix two-call pattern into one coder invocation — the agent keeps full context between diagnosis and fix.
 
 ---
 
-## Step 2 — Fix
-
-Use the **coder** agent again, passing the diagnosis, with the instruction to apply the minimal fix.
-
----
-
-## Step 3 — Verify
+## Step 2 — Verify
 
 Use the **tester** agent to:
 - Run the existing test suite via `devbox run test-fast`
@@ -45,7 +47,7 @@ Use the **tester** agent to:
 
 ---
 
-## Step 4 — Loop if needed
+## Step 3 — Loop if needed
 
 If the tester reports the bug is NOT fixed:
 - Feed the failure back to the **coder** agent

@@ -124,8 +124,9 @@ git merge --no-ff --no-edit <branch>
 ```
 
 After each merge:
-1. Run `devbox run quality`. If it fails, hand the violation report back to that task's coder (it can re-enter its worktree if still present, or work on main) to fix only the lint/type issues. Re-run quality.
-2. Run `devbox run test-fast` as a sanity check. Failures here are usually integration issues between parallel branches — route to the coder agent with the failing test output.
+1. **Lint-fix pre-pass:** run `devbox run lint-fix` directly to auto-resolve ruff-fixable issues before invoking the quality gate. Stage the result so it lands in the next commit.
+2. Run `devbox run quality`. If it still fails, hand the violation report back to that task's coder (it can re-enter its worktree if still present, or work on main) to fix only the lint/type issues. Re-run quality.
+3. Run `devbox run test-fast` as a sanity check. Failures here are usually integration issues between parallel branches — route to the coder agent with the failing test output.
 3. Clean up:
    ```bash
    git worktree remove <worktree_path>
@@ -153,12 +154,14 @@ Print:
 
 ## Phase 3a — Quality gate (final)
 
-After all task merges, run one consolidated quality check on the integrated tree:
+After all task merges, run one consolidated quality check on the integrated tree.
 
-Use the **quality agent** with instruction:
+**Pre-pass:** run `devbox run lint-fix` directly from the orchestrator first — this auto-resolves ruff-fixable issues without spinning up an agent.
+
+Then use the **quality agent** with instruction:
 > Run `devbox run quality` and report all violations.
 
-If violations exist, hand back to the **coder** agent for lint/type fixes only (no logic changes), then re-run. Do not advance until clean.
+If violations remain, hand back to the **coder** agent for lint/type fixes only (no logic changes), then re-run. Do not advance until clean.
 
 Print `## Phase 3a complete — quality gate passed`.
 

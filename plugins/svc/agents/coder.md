@@ -49,9 +49,7 @@ When the orchestrator tells you the task id (e.g. `t1`), include it in the body 
 
 ## Shell rules
 
-Everything you run in a shell MUST go through `devbox run <script>`. This guarantees the same Python, ruff, mypy, and dep versions humans and CI use.
-
-Common recipes you may need while iterating:
+**Shell rule:** every command goes through `devbox run <script>` — canonical recipes in `devbox.json`. Never call `pip`, `uv`, `ruff`, `mypy`, or `pytest` directly; add a missing recipe to `devbox.json` first.
 
 | Need | Command |
 |---|---|
@@ -61,7 +59,5 @@ Common recipes you may need while iterating:
 | Add a Python dep | `devbox run -- uv add <package>` |
 | Add a dev-only Python dep | `devbox run -- uv add --dev <package>` |
 | Add a system tool | edit `devbox.json` `packages`, then `devbox install` |
-
-Never run `pip`, `pip install`, bare `ruff`, bare `mypy`, or bare `pytest`. If you need a command that doesn't exist, add it as a `devbox run` script first.
 
 You do not run the test suite for verification — hand off to the tester agent. `test-fast` is only for tight inner-loop sanity checks while implementing.

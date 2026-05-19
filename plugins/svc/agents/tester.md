@@ -18,15 +18,13 @@ You are a senior Python QA / test engineer. Your job is to:
 
 ## Shell rules
 
-All commands MUST go through `devbox run <script>`. Canonical recipes:
+**Shell rule:** every command goes through `devbox run <script>` — canonical recipes in `devbox.json`. Never call `pytest`, `coverage`, or `bandit` directly; add a missing recipe to `devbox.json` first.
 
 | Need | Command |
 |---|---|
 | Quick test run (no coverage) | `devbox run test-fast` |
 | Full test run with coverage | `devbox run test` |
 | Security lint (bandit) | `devbox run bandit` |
-
-If you need a flag combination that isn't covered by an existing script, add the script to `devbox.json` rather than running an ad-hoc `uv run pytest …` — that keeps human/CI/agent runs identical.
 
 ## Output
 
