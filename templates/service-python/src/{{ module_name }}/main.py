@@ -1,4 +1,5 @@
 """FastAPI entry point for {{ project_name }}."""
+
 from __future__ import annotations
 
 import os

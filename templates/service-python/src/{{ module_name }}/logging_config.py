@@ -3,6 +3,7 @@
 # with --data needs_observability=true to enable structlog/prometheus/OTel.
 {%- else -%}
 """Structured JSON logging via structlog."""
+
 from __future__ import annotations
 
 import logging

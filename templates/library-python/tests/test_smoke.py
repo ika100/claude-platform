@@ -1,4 +1,5 @@
 """Smoke test — confirms the package imports."""
+
 from __future__ import annotations
 
 import {{ module_name }}

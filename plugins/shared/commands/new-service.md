@@ -45,22 +45,38 @@ Wait for confirmation before continuing.
 
 ## Phase 2 — Run Copier
 
+Copier does not support subdirectory paths in `gh:` URLs. Shallow-clone the
+platform repo to a temp dir first, then point Copier at the template subdir:
+
 ```bash
-copier copy gh:ika100/claude-platform/templates/<TEMPLATE> ./<PROJECT_NAME> \
+PLATFORM_REF="${PLATFORM_REF:-main}"
+PLATFORM_DIR=$(mktemp -d)
+trap 'rm -rf "$PLATFORM_DIR"' EXIT
+git clone --depth 1 --branch "$PLATFORM_REF" \
+  https://github.com/ika100/claude-platform.git "$PLATFORM_DIR"
+
+copier copy "$PLATFORM_DIR/templates/<TEMPLATE>" ./<PROJECT_NAME> \
   --defaults \
+  --trust \
   --data project_name=<PROJECT_NAME> \
   --data module_name=<MODULE_NAME> \
   --data description="<DESCRIPTION>" \
   --data github_org=<GITHUB_ORG> \
-  --data python_version=<PYTHON_VERSION>
+  --data python_version=<PYTHON_VERSION> \
+  --data platform_marketplace_ref="$PLATFORM_REF"
 ```
 
-If `copier` is not installed:
+`--trust` is required because the templates declare `_tasks` (which Copier
+treats as a potentially unsafe feature). The platform repo is your own
+trusted source, so this is safe.
+
+If `copier` is not installed on the host:
 ```bash
-devbox run -- uv tool install copier
+uv tool install copier
 ```
 
-(Or instruct the user to install `copier` once globally — `uv tool install copier`.)
+(Run once per machine; copier ends up in `~/.local/bin/copier`. Make sure
+that's on the user's PATH or invoke with the absolute path.)
 
 If Copier emits warnings about merge conflicts or skipped files, surface them in the final report.
 

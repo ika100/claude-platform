@@ -13,7 +13,7 @@
     {
       "name": "svc",
       "source": "svc",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Multi-agent pipeline for Python service repos (product-manager → architect → coder → quality → tester → security → deployment).",
       "category": "agents",
       "tags": ["python", "fastapi", "devbox", "k8s"]
@@ -21,7 +21,7 @@
     {
       "name": "gitops",
       "source": "gitops",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Promotion and ApplicationSet management for the GitOps repo (ArgoCD).",
       "category": "agents",
       "tags": ["argocd", "gitops", "k8s"]
@@ -29,7 +29,7 @@
     {
       "name": "shared",
       "source": "shared",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Common quality and security agents plus the /new-service bootstrap command.",
       "category": "agents",
       "tags": ["quality", "security", "bootstrap"]

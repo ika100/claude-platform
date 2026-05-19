@@ -18,7 +18,6 @@ k8s/
 .secrets.baseline.json
 .gitignore
 .dockerignore
-README.md
 CLAUDE.md
 CHANGELOG.md
 .claude/

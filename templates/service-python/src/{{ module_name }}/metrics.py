@@ -2,6 +2,7 @@
 # Observability scaffolding was disabled at template time.
 {%- else -%}
 """Prometheus metrics for {{ project_name }}."""
+
 from __future__ import annotations
 
 from prometheus_client import Counter, Histogram
