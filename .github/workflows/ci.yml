@@ -65,9 +65,9 @@ jobs:
       - name: Confirm devbox.json mentions the templated module name
         run: |
           if [ "${{ matrix.template }}" = "service-python" ]; then
-            grep -F '--cov=test_svc' /tmp/test-${{ matrix.template }}/devbox.json
+            grep -F -e '--cov=test_svc' /tmp/test-${{ matrix.template }}/devbox.json
           else
-            grep -F '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
+            grep -F -e '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
           fi
 
   pr-title:
