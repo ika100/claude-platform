@@ -1,0 +1,62 @@
+# Copier template: library-python
+# Bootstrap a Python library repo (no k8s, no Dockerfile, no GitOps deployment).
+
+_min_copier_version: "9.0.0"
+
+# Render every file's content through Jinja (default would skip files lacking .jinja suffix)
+_templates_suffix: ""
+
+_answers_file: .copier-answers.yml
+
+_skip_if_exists:
+  - pyproject.toml
+  - src/**
+  - tests/**
+  - docs/adr/**
+
+_tasks:
+  - "git init -q"
+  - "echo 'Bootstrap complete. Run: cd {{ project_name }} && devbox install && devbox run quality'"
+
+project_name:
+  type: str
+  help: "Project name (kebab-case, e.g. 'shared-models')."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+module_name:
+  type: str
+  help: "Python module name (snake_case)."
+  default: "{{ project_name | replace('-', '_') }}"
+  validator: >-
+    {%- if not (module_name | regex_search('^[a-z][a-z0-9_]{1,39}$')) -%}
+    module_name must match ^[a-z][a-z0-9_]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the library."
+  default: "A Python library"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that will own the repo."
+  default: "ika100"
+
+owner_team:
+  type: str
+  help: "Owning team or individual."
+  default: "@{{ github_org }}"
+
+python_version:
+  type: str
+  help: "Python version."
+  choices: ["3.12", "3.13"]
+  default: "3.12"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to."
+  default: "main"

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "python@{{ python_version }}",
+    "uv@latest",
+    "ruff@latest",
+    "mypy@latest",
+    "pip-audit@latest",
+    "detect-secrets@latest",
+    "git@latest",
+    "gh@latest"
+  ],
+  "shell": {
+    "init_hook": ["uv sync --frozen --all-extras 2>/dev/null || true"],
+    "scripts": {
+      "test":           "uv run pytest tests/ --cov={{ module_name }} --cov-report=term-missing",
+      "test-fast":      "uv run pytest tests/ --tb=short -q",
+      "lint":           "uv run ruff check . && uv run ruff format --check .",
+      "lint-fix":       "uv run ruff check --fix . && uv run ruff format .",
+      "format":         "uv run ruff format .",
+      "typecheck":      "uv run mypy .",
+      "quality":        "devbox run lint && devbox run typecheck",
+      "audit":          "uv run pip-audit",
+      "secrets-scan":   "git ls-files -z ':!*.lock' | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline.json",
+      "bandit":         "uv run bandit -r src/ -q",
+      "security":       "devbox run audit && devbox run secrets-scan && devbox run bandit"
+    }
+  }
+}

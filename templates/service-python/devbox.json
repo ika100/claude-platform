@@ -1,0 +1,43 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "k3d@latest",
+    "kubectl@latest",
+    "k9s@latest",
+    "python@{{ python_version }}",
+    "uv@latest",
+    "ruff@latest",
+    "mypy@latest",
+    "pip-audit@latest",
+    "detect-secrets@latest",
+    "trivy@latest",
+    "git@latest",
+    "gh@latest"
+  ],
+  "shell": {
+    "init_hook": ["uv sync --frozen --all-extras 2>/dev/null || true"],
+    "scripts": {
+      "test":           "uv run pytest tests/ --cov={{ module_name }} --cov-report=term-missing",
+      "test-fast":      "uv run pytest tests/ --tb=short -q",
+      "lint":           "uv run ruff check . && uv run ruff format --check .",
+      "lint-fix":       "uv run ruff check --fix . && uv run ruff format .",
+      "format":         "uv run ruff format .",
+      "typecheck":      "uv run mypy .",
+      "quality":        "devbox run lint && devbox run typecheck",
+      "audit":          "uv run pip-audit",
+      "secrets-scan":   "git ls-files -z ':!*.lock' | xargs -0 uv run detect-secrets-hook --baseline .secrets.baseline.json",
+      "bandit":         "uv run bandit -r src/ -q",
+      "security":       "devbox run audit && devbox run secrets-scan && devbox run bandit",
+      "image-build":    "docker build -t {{ project_name }}:scan .",
+      "image-scan":     "trivy image --severity CRITICAL,HIGH --format table {{ project_name }}:scan",
+{%- if needs_migrations %}
+      "migrate":        "uv run alembic upgrade head",
+      "migrate-new":    "uv run alembic revision --autogenerate -m",
+      "migrate-down":   "uv run alembic downgrade -1",
+      "migrate-status": "uv run alembic current && uv run alembic history --verbose",
+{%- endif %}
+      "deploy":         "kubectl apply -k k8s/overlays/local/",
+      "deploy-check":   "kubectl apply --dry-run=client -k k8s/overlays/local/"
+    }
+  }
+}

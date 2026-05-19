@@ -1,0 +1,88 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-manifests:
+    name: validate marketplace.json + plugin.json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: jq installed?
+        run: jq --version
+      - name: marketplace.json is valid JSON
+        run: jq -e . .claude-plugin/marketplace.json
+      - name: every plugin.json is valid JSON
+        run: |
+          set -e
+          for f in plugins/*/.claude-plugin/plugin.json; do
+            echo "Checking $f"
+            jq -e . "$f"
+          done
+      - name: plugin versions match marketplace catalog
+        run: |
+          set -e
+          for plugin_dir in plugins/*/; do
+            plugin_name=$(basename "$plugin_dir")
+            plugin_version=$(jq -r .version "$plugin_dir.claude-plugin/plugin.json")
+            catalog_version=$(jq -r ".plugins[] | select(.name == \"$plugin_name\") | .version" .claude-plugin/marketplace.json)
+            if [ "$plugin_version" != "$catalog_version" ]; then
+              echo "Version mismatch for $plugin_name: plugin.json=$plugin_version, marketplace.json=$catalog_version"
+              exit 1
+            fi
+            echo "OK $plugin_name @ $plugin_version"
+          done
+
+  smoke-test-templates:
+    name: smoke-test Copier templates
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        template: [service-python, library-python]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/${{ matrix.template }} /tmp/test-${{ matrix.template }} \
+            --defaults \
+            --data project_name=test-${{ matrix.template }} \
+            --data module_name=test_${{ matrix.template == 'service-python' && 'svc' || 'lib' }} \
+            --data description="Smoke test"
+      - name: Confirm key files exist
+        run: |
+          test -f /tmp/test-${{ matrix.template }}/devbox.json
+          test -f /tmp/test-${{ matrix.template }}/pyproject.toml
+          test -f /tmp/test-${{ matrix.template }}/.claude/settings.json
+          test -f /tmp/test-${{ matrix.template }}/.github/workflows/ci.yml
+      - name: Confirm devbox.json mentions the templated module name
+        run: |
+          if [ "${{ matrix.template }}" = "service-python" ]; then
+            grep -F '--cov=test_svc' /tmp/test-${{ matrix.template }}/devbox.json
+          else
+            grep -F '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
+          fi
+
+  pr-title:
+    name: pr-title (conventional commits)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .{1,72}$'
+          if ! echo "$PR_TITLE" | grep -qE "$pattern"; then
+            echo "ERROR: PR title does not follow Conventional Commits."
+            echo "  Got:     $PR_TITLE"
+            echo "  Pattern: type(scope): description (≤72 chars)"
+            exit 1
+          fi
+          echo "OK: PR title is valid."

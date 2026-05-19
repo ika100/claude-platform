@@ -1,0 +1,72 @@
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "{{ description }}"
+readme = "README.md"
+requires-python = ">={{ python_version }}"
+license = { text = "Apache-2.0" }
+authors = [{ name = "{{ owner_team }}" }]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+{%- if needs_observability %}
+    "structlog>=24.4",
+    "prometheus-client>=0.21",
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp>=1.27",
+    "opentelemetry-instrumentation-fastapi>=0.48b0",
+{%- endif %}
+{%- if needs_database == "postgres" %}
+    "sqlalchemy>=2.0",
+    "asyncpg>=0.30",
+    "psycopg2-binary>=2.9",
+{%- elif needs_database == "mysql" %}
+    "sqlalchemy>=2.0",
+    "aiomysql>=0.2",
+{%- endif %}
+{%- if needs_migrations %}
+    "alembic>=1.13",
+{%- endif %}
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=5.0",
+    "pytest-mock>=3.14",
+    "httpx>=0.27",
+    "bandit>=1.7",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ module_name }}"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py{{ python_version | replace('.', '') }}"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "PTH"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "{{ python_version }}"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--tb=short -q"
+asyncio_mode = "auto"

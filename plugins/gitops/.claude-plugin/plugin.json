@@ -1,0 +1,13 @@
+{
+  "name": "gitops",
+  "version": "0.1.0",
+  "description": "Agents and commands for the GitOps repo: ArgoCD ApplicationSet management, per-environment overlays, and promotion workflows. Pairs with the svc plugin's `deployable-service` topic convention.",
+  "author": {
+    "name": "Eike Hensler",
+    "email": "eike.hensler@gmail.com"
+  },
+  "homepage": "https://github.com/ika100/claude-platform",
+  "repository": "https://github.com/ika100/claude-platform",
+  "license": "Apache-2.0",
+  "keywords": ["argocd", "gitops", "k8s", "agents"]
+}

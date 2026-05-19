@@ -1,0 +1,17 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.devbox/
+.DS_Store
+.claude/scheduled_tasks.lock
+.claude/worktrees/
+.claude/settings.local.json

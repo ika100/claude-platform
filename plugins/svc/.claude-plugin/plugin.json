@@ -1,0 +1,13 @@
+{
+  "name": "svc",
+  "version": "0.1.0",
+  "description": "Multi-agent pipeline for Python service repos. Provides product-manager, architect, coder, tester, migrations, observability, release, and deployment agents plus the build-feature/plan-feature/quick-task/fix-bug/release commands. Requires `devbox run` recipes from the service-python Copier template.",
+  "author": {
+    "name": "Eike Hensler",
+    "email": "eike.hensler@gmail.com"
+  },
+  "homepage": "https://github.com/ika100/claude-platform",
+  "repository": "https://github.com/ika100/claude-platform",
+  "license": "Apache-2.0",
+  "keywords": ["python", "fastapi", "devbox", "k8s", "agents"]
+}

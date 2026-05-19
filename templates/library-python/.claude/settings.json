@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "extraKnownMarketplaces": {
+    "ika100-claude": {
+      "source": {
+        "source": "github",
+        "repo": "ika100/claude-platform",
+        "ref": "{{ platform_marketplace_ref }}"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "svc@ika100-claude": true,
+    "shared@ika100-claude": true
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "allow": [
+      "Bash(devbox run *)",
+      "Bash(devbox install)",
+      "Bash(devbox shell)",
+      "Bash(devbox info *)",
+      "Bash(devbox version)",
+      "Bash(devbox list)",
+
+      "Bash(git status *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git diff)",
+      "Bash(git log *)",
+      "Bash(git log)",
+      "Bash(git show *)",
+      "Bash(git branch)",
+      "Bash(git branch --list *)",
+      "Bash(git branch -d *)",
+      "Bash(git rev-parse *)",
+      "Bash(git symbolic-ref *)",
+      "Bash(git describe *)",
+      "Bash(git ls-files *)",
+      "Bash(git remote -v)",
+      "Bash(git worktree list *)",
+      "Bash(git worktree list)",
+
+      "Bash(git add *)",
+      "Bash(git commit -m *)",
+      "Bash(git commit --message *)",
+      "Bash(git merge --no-ff *)",
+      "Bash(git merge --no-ff --no-edit *)",
+      "Bash(git merge --abort)",
+      "Bash(git worktree add *)",
+      "Bash(git worktree remove *)",
+      "Bash(git checkout -b *)",
+      "Bash(git tag -a *)",
+      "Bash(git fetch *)",
+      "Bash(git fetch)",
+
+      "Bash(git push -u origin feature/*)",
+      "Bash(git push -u origin fix/*)",
+      "Bash(git push -u origin chore/*)",
+      "Bash(git push -u origin docs/*)",
+      "Bash(git push -u origin refactor/*)",
+      "Bash(git push -u origin perf/*)",
+      "Bash(git push -u origin test/*)",
+      "Bash(git push -u origin release/*)",
+      "Bash(git push origin v*)",
+
+      "Bash(git checkout main)",
+      "Bash(git checkout feature/*)",
+      "Bash(git switch *)",
+
+      "Bash(gh pr view *)",
+      "Bash(gh pr list *)",
+      "Bash(gh issue view *)",
+      "Bash(gh issue list *)",
+      "Bash(gh pr merge --merge release/*)",
+
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(grep *)",
+      "Bash(rg *)",
+      "Bash(find *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(jq *)"
+    ],
+    "ask": [
+      "Bash(git push --force *)",
+      "Bash(git push origin main)",
+      "Bash(git pull *)",
+      "Bash(git reset *)",
+      "Bash(git clean *)",
+      "Bash(git rebase *)",
+      "Bash(gh pr create *)",
+      "Bash(gh release *)",
+      "Bash(gh issue close *)",
+      "Bash(pip install *)",
+      "Bash(uv add *)",
+      "Bash(uv remove *)"
+    ]
+  }
+}

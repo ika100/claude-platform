@@ -1,0 +1,93 @@
+# Copier template: service-python
+# Bootstrap a Python FastAPI-style service repo with the canonical devbox + k8s + agentic setup.
+#
+# Usage:
+#   copier copy gh:ika100/claude-platform/templates/service-python ./<project> \
+#     --data project_name=<name> --data module_name=<name_with_underscores>
+
+_min_copier_version: "9.0.0"
+
+# Render every file's content through Jinja (default would skip files lacking .jinja suffix)
+_templates_suffix: ""
+
+_answers_file: .copier-answers.yml
+
+_skip_if_exists:
+  - pyproject.toml
+  - src/**
+  - tests/**
+  - migrations/**
+  - docs/adr/**
+
+_tasks:
+  - "git init -q"
+  - "echo 'Bootstrap complete. Run: cd {{ project_name }} && devbox install && devbox run quality'"
+
+project_name:
+  type: str
+  help: "Project name (kebab-case, e.g. 'payments-api'). Used in directory, Docker tag, k8s labels."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+module_name:
+  type: str
+  help: "Python module name (snake_case). Defaults to project_name with hyphens converted to underscores."
+  default: "{{ project_name | replace('-', '_') }}"
+  validator: >-
+    {%- if not (module_name | regex_search('^[a-z][a-z0-9_]{1,39}$')) -%}
+    module_name must match ^[a-z][a-z0-9_]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the service."
+  default: "A Python service"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that will own the repo."
+  default: "ika100"
+
+owner_team:
+  type: str
+  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  default: "@{{ github_org }}"
+
+python_version:
+  type: str
+  help: "Python version."
+  choices: ["3.12", "3.13"]
+  default: "3.12"
+
+port:
+  type: int
+  help: "HTTP port the service listens on."
+  default: 8080
+
+needs_migrations:
+  type: bool
+  help: "Include Alembic migrations scaffolding (migrations/ dir, devbox migrate recipes)?"
+  default: false
+
+needs_database:
+  type: str
+  help: "Database type (drives migration + Helm values). 'none' if no DB."
+  choices: ["none", "postgres", "mysql"]
+  default: "none"
+
+needs_observability:
+  type: bool
+  help: "Include structlog + Prometheus + OpenTelemetry scaffolding?"
+  default: true
+
+docker_registry:
+  type: str
+  help: "Container registry namespace."
+  default: "ghcr.io/{{ github_org }}"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  default: "main"
