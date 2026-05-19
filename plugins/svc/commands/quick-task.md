@@ -10,54 +10,63 @@ If the task is large or cross-cutting (multiple modules, new public APIs, schema
 
 ---
 
-## Phase 0 — Branch check
+## Phase 0 — Prelude
 
-Before any code is written:
+Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Specifically:
 
-1. Run `git status --porcelain`. If the working tree is dirty, stop and ask the user to commit or stash first.
-2. Run `git symbolic-ref --short HEAD` to get the current branch.
-3. **If on `main`:** derive a slug from the task description (lowercase, hyphens for spaces, ≤40 chars). Choose the prefix by task type: `feature/` for new functionality, `fix/` for bugs, `chore/` for tooling, `docs/` for documentation. Create and switch:
-   ```bash
-   git checkout -b feature/<slug>
-   ```
-   Print: `## Phase 0 — on feature branch: feature/<slug>`
-4. **If already on a non-main branch:** proceed. Print: `## Phase 0 — already on branch: <branch>`
+1. `git status --porcelain` — stop if dirty.
+2. `git symbolic-ref --short HEAD` → record `$WORK_BRANCH`.
+3. If on `main`: derive a slug (lowercase, hyphens, ≤40 chars). Pick a prefix from task type: `feature/` (default), `fix/`, `chore/`, `docs/`. Then `git checkout -b <prefix>/<slug>` and update `$WORK_BRANCH`.
+4. `BASE_REF=$(git rev-parse HEAD)`.
+5. Build `<project-map>` (output of `ls -d */` excluding `.devbox`, `.venv`, `.git`, `node_modules`). Hold as `$PROJECT_MAP`. Prepend to each subagent prompt below.
+
+Print `## Phase 0 — on $WORK_BRANCH, BASE_REF=<short-sha>`.
 
 ---
 
 ## Step 1 — Implement
 
-Use the **coder** agent with:
+Use the **coder** agent. Prompt prelude: the `<project-map>` block. Then:
 - The task description verbatim
-- The instruction to read relevant files first, make the minimal change, and report which files were touched
-- The instruction to use `devbox run lint-fix` and `devbox run test-fast` as needed during implementation
+- Instruction to read relevant files first, make the minimal change, and report touched files
+- Instruction to use `devbox run lint-fix` and `devbox run test-fast` as needed during implementation
 
-Coder works on the current branch — no worktrees, no fan-out. This is a one-task path.
+One coder, one pass — no worktrees, no fan-out.
 
----
-
-## Step 2 — Quality gate
-
-**Pre-pass (cheap):** before calling the quality agent, run `devbox run lint-fix` directly from the orchestrator. This auto-resolves ruff-fixable formatting/import issues without spawning the coder. If `lint-fix` leaves the tree dirty, stage the resulting changes so the eventual commit captures them.
-
-Then use the **quality** agent with:
-> Run `devbox run quality`. Report all violations.
-
-**Fix loop:** if violations remain, pass the report back to the **coder** with "fix only the lint/type issues, no logic changes." Re-run quality. Max 2 cycles — if still failing, escalate to the user.
+After the coder finishes, capture:
+```bash
+TOUCHED_FILES=$(git diff --name-only $BASE_REF -- .)
+```
 
 ---
 
-## Step 3 — Test
+## Step 2 — Parallel QA fan-out (quality + tester)
 
-Use the **tester** agent with:
-- The list of files touched in Step 1
-- The instruction to run `devbox run test` and write any missing tests for the changed code paths
+Fan out **quality** and **tester** in a single message. Wall-clock is the longer leg, not the sum. Each prompt prelude:
+```
+<project-map>
+$PROJECT_MAP
+</project-map>
+<touched-files>
+$TOUCHED_FILES
+</touched-files>
+```
 
-**Fix loop:** if tests fail or coverage drops below the project target, pass the failure to the **coder** with the exact pytest output. Re-run tester. Max 2 cycles — if still failing, escalate.
+Then:
+
+1. **Quality agent** — instruction: "Run `devbox run lint-fix` then `devbox run quality`. Report remaining violations."
+2. **Tester agent** — instruction: "Touched files listed above. Run `devbox run test` and write any missing tests for the changed code paths. Report pass/fail count and coverage."
+
+Reconcile:
+- **Quality failures** → route to **coder** for lint/type fixes only. Re-run quality. Max 2 cycles.
+- **Tester failures or coverage drop** → route to **coder** with the exact pytest output. Re-run tester. Max 2 cycles.
+- If either cycle modified files, refresh `$TOUCHED_FILES`.
+
+If still failing after 2 cycles, escalate to the user.
 
 ---
 
-## Phase 4 — Commit and open PR
+## Phase 3 — Commit and open PR
 
 After the tester passes:
 
@@ -124,7 +133,7 @@ After the tester passes:
 
 5. Print the PR URL.
 
-**If Phase 0 found we were already on `main` and did not create a branch:** warn "Skipping PR creation — working directly on main." and skip Phase 4.
+**If Phase 0 found we were already on `main` and did not create a branch:** warn "Skipping PR creation — working directly on main." and skip Phase 3.
 
 ---
 
@@ -150,6 +159,6 @@ After the tester passes:
 ## Rules
 
 - **One coder, one pass.** If the task balloons mid-implementation (coder reports it needs more than ~3 files outside the original scope, or asks design questions), **stop and recommend `/svc:build-feature`** — don't keep stretching quick-task.
-- **Commit at Phase 4, not before.** The coder leaves the working tree dirty; Phase 4 does the single commit before pushing.
+- **Commit at Phase 3, not before.** The coder leaves the working tree dirty; Phase 3 does the single commit before pushing.
 - **No deployment, no security scan, no PRD.** Those are `/svc:build-feature` territory.
 - **Every shell command goes through `devbox run`.**

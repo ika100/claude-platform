@@ -10,7 +10,7 @@
     {
       "name": "svc",
       "source": "./plugins/svc",
-      "version": "0.2.0",
+      "version": "1.0.0",
       "description": "Multi-agent pipeline for Python service repos (product-manager → architect → coder → quality → tester → security → deployment).",
       "category": "agents",
       "tags": ["python", "fastapi", "devbox", "k8s"]

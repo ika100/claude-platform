@@ -4,6 +4,30 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [1.0.0] — 2026-05-19
+
+Phase 3 of the agentic efficiency overhaul. **First stable major.** Orchestration commands restructured for parallelism and to skip wasted work; per-command preludes deduplicated.
+
+### Breaking changes
+
+- **`/svc:build-feature` phase numbering changed.** The old Phase 3a (intermediate quality gate), Phase 4 (tester), Phase 4a (security) are merged into a single **Phase 4 — parallel QA fan-out** that runs quality + tester + security in one orchestrator turn. Phase 5 stays "deployment"; old Phases 6/7 are unchanged. Any consumer scripts that grep transcripts for `Phase 4a complete` need updating.
+- **`/svc:fix-bug` phase numbering changed.** Old "Phase 5 — Commit and open PR" is now "Phase 4 — Commit and open PR" after the redundant intermediate phase was dropped in v0.1.4.
+- **`/svc:quick-task` phase numbering changed.** Old "Phase 4 — Commit and open PR" is now "Phase 3 — Commit and open PR".
+
+### Plugins
+
+- **svc 1.0.0**:
+  - **Scope classifier** (`/svc:build-feature` Phase 0a): the orchestrator now classifies the request before running PM + Architect. Typos / docs / one-file tweaks are routed to `/svc:quick-task`; bug reports are routed to `/svc:fix-bug`; standard features get a "confirm full pipeline?" prompt. Saves PM + Architect on requests that don't need them.
+  - **Parallel QA fan-out** (`/svc:build-feature` Phase 4, `/svc:quick-task` Step 2): quality + tester + security (build-feature) or quality + tester (quick-task) now spawn in a single orchestrator turn, mirroring `/shared:check-quality`. Wall-clock is the longest leg, not the sum.
+  - **Pre-computed subagent context:** every orchestrator now computes `$PROJECT_MAP` (top-level dirs) and `$TOUCHED_FILES` (`git diff --name-only $BASE_REF..HEAD`) up-front and prepends them as `<project-map>` / `<touched-files>` blocks to every subagent prompt. Each agent saves 2–5 exploratory Glob/Grep calls.
+  - **Phase prelude fragment**: new `plugins/svc/fragments/phase-prelude.md` documents the canonical pre-Phase-1 workflow (git status check, branch creation, base-ref capture, context pre-compute). The three orchestration commands now reference it instead of carrying drifted copies.
+
+### Migration
+
+- Run `/plugin marketplace update` to pull svc 1.0.0.
+- Existing service repos do **not** need a `copier update` for this release — only plugin contracts changed, no template files.
+- If you watch for specific phase headers in agent output (CI greps, dashboards), update them per the breaking changes above.
+
 ## [0.4.0] — 2026-05-19
 
 Phase 2 of the agentic efficiency overhaul: boilerplate that the `svc` agents used to regenerate on every invocation is now part of the `service-python` Copier template. Agents become verify-and-extend instead of generate-from-scratch. Non-breaking for consumers — run `copier update` to pull the new template files.

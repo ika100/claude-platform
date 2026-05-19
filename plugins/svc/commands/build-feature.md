@@ -1,8 +1,8 @@
 ---
-description: Full-pipeline feature build. Orchestrates product-manager → architect → parallel coders → quality → tester → security → deployment for the given feature request. Usage: /svc:build-feature <feature description>
+description: Full-pipeline feature build. Orchestrates product-manager → architect → parallel coders → quality+test+security (fan-out) → deployment for the given feature request. Usage: /svc:build-feature <feature description>
 ---
 
-You are the **orchestrator**. Your job is to drive a feature from idea to deployment by delegating to specialized subagents — and to fan coders out in parallel git worktrees wherever the architect's plan permits.
+You are the **orchestrator**. Drive a feature from idea to deployment by delegating to specialized subagents — and fan coders out in parallel git worktrees wherever the architect's plan permits.
 
 **Feature request:** $ARGUMENTS
 
@@ -10,47 +10,65 @@ Work through the phases in order. Complete each phase fully before starting the 
 
 ---
 
-## Phase 0 — Branch check
+## Phase 0a — Scope classifier
 
-Before Phase 1:
+Before running the full pipeline, decide whether the request actually needs it. Read `$ARGUMENTS` and classify:
 
-1. Check `git status --porcelain`. If dirty, stop: "Working tree has uncommitted changes — commit or stash before running /svc:build-feature."
-2. Get current branch: `git symbolic-ref --short HEAD`. Record it as `$FEATURE_BRANCH`.
-3. **If on `main`:** derive a slug from the feature description (lowercase, hyphens, ≤40 chars, always `feature/` prefix). Create and switch:
-   ```bash
-   git checkout -b feature/<slug>
-   ```
-   Update `$FEATURE_BRANCH` to this new branch. Print: `## Phase 0 — on feature branch: feature/<slug>`
-4. **If already on a non-main branch:** print: `## Phase 0 — already on branch: <branch>`
+- **Typo / docs / one-file tweak** (e.g. "fix typo in README", "rename CONST_X to CONST_Y") → stop and recommend `/svc:quick-task "$ARGUMENTS"`. Do not proceed.
+- **Bug report with a stack trace, error message, or "X is broken"** → stop and recommend `/svc:fix-bug "$ARGUMENTS"`. Do not proceed.
+- **Standard feature** (1–3 modules, no new public API surface, no schema changes) → recommend `/svc:quick-task` but ask the user "this looks light enough for quick-task — confirm full pipeline?". Stop unless the user explicitly confirms.
+- **Real feature** (cross-cutting, new endpoints, new modules, schema changes, or the user says "build feature") → proceed to Phase 0b.
 
-Note: Phase 3.0 captures `BASE_BRANCH=$(git symbolic-ref --short HEAD)`. After Phase 0, `BASE_BRANCH` will be the feature branch — correct, as worktrees merge back into it.
+Print exactly one of `## Phase 0a — proceeding to full pipeline` or `## Phase 0a — routing to /svc:<other-command>`.
+
+---
+
+## Phase 0b — Prelude
+
+Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Specifically:
+
+1. `git status --porcelain` — stop if dirty.
+2. `git symbolic-ref --short HEAD` → record `$FEATURE_BRANCH`.
+3. If on `main`: derive a `feature/<slug>` slug (lowercase, hyphens, ≤40 chars) and `git checkout -b feature/<slug>`. Update `$FEATURE_BRANCH`.
+4. `BASE_REF=$(git rev-parse HEAD)`.
+5. Build `<project-map>` from `ls -d */` (excluding `.devbox`, `.venv`, `.git`, `node_modules`). Hold it as `$PROJECT_MAP`. Every subagent prompt below must prepend it.
+
+Print `## Phase 0b complete — on $FEATURE_BRANCH, BASE_REF=<short-sha>`.
 
 ---
 
 ## Phase 1 — Product Definition
 
-Use the **product-manager** agent to:
-- Clarify the feature request (make reasonable assumptions if the request is clear enough — do not block on questions)
+Use the **product-manager** agent. Prompt prelude:
+
+```
+<project-map>
+$PROJECT_MAP
+</project-map>
+```
+
+Then:
+- Clarify the feature request (make reasonable assumptions; do not block on questions)
 - Produce user stories with acceptance criteria
 - Save output to `docs/backlog.md` (append or create)
 
-Wait for the product-manager agent to finish. Extract the acceptance criteria checklist — you will use it in Phase 4.
+Extract the acceptance criteria checklist when the agent finishes — reused in Phase 4.
 
 ---
 
 ## Phase 2 — Architecture
 
-Use the **architect** agent, passing it:
-- The user stories and acceptance criteria from Phase 1
-- The instruction to read the existing codebase before designing
-- The instruction to **emit the structured plan format documented in the architect agent's system prompt** — a YAML metadata block listing every task with `id`, `files`, `parallel_safe`, `depends_on`, followed by per-task prose.
+Use the **architect** agent. Prompt prelude: same `<project-map>` block. Then:
+- Pass the user stories and acceptance criteria from Phase 1
+- Instruction to read the existing codebase before designing
+- Instruction to **emit the structured plan format documented in the architect agent's system prompt** — a YAML metadata block listing every task with `id`, `files`, `parallel_safe`, `depends_on`, followed by per-task prose
 
-The architect must produce:
+The architect produces:
 1. An implementation plan at `docs/plan/<feature-slug>.md` with the mandatory YAML metadata
 2. Any ADR if a significant technology decision was made (save to `docs/adr/`)
 3. Module/API specs sufficient for the coder to start without follow-up questions
 
-Wait for the architect to finish. Read `docs/plan/<feature-slug>.md` and parse the YAML metadata block. If the metadata is absent or malformed, **send the plan back to the architect** with the format spec and require a re-emission — do not proceed to Phase 3 without it.
+Read `docs/plan/<feature-slug>.md` and parse the YAML metadata. If absent or malformed, send the plan back to the architect — do not proceed without it.
 
 ---
 
@@ -58,194 +76,160 @@ Wait for the architect to finish. Read `docs/plan/<feature-slug>.md` and parse t
 
 ### 3.0 Pre-flight
 
-Confirm `git status --porcelain` is empty and capture the base branch (the feature branch from Phase 0):
+Working tree should already be clean. Capture the base branch (the feature branch from Phase 0b):
 ```bash
 BASE_BRANCH=$(git symbolic-ref --short HEAD)
-BASE_REF=$(git rev-parse HEAD)
 ```
 
 ### 3.0a Worktree-isolation probe
 
-Before fanning coders out, probe the harness for worktree support. If the Claude Code session started before `git init`, the harness may have cached "not a git repository" state — the Agent tool's `isolation: "worktree"` will return an error and parallel fan-out becomes impossible mid-flight.
+Before fanning out, probe the harness for worktree support. If the Claude Code session started before `git init`, the harness may have cached "not a git repository" — `isolation: "worktree"` will error out mid-flight.
 
-Run the probe as a tiny throwaway `Agent` call with `isolation: "worktree"` (e.g. a one-line "print pwd and exit" coder task). If it returns:
-- ✅ a valid worktree branch+path → fan-out is available. Continue with the normal parallel flow described below.
-- ❌ an error containing "Cannot create agent worktree" or "not in a git repository" → **fall back to sequential execution.** Run every task on `$BASE_BRANCH` one after another (skip the merge phase entirely; each task lands as its own commit on the base branch). Note "worktree isolation unavailable this session — fell back to sequential" in the Final Report's *Next steps* so the user knows to restart their session for true parallelism next time.
-
-Do not attempt fan-out without a passing probe — silently degrading mid-batch produces confusing error returns from real coder agents.
+Run a throwaway `Agent` with `isolation: "worktree"` and a one-line task. If it returns:
+- ✅ a worktree branch+path → continue normally.
+- ❌ "Cannot create agent worktree" or "not in a git repository" → fall back to sequential execution on `$BASE_BRANCH`, skipping the merge phase. Note in the Final Report so the user knows to restart for true parallelism.
 
 ### 3.1 Build the execution schedule
 
-From the parsed plan metadata, compute the schedule:
+From the parsed plan metadata:
+1. **Topologically sort** tasks by `depends_on`.
+2. **Group into levels** — level N holds tasks whose deps are all in levels < N.
+3. **Within each level, build parallel batches** by greedy file-disjoint grouping: a task joins the current batch only if `parallel_safe: true` AND its `files` set is disjoint from every other file set in the batch. Otherwise it becomes a singleton.
 
-1. **Topologically sort** tasks by `depends_on`. Tasks with no incoming edges go first.
-2. **Group into levels** — at level N, place every task whose dependencies are all in levels < N.
-3. **Within each level, build parallel batches** by greedy file-disjoint grouping:
-   - A task is added to the current batch only if `parallel_safe: true` AND its `files` set is disjoint from every file set already in the batch.
-   - Tasks with `parallel_safe: false` or that would conflict are placed in their own singleton batches.
-
-Print the schedule as a markdown table before executing:
-
-```
-| Level | Batch | Tasks | Mode |
-|---|---|---|---|
-| 1 | 1 | t1, t2 | parallel |
-| 1 | 2 | t3     | sequential |
-| 2 | 1 | t4     | sequential |
-```
+Print the schedule as a markdown table before executing.
 
 ### 3.2 Execute each batch
 
-For each batch in order:
+For each batch:
 
 **Parallel batch (≥2 tasks, all `parallel_safe`):**
 
-Spawn one **coder** subagent per task **in a single message** (multiple Agent tool calls in one assistant turn), each with `isolation: "worktree"`. The subagent prompt must include:
+Spawn one **coder** subagent per task **in a single message**, each with `isolation: "worktree"`. Each prompt must include:
+- `<project-map>` block
 - Path to `docs/plan/<slug>.md` and the task's `id`
 - The task's prose section verbatim
-- The task's `files` list (you may not touch any file outside this list)
-- The instruction: "You are working in an isolated git worktree. Commit your changes locally (`git add` + `git commit -m '<task-id>: <title>'`) before returning. Do not push. Do not switch branches."
+- The task's `files` list (you may not touch files outside it)
+- Instruction: "You are in an isolated worktree. Commit locally (`git add` + `git commit -m '<task-id>: <title>'`) before returning. Do not push. Do not switch branches."
 
-Wait for all coder calls to complete. Collect the `(branch_name, worktree_path)` returned by each that made changes; ignore agents that made no changes (worktree auto-cleans).
+Wait for all calls. Collect `(branch_name, worktree_path)` from each that made changes; ignore agents with no changes (worktree auto-cleans).
 
-**Sequential batch (single task, or `parallel_safe: false`):**
+**Sequential batch (single task or `parallel_safe: false`):**
 
-Spawn one coder subagent **without** `isolation: "worktree"` — it works directly on the base branch. After it finishes, commit on the orchestrator's behalf if the coder didn't:
+Spawn one coder **without** `isolation: "worktree"` — works directly on the base branch. Commit on its behalf if it didn't:
 ```bash
 git add -A && git commit -m "<task-id>: <title>"
 ```
 
 ### 3.3 Merge phase (after a parallel batch)
 
-For each returned `(branch, worktree_path)` from the batch:
+For each returned `(branch, worktree_path)`:
 
 ```bash
 git merge --no-ff --no-edit <branch>
 ```
 
 After each merge:
-1. **Lint-fix pre-pass:** run `devbox run lint-fix` directly to auto-resolve ruff-fixable issues before invoking the quality gate. Stage the result so it lands in the next commit.
-2. Run `devbox run quality`. If it still fails, hand the violation report back to that task's coder (it can re-enter its worktree if still present, or work on main) to fix only the lint/type issues. Re-run quality.
-3. Run `devbox run test-fast` as a sanity check. Failures here are usually integration issues between parallel branches — route to the coder agent with the failing test output.
-3. Clean up:
+1. **Lint-fix pre-pass:** `devbox run lint-fix` from the orchestrator — auto-resolves ruff-fixable issues without spawning anything. Stage the result.
+2. `devbox run quality`. If it still fails, route the report to that task's coder (lint/type fixes only). Re-run.
+3. `devbox run test-fast` sanity check. Failures here are usually parallel-integration issues — route to the coder with the failing output.
+4. Clean up:
    ```bash
    git worktree remove <worktree_path>
    git branch -d <branch>
    ```
 
-**Merge conflicts:** if `git merge` reports a conflict, abort with `git merge --abort`, stop the pipeline, and escalate to the user with:
-- The two conflicting tasks (ids and titles)
-- The conflicting files
-- The branch names so the user can inspect manually
-
-Do not auto-resolve conflicts. The architect's `files` declaration was supposed to prevent this — a conflict means the plan metadata was wrong.
+**Merge conflicts:** abort with `git merge --abort`, stop, escalate to the user. Do not auto-resolve. A conflict means the architect's `files` declaration was wrong.
 
 ### 3.4 Phase 3 wrap-up
+
+Compute and hold the touched-files context for downstream phases:
+```bash
+TOUCHED_FILES=$(git diff --name-only $BASE_REF..HEAD)
+```
 
 Print:
 ```
 ## Phase 3 complete
 - Tasks executed: N (P in parallel, S sequential)
 - Merges: M successful, C conflicts
-- Files changed: <git diff --name-only $BASE_REF..HEAD | count>
+- Files changed: <count>
 ```
 
 ---
 
-## Phase 3a — Quality gate (final)
+## Phase 4 — Parallel QA fan-out (quality + tester + security)
 
-After all task merges, run one consolidated quality check on the integrated tree.
+**This phase fans out three subagents in a single message — mirroring `/shared:check-quality`.** Total wall-clock is the longest leg, not the sum.
 
-**Pre-pass:** run `devbox run lint-fix` directly from the orchestrator first — this auto-resolves ruff-fixable issues without spinning up an agent.
+Each subagent prompt includes the same context prelude:
+```
+<project-map>
+$PROJECT_MAP
+</project-map>
+<touched-files>
+$TOUCHED_FILES
+</touched-files>
+```
 
-Then use the **quality agent** with instruction:
-> Run `devbox run quality` and report all violations.
+Spawn all three in one assistant turn:
 
-If violations remain, hand back to the **coder** agent for lint/type fixes only (no logic changes), then re-run. Do not advance until clean.
+1. **Quality agent** — instruction: "Run `devbox run lint-fix` then `devbox run quality`. Report all remaining violations."
+2. **Tester agent** — instruction: "Acceptance criteria: <list from Phase 1>. Touched files above. Write tests covering the criteria, then run `devbox run test`. Report pass/fail count, coverage %, and any open bugs."
+3. **Security agent** — instruction: "Run `devbox run security`. If a Dockerfile was created or modified during this feature, also run `devbox run image-build && devbox run image-scan`. Document findings in `docs/security/scan-<today>.md`."
 
-Print `## Phase 3a complete — quality gate passed`.
+Wait for all three. Reconcile:
 
----
+- **Quality failures** → route to the **coder** for lint/type fixes only (no logic changes). Re-run quality. Max 2 cycles.
+- **Tester bugs** → route to the **coder** with the exact bug report. Re-run tester. Max 2 cycles.
+- **CRITICAL security findings** → stop, escalate to the user, do not proceed to deployment.
+- **HIGH security findings** → document and continue; note in Final Report.
 
-## Phase 4 — Testing
+If quality or tester cycles modified files, refresh `$TOUCHED_FILES` before continuing.
 
-Use the **tester** agent, passing it:
-- The acceptance criteria checklist from Phase 1
-- The full list of files changed since `$BASE_REF`
-- The instruction to write tests covering the acceptance criteria and then run them via `devbox run test`
-
-The tester must report: tests written, pass/fail count, coverage %, and any open bugs.
-
-If the tester reports bugs:
-- Use the **coder** agent to fix them (pass the exact bug report). No worktree — these are integration fixes on the merged tree.
-- Then re-run the **tester** agent to confirm the fix
-- Repeat until all acceptance criteria pass (max 2 fix cycles; escalate to the user if not resolved)
-
----
-
-## Phase 4a — Security scan
-
-Use the **security** agent with instruction:
-> Run `devbox run security`. If a Dockerfile was created or modified during this feature, also run `devbox run image-build && devbox run image-scan`. Document findings in `docs/security/scan-<today>.md`.
-
-**Escalation rules:**
-- **CRITICAL findings:** stop and escalate to the user immediately with full details. Do not proceed to deployment.
-- **HIGH findings:** document and continue; note them in the Final Report.
-
-Print `## Phase 4a complete — security scan done`.
+Print `## Phase 4 complete — QA fan-out passed (tests: N, coverage X%, sec: PASS/WARN)`.
 
 ---
 
 ## Phase 5 — Deployment
 
-Use the **deployment** agent (from the svc plugin), passing it:
-- The list of changed/new modules
-- The instruction to update or create: Dockerfile, k8s manifests in `k8s/`, and any needed `devbox run` script
-- The instruction to verify manifests with `devbox run deploy-check`
+Use the **deployment** agent. Prompt prelude: `<project-map>` + `<touched-files>` (refreshed). Then:
+- The list of changed/new modules (from `$TOUCHED_FILES`)
+- Instruction to update or create: Dockerfile, k8s manifests in `k8s/`, and any needed `devbox run` script
+- Instruction to verify manifests with `devbox run deploy-check`
 
 ---
 
 ## Phase 6 — Backlog finalization
 
-If `docs/backlog.md` lists user stories for this feature with a status field (e.g. "Not started" / "In progress" / "Done"), update each story implemented by this build to **Done**. Edit `docs/backlog.md` directly — small, atomic, leave the rest of the file untouched. Commit as a single `docs(backlog): mark <story-ids> done` commit on `$BASE_BRANCH`.
+If `docs/backlog.md` lists user stories for this feature with a status field, mark each story implemented by this build as **Done**. Single commit: `docs(backlog): mark <story-ids> done`.
 
-If the backlog uses checkboxes instead of status fields, tick each acceptance-criterion checkbox covered by the tests that passed in Phase 4.
+If the backlog uses checkboxes instead of status, tick each acceptance-criterion checkbox covered by tests that passed in Phase 4.
 
-If the file has no status field and no checkboxes for these stories, skip this phase silently.
+If neither, skip silently.
 
-Print `## Phase 6 complete — backlog updated` (or `## Phase 6 skipped — no status fields in backlog`).
+Print `## Phase 6 complete — backlog updated` (or `## Phase 6 skipped — no status fields`).
 
 ---
 
 ## Phase 7 — Open PR
 
-After Phase 6 completes:
+After Phase 6:
 
-1. Extract GitHub issue references so the PR can close them on merge.
+1. **Collect linked issues.** Scan `$ARGUMENTS`, `docs/backlog.md`, and `git log "$BASE_REF"..HEAD --format='%B'` for `#NNN` patterns. Verify each is `OPEN` via `gh issue view <NNN> --json state -q .state`. Build a `CLOSES` list (e.g. `Closes #42\nCloses #7`) or `N/A`.
 
-   Scan `$ARGUMENTS`, `docs/backlog.md` (look for `#NNN` in the stories for this feature), and the git log since `$BASE_REF` for `#NNN` patterns:
-   ```bash
-   git log "$BASE_REF"..HEAD --format='%B'
-   ```
-   Verify each candidate is a real, open issue:
-   ```bash
-   gh issue view <NNN> --json state,number -q '"\(.number) \(.state)"'
-   ```
-   Keep only `OPEN` issues. Build a `CLOSES` list (e.g. `Closes #42\nCloses #7`). If none, set `CLOSES` to `N/A`.
-
-2. Push the feature branch (requires user confirmation — `git push` is in the `ask` list):
+2. **Push the feature branch** (requires user confirmation):
    ```bash
    git push -u origin $FEATURE_BRANCH
    ```
 
-3. Create the PR (requires user confirmation — `gh pr create` is in the `ask` list). Build the body explicitly so `Closes #NNN` appears as live text (not an HTML comment) and GitHub auto-closes the linked issues on merge:
+3. **Create the PR** (requires user confirmation):
    ```bash
    gh pr create \
      --title "feat(<feature-slug>): <one-line summary from Phase 1 user stories>" \
      --body "$(cat <<'EOF'
    ## Summary
 
-   <3–5 sentence description of the feature: what problem it solves, what was built, and how a user or operator interacts with it. Include concrete details — endpoint paths, CLI flags, config variables, response schemas, or observable behaviour — so a reviewer understands what the feature does without reading the code. Draw from the Phase 1 user stories and Phase 4 acceptance criteria.>
+   <3–5 sentence description: what problem it solves, what was built, how a user or operator interacts with it. Include concrete details — endpoint paths, CLI flags, config variables, response schemas — so a reviewer understands the feature without reading code.>
 
    ## Type of change
 
@@ -269,13 +253,13 @@ After Phase 6 completes:
    EOF
    )"
    ```
-   The title must satisfy Conventional Commits format (≤72 chars after `type: `) to pass the `pr-title` CI check. Replace `<CLOSES>` with the actual closing keywords determined in step 1.
+   Title must satisfy Conventional Commits (`type(scope): description ≤72 chars`).
 
 4. Print the PR URL.
 
-**If `$FEATURE_BRANCH` is `main`** (Phase 0 skipped branch creation): warn "Skipping PR creation — working directly on main." and skip Phase 7.
+**If `$FEATURE_BRANCH` is `main`** (Phase 0b skipped branch creation): warn "Skipping PR creation — working directly on main." and skip Phase 7.
 
-Print `## Phase 7 complete — PR opened: <URL>`
+Print `## Phase 7 complete — PR opened: <URL>`.
 
 ---
 
@@ -286,19 +270,16 @@ Print `## Phase 7 complete — PR opened: <URL>`
 
 | Phase | Output |
 |---|---|
-| Product | docs/backlog.md updated, N user stories |
+| Product | docs/backlog.md, N user stories |
 | Architecture | docs/plan/<slug>.md, N tasks (P parallel, S sequential) |
 | Implementation | N files changed across M commits |
-| Quality gate | PASS — devbox run quality clean |
-| Testing | N tests, N passed, X% coverage |
-| Security scan | PASS / WARN — docs/security/scan-<date>.md |
+| QA fan-out | quality PASS, tests N (X% cov), security PASS/WARN |
 | Deployment | Dockerfile, k8s/<manifest>.yaml — deploy-check clean |
 | PR | <URL> — CI running |
 
 ### Acceptance criteria
 - [x] criteria 1
 - [x] criteria 2
-...
 
 ### Next steps
 <any open items, known limitations, or follow-up recommendations>
@@ -308,8 +289,9 @@ Print `## Phase 7 complete — PR opened: <URL>`
 
 ## Rules
 
-- **Push only at Phase 7** — all work through Phase 6 is local. Phase 7 is the single push point (`git push -u origin $FEATURE_BRANCH`, then `gh pr create`). Both require user confirmation.
-- **Never resolve merge conflicts automatically** — escalate. Conflicts indicate the plan metadata was inaccurate; the architect must update it.
-- **Every shell command goes through `devbox run <script>`** — see `CLAUDE.md` for the canonical list.
-- **Stay on `$BASE_BRANCH`** for orchestration. Only the parallel coder subagents leave it, and only into isolated worktrees.
+- **Push only at Phase 7** — all work through Phase 6 is local. Phase 7 is the single push point; both `git push` and `gh pr create` require user confirmation.
+- **Never resolve merge conflicts automatically** — escalate. Conflicts indicate the plan metadata was inaccurate.
+- **Every shell command goes through `devbox run <script>`** — see `CLAUDE.md`.
+- **Stay on `$FEATURE_BRANCH`** for orchestration. Only the parallel coder subagents leave it, and only into isolated worktrees.
+- **Phase 4 fan-out is the default.** Do not serialize quality → tester → security unless one of them needs to gate on another's output — in which case, document the dependency in the orchestrator output.
 - **No `--no-verify`, no `--no-gpg-sign`** — let the user's hooks run.

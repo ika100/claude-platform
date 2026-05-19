@@ -8,24 +8,23 @@ You are the **orchestrator** in bug-fix mode. No planning or deployment phases �
 
 ---
 
-## Phase 0 — Branch check
+## Phase 0 — Prelude
 
-Before any code is written:
+Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Specifically:
 
-1. Run `git status --porcelain`. If the working tree is dirty, stop and ask the user to commit or stash first.
-2. Run `git symbolic-ref --short HEAD` to get the current branch.
-3. **If on `main`:** derive a slug from the bug description (lowercase, hyphens for spaces, ≤40 chars, always `fix/` prefix). Create and switch:
-   ```bash
-   git checkout -b fix/<slug>
-   ```
-   Print: `## Phase 0 — on fix branch: fix/<slug>`
-4. **If already on a non-main branch:** proceed. Print: `## Phase 0 — already on branch: <branch>`
+1. `git status --porcelain` — stop if dirty.
+2. `git symbolic-ref --short HEAD` → record `$WORK_BRANCH`.
+3. If on `main`: derive a `fix/<slug>` slug (lowercase, hyphens, ≤40 chars). Then `git checkout -b fix/<slug>` and update `$WORK_BRANCH`.
+4. `BASE_REF=$(git rev-parse HEAD)`.
+5. Build `<project-map>` (output of `ls -d */` excluding `.devbox`, `.venv`, `.git`, `node_modules`). Hold as `$PROJECT_MAP`. Prepend to each subagent prompt below.
+
+Print `## Phase 0 — on $WORK_BRANCH, BASE_REF=<short-sha>`.
 
 ---
 
 ## Step 1 — Diagnose and fix
 
-Use the **coder** agent with the instruction:
+Use the **coder** agent. Prompt prelude: the `<project-map>` block. Then:
 > "Bug report: `$ARGUMENTS`.
 >
 > Step 1: read the relevant files and identify the root cause. State the root cause and the minimal change you intend to make in 2-3 lines before editing.
@@ -34,15 +33,28 @@ Use the **coder** agent with the instruction:
 >
 > Step 3: report what you changed (files + 1-line summary per file) and the root cause you found."
 
-This collapses the previous diagnose-then-fix two-call pattern into one coder invocation — the agent keeps full context between diagnosis and fix.
+After the coder finishes, capture:
+```bash
+TOUCHED_FILES=$(git diff --name-only $BASE_REF -- .)
+```
 
 ---
 
 ## Step 2 — Verify
 
-Use the **tester** agent to:
+Use the **tester** agent. Prompt prelude:
+```
+<project-map>
+$PROJECT_MAP
+</project-map>
+<touched-files>
+$TOUCHED_FILES
+</touched-files>
+```
+
+Then:
 - Run the existing test suite via `devbox run test-fast`
-- Write a regression test that would have caught this bug
+- Write a regression test that would have caught this bug (anchor it on the files in `<touched-files>`)
 - Confirm the bug is resolved
 
 ---
@@ -50,13 +62,13 @@ Use the **tester** agent to:
 ## Step 3 — Loop if needed
 
 If the tester reports the bug is NOT fixed:
-- Feed the failure back to the **coder** agent
-- Re-run the **tester** agent
-- Repeat up to 3 times. If still unresolved, stop and report to the user with full context.
+- Feed the failure back to the **coder** (with `<project-map>` + refreshed `<touched-files>`)
+- Re-run the **tester**
+- Repeat up to 3 times. If still unresolved, stop and report with full context.
 
 ---
 
-## Phase 5 — Commit and open PR
+## Phase 4 — Commit and open PR
 
 After the tester confirms the bug is resolved:
 
@@ -80,7 +92,7 @@ After the tester confirms the bug is resolved:
 
 4. Print the PR URL.
 
-**If Phase 0 found we were already on `main`:** warn "Skipping PR creation — working directly on main." and skip Phase 5.
+**If Phase 0 found we were already on `main`:** warn "Skipping PR creation — working directly on main." and skip Phase 4.
 
 ---
 
