@@ -4,6 +4,14 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [1.0.1] — 2026-05-22
+
+CI-only patch. No plugin or template behavior changes.
+
+### Fixed
+
+- **CI smoke-test** no longer fails on `devbox: not found`. The copier templates' bootstrap `_tasks` (which invoke `devbox install`) are now skipped via `--skip-tasks` in `.github/workflows/ci.yml`; CI verifies template rendering only. The full render-and-bootstrap path remains covered by `devbox run smoke` locally. Broken since v0.2.1.
+
 ## [1.0.0] — 2026-05-19
 
 Phase 3 of the agentic efficiency overhaul. **First stable major.** Orchestration commands restructured for parallelism and to skip wasted work; per-command preludes deduplicated.
