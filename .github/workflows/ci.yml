@@ -49,10 +49,14 @@ jobs:
       - name: Install copier
         run: uv tool install copier
       - name: Generate test project
+        # --skip-tasks: CI verifies template rendering only. The bootstrap _tasks
+        # invoke devbox, which isn't installed on the runner; the full
+        # render-and-bootstrap path is covered by `devbox run smoke` locally.
         run: |
           copier copy ./templates/${{ matrix.template }} /tmp/test-${{ matrix.template }} \
             --defaults \
             --trust \
+            --skip-tasks \
             --data project_name=test-${{ matrix.template }} \
             --data module_name=test_${{ matrix.template == 'service-python' && 'svc' || 'lib' }} \
             --data description="Smoke test"
