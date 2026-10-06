@@ -20,6 +20,7 @@ _skip_if_exists:
   - docs/adr/**
   - docs/env-vars.md
   - k8s/monitoring/**
+  - k8s/base/deployment.yaml
 
 _exclude:
   - "copier.yml"

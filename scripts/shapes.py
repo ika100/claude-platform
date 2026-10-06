@@ -116,6 +116,11 @@ def check_contract(shapes: list[dict]) -> list[str]:
                     break  # svc owns the python shapes and is checked by its own manifest
                 if not (pdir / "agents" / f"{a}.md").is_file():
                     errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 2a0. the Deployment is edited per app (env vars, resources); re-templating it wipes those edits on update
+        if s["deployable"]:
+            cy = (tdir / "copier.yml").read_text()
+            if "k8s/base/deployment.yaml" not in cy.split("_skip_if_exists:", 1)[-1].split("\n\n", 1)[0]:
+                errs.append(f"{sid}: copier.yml must list k8s/base/deployment.yaml in _skip_if_exists (project-owned)")
         # 2a. CI must run on pushes to main, otherwise merged code is never built/pushed (found by the e2e test)
         ci = _template_file(tdir / ".github" / "workflows", "ci.yml")
         if ci is None:
