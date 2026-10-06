@@ -97,5 +97,5 @@ shapes:
       language: go
       version: "1.22"
       router: chi
-    status: planned
+    status: stable
     adr: [10]

@@ -1,0 +1,21 @@
+# golangci-lint v2 config (ADR-010): one command runs vet, staticcheck, gosec, errcheck, gocritic, revive, ...
+version: "2"
+run:
+  timeout: 5m
+linters:
+  default: standard        # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - gosec
+    - gocritic
+    - revive
+    - misspell
+    - noctx
+    - bodyclose
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters: [gosec, noctx]
+formatters:
+  enable:
+    - gofmt
+    - goimports

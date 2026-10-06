@@ -32,6 +32,14 @@
       "tags": ["planning", "multi-repo", "gitops"]
     },
     {
+      "name": "svc-go",
+      "source": "./plugins/svc-go",
+      "version": "0.1.0",
+      "description": "Agents for Go service repos (chi, slog, golangci-lint, distroless): coder, tester, deployment, observability, release.",
+      "category": "agents",
+      "tags": ["go", "chi", "devbox", "k8s"]
+    },
+    {
       "name": "gitops",
       "source": "./plugins/gitops",
       "version": "0.3.0",

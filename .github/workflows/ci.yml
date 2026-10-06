@@ -169,6 +169,51 @@ jobs:
           grep -q '"@playwright/test"' /tmp/test-web2/package.json
           ! grep -q 'prom-client' /tmp/test-web2/package.json
 
+  smoke-test-service-go:
+    name: smoke-test service-go template
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        observability: [true, false]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/service-go /tmp/test-go --defaults --trust --skip-tasks \
+            --data project_name=test-go --data needs_observability=${{ matrix.observability }}
+      - name: Confirm key files exist
+        run: |
+          for f in devbox.json go.mod go.sum Dockerfile .golangci.yml .claude/settings.json .github/workflows/ci.yml \
+                   cmd/test-go/main.go internal/server/server.go internal/config/config.go k8s/base/kustomization.yaml; do
+            test -f /tmp/test-go/$f || { echo "missing $f"; exit 1; }
+          done
+      - name: Shape is detected as service-go
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-go)" = "service-go"
+      - name: go.mod / go.sum are tidy
+        working-directory: /tmp/test-go
+        run: |
+          git init -q && git add -A && git -c user.email=ci@x -c user.name=ci commit -qm init
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+      - name: vet, gofmt, build, test
+        working-directory: /tmp/test-go
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go build ./...
+          go test -race -cover ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          working-directory: /tmp/test-go
+          version: latest
+
   pr-title:
     name: pr-title (conventional commits)
     runs-on: ubuntu-latest

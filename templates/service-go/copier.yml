@@ -1,0 +1,89 @@
+# Copier template: service-go
+# Go HTTP service: chi router, log/slog JSON logging, golangci-lint, distroless static image (ADR-010),
+# canonical devbox recipes, Docker + Kustomize, agentic setup.
+#
+# Usage:
+#   copier copy <platform-checkout>/templates/service-go ./<project> --data project_name=<name>
+
+_min_copier_version: "9.0.0"
+
+# Only *.jinja files are rendered: GitHub Actions (${{ }}) shares Jinja's delimiters.
+_templates_suffix: .jinja
+
+_answers_file: .copier-answers.yml
+
+# Project-owned once generated: copier update must not overwrite these.
+_skip_if_exists:
+  - go.mod
+  - go.sum
+  - cmd/**
+  - internal/**
+  - docs/adr/**
+  - docs/env-vars.md
+  - k8s/monitoring/**
+
+_exclude:
+  - "copier.yml"
+  - ".git"
+  - "{% if not needs_observability %}k8s/monitoring{% endif %}"
+  - "{% if not needs_observability %}internal/server/metrics.go{% endif %}"
+
+_tasks:
+  - "git init -q"
+  - "devbox install"
+  - "devbox run -- go mod tidy"
+  - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from service-go template'"
+  - "echo 'Bootstrap complete. Repo committed at HEAD. Run: cd {{ project_name }} && devbox run quality'"
+
+project_name:
+  type: str
+  help: "Project name (kebab-case, e.g. 'payments-api'). Used in directory, binary, Docker tag, k8s labels."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the service."
+  default: "A Go service"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that will own the repo."
+  default: "ika100"
+
+module_name:
+  type: str
+  help: "Go module path."
+  default: "github.com/{{ github_org }}/{{ project_name }}"
+
+owner_team:
+  type: str
+  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  default: "@{{ github_org }}"
+
+go_version:
+  type: str
+  help: "Go toolchain version (major.minor). Pinned in go.mod, devbox.json and the Dockerfile; bumped via copier update."
+  default: "1.25"
+
+port:
+  type: int
+  help: "HTTP port the service listens on."
+  default: 8080
+
+needs_observability:
+  type: bool
+  help: "Include /metrics (Prometheus client_golang) with request counters/latency and a default PrometheusRule?"
+  default: true
+
+docker_registry:
+  type: str
+  help: "Container registry namespace."
+  default: "ghcr.io/{{ github_org }}"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  default: "main"

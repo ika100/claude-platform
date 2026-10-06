@@ -1,0 +1,40 @@
+package server
+
+import (
+	"net/http"
+	"strconv"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+)
+
+var (
+	requestsTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_requests_total",
+		Help: "HTTP requests by method, route pattern and status.",
+	}, []string{"method", "route", "status"})
+
+	requestDuration = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "http_request_duration_seconds",
+		Help:    "HTTP request latency by method and route pattern.",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"method", "route"})
+)
+
+// instrument records request count and latency, labelled by chi route pattern (low cardinality).
+func instrument(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, req.ProtoMajor)
+		next.ServeHTTP(ww, req)
+		route := chi.RouteContext(req.Context()).RoutePattern()
+		if route == "" {
+			route = "unmatched"
+		}
+		requestsTotal.WithLabelValues(req.Method, route, strconv.Itoa(ww.Status())).Inc()
+		requestDuration.WithLabelValues(req.Method, route).Observe(time.Since(start).Seconds())
+	})
+}
