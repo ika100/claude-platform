@@ -49,7 +49,7 @@ shapes:
       language: typescript
       runtime: node-lts
       framework: nextjs-app-router
-    status: planned
+    status: stable
     adr: [2, 3, 4, 5]
 
   - id: gitops-app

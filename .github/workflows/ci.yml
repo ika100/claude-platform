@@ -122,6 +122,51 @@ jobs:
           curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
           /tmp/kubeconform -strict -ignore-missing-schemas -summary /tmp/test-gitops/applications/test/applicationset.yaml
 
+  smoke-test-web-nextjs:
+    name: smoke-test web-nextjs template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project (defaults)
+        run: |
+          copier copy ./templates/web-nextjs /tmp/test-web --defaults --trust --skip-tasks \
+            --data project_name=test-web --data description="Smoke test"
+      - name: Confirm key files exist
+        run: |
+          for f in devbox.json package.json Dockerfile .claude/settings.json .github/workflows/ci.yml \
+                   app/layout.tsx app/page.tsx app/api/health/route.ts app/api/ready/route.ts \
+                   app/api/metrics/route.ts instrumentation.ts k8s/base/kustomization.yaml pnpm-workspace.yaml; do
+            test -f /tmp/test-web/$f || { echo "missing $f"; exit 1; }
+          done
+          test ! -e /tmp/test-web/e2e
+      - name: Shape is detected as web-nextjs
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-web)" = "web-nextjs"
+      - name: Install, lint, typecheck, test, build
+        working-directory: /tmp/test-web
+        run: |
+          npx -y pnpm@12.9.1 install
+          npx -y pnpm@12.9.1 lint
+          npx -y pnpm@12.9.1 typecheck
+          npx -y pnpm@12.9.1 test
+          npx -y pnpm@12.9.1 build
+      - name: Variant — e2e on, observability off
+        run: |
+          copier copy ./templates/web-nextjs /tmp/test-web2 --defaults --trust --skip-tasks \
+            --data project_name=test-web2 --data needs_e2e=true --data needs_observability=false
+          test -f /tmp/test-web2/e2e/smoke.spec.ts
+          test -f /tmp/test-web2/playwright.config.ts
+          test ! -e /tmp/test-web2/instrumentation.ts
+          test ! -e /tmp/test-web2/app/api/metrics
+          test ! -e /tmp/test-web2/tests/metrics.test.ts
+          grep -q '"@playwright/test"' /tmp/test-web2/package.json
+          ! grep -q 'prom-client' /tmp/test-web2/package.json
+
   pr-title:
     name: pr-title (conventional commits)
     runs-on: ubuntu-latest

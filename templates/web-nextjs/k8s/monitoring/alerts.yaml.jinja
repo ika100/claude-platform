@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ project_name }}-alerts
+  labels:
+    app: {{ project_name }}
+    team: "{{ owner_team }}"
+spec:
+  groups:
+    - name: {{ project_name }}
+      rules:
+        - alert: PodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ project_name }}"}[1h]) > 3
+          for: 0m
+          labels:
+            severity: critical
+            service: {{ project_name }}
+          annotations:
+            summary: "Pod restarting frequently in {{ project_name }}"
+            description: "Pod {% raw %}{{ $labels.pod }}{% endraw %} has restarted {% raw %}{{ $value }}{% endraw %} times in the last hour."
+
+        - alert: HighEventLoopLag
+          expr: nodejs_eventloop_lag_p99_seconds{namespace="{{ project_name }}"} > 0.5
+          for: 5m
+          labels:
+            severity: warning
+            service: {{ project_name }}
+          annotations:
+            summary: "High Node.js event-loop lag in {{ project_name }}"
+            description: "p99 event-loop lag is {% raw %}{{ $value }}{% endraw %}s."

@@ -1,0 +1,94 @@
+# Copier template: web-nextjs
+# Next.js (App Router only, ADR-004) web frontend: pnpm (ADR-003), Vitest + optional Playwright (ADR-002),
+# pinned Node LTS (ADR-005), canonical devbox recipes, Docker + Kustomize, agentic setup.
+#
+# Usage:
+#   copier copy <platform-checkout>/templates/web-nextjs ./<project> --data project_name=<name>
+
+_min_copier_version: "9.0.0"
+
+# Only *.jinja files are rendered: GitHub Actions (${{ }}) and JSX ({{ }}) share Jinja's delimiters.
+_templates_suffix: .jinja
+
+_answers_file: .copier-answers.yml
+
+# Project-owned once generated: copier update must not overwrite these.
+_skip_if_exists:
+  - app/**
+  - tests/**
+  - e2e/**
+  - docs/adr/**
+  - docs/env-vars.md
+  - k8s/monitoring/**
+  - public/**
+  - pnpm-workspace.yaml
+
+_exclude:
+  - "copier.yml"
+  - ".git"
+  - "{% if not needs_e2e %}e2e{% endif %}"
+  - "{% if not needs_e2e %}playwright.config.ts{% endif %}"
+  - "{% if not needs_observability %}app/api/metrics{% endif %}"
+  - "{% if not needs_observability %}tests/metrics.test.ts{% endif %}"
+  - "{% if not needs_observability %}instrumentation.ts{% endif %}"
+  - "{% if not needs_observability %}k8s/monitoring{% endif %}"
+
+_tasks:
+  - "git init -q"
+  - "devbox install"
+  - "devbox run -- pnpm install"
+  - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from web-nextjs template'"
+  - "echo 'Bootstrap complete. Repo committed at HEAD. Run: cd {{ project_name }} && devbox run quality'"
+
+project_name:
+  type: str
+  help: "Project name (kebab-case, e.g. 'my-saas-web'). Used in directory, Docker tag, k8s labels."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the web app."
+  default: "A Next.js web app"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that will own the repo."
+  default: "ika100"
+
+owner_team:
+  type: str
+  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  default: "@{{ github_org }}"
+
+node_major:
+  type: str
+  help: "Node.js major version (current Active LTS at template release; bumped via copier update — ADR-005)."
+  default: "24"
+
+port:
+  type: int
+  help: "HTTP port the app listens on."
+  default: 3000
+
+needs_e2e:
+  type: bool
+  help: "Include a Playwright e2e scaffold (e2e/ dir, devbox run e2e)? Vitest is always included."
+  default: false
+
+needs_observability:
+  type: bool
+  help: "Include /api/metrics (Prometheus) and OpenTelemetry instrumentation?"
+  default: true
+
+docker_registry:
+  type: str
+  help: "Container registry namespace."
+  default: "ghcr.io/{{ github_org }}"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  default: "main"
