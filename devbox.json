@@ -20,7 +20,7 @@
       "shapes-check":  "uv run scripts/shapes.py check",
       "test-detect":   "bash scripts/test-detect-shape.sh",
       "smoke-gitops":  "rm -rf /tmp/test-gitops && uv tool run --from copier copier copy ./templates/gitops-app /tmp/test-gitops --defaults --trust --skip-tasks --data project_name=test-gitops --data app_name=test --data description=test && cd /tmp/test-gitops && uv run scripts/render.py --check",
-      "smoke-web":     "rm -rf /tmp/test-web && uv tool run --from copier copier copy ./templates/web-nextjs /tmp/test-web --defaults --trust --skip-tasks --data project_name=test-web --data description=test && cd /tmp/test-web && npx -y pnpm@12.9.1 install && npx -y pnpm@12.9.1 lint && npx -y pnpm@12.9.1 typecheck && npx -y pnpm@12.9.1 test && npx -y pnpm@12.9.1 build",
+      "smoke-web":     "rm -rf /tmp/test-web && uv tool run --from copier copier copy ./templates/web-nextjs /tmp/test-web --defaults --trust --skip-tasks --data project_name=test-web --data description=test && cd /tmp/test-web && npx -y pnpm@11.22.0 install && npx -y pnpm@11.22.0 lint && npx -y pnpm@11.22.0 typecheck && npx -y pnpm@11.22.0 test && npx -y pnpm@11.22.0 build",
       "test-plan":     "bash scripts/test-plan.sh",
       "smoke-go":      "rm -rf /tmp/test-go && uv tool run --from copier copier copy ./templates/service-go /tmp/test-go --defaults --trust --skip-tasks --data project_name=test-go && cd /private/tmp/test-go && git init -q && devbox run quality && devbox run test",
       "smoke-java":    "rm -rf /tmp/test-java && uv tool run --from copier copier copy ./templates/service-java /tmp/test-java --defaults --trust --skip-tasks --data project_name=test-java && cd /private/tmp/test-java && git init -q && devbox run quality && devbox run test",

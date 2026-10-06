@@ -153,11 +153,11 @@ jobs:
       - name: Install, lint, typecheck, test, build
         working-directory: /tmp/test-web
         run: |
-          npx -y pnpm@12.9.1 install
-          npx -y pnpm@12.9.1 lint
-          npx -y pnpm@12.9.1 typecheck
-          npx -y pnpm@12.9.1 test
-          npx -y pnpm@12.9.1 build
+          npx -y pnpm@11.22.0 install
+          npx -y pnpm@11.22.0 lint
+          npx -y pnpm@11.22.0 typecheck
+          npx -y pnpm@11.22.0 test
+          npx -y pnpm@11.22.0 build
       - name: Variant — e2e on, observability off
         run: |
           copier copy ./templates/web-nextjs /tmp/test-web2 --defaults --trust --skip-tasks \

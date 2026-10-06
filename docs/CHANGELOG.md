@@ -4,6 +4,15 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [Unreleased]
+
+Fixes found by running the platform end to end on a real todo app (see `docs/USER-JOURNEY.md`).
+
+### Fixed
+
+- **web-nextjs:** bootstrap failed (`devbox run -- pnpm install` → `SyntaxError`) because `packageManager: pnpm@12.9.1` was newer than the pnpm devbox provides (11.x). Both pins are now `pnpm@11.22.0` and `shapes.py check` enforces that they match (ADR-003 amendment).
+- **gitops-app:** the bootstrap did not run `devbox install`, so `devbox.lock` was left untracked after the first `devbox run`.
+
 ## [1.1.0] — 2026-10-06
 
 **Multi-shape platform.** Implements the platform vision ([PRD](requirements/platform-vision.md), ADR-001…016): six repo shapes, shape-aware orchestration, a multi-repo planner, and a documented add-a-shape contract. Existing Python repos are unaffected (their templates are unchanged apart from doc comments); no breaking changes. See [USER-JOURNEY](USER-JOURNEY.md) for the end-to-end walk-through.
