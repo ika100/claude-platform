@@ -29,7 +29,8 @@ COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
 
-USER node
+# Numeric UID: Kubernetes cannot verify runAsNonRoot for a named user (1000 = the image's "node" user).
+USER 1000:1000
 
 EXPOSE {{ port }}
 
