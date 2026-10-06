@@ -228,7 +228,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
       - name: Install copier
         run: uv tool install copier
       - name: Generate test project
