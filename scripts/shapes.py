@@ -116,6 +116,12 @@ def check_contract(shapes: list[dict]) -> list[str]:
                     break  # svc owns the python shapes and is checked by its own manifest
                 if not (pdir / "agents" / f"{a}.md").is_file():
                     errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 2a000. Dockerfile USER must be numeric, otherwise `runAsNonRoot: true` pods fail with CreateContainerConfigError
+        df = _template_file(tdir, "Dockerfile")
+        if df is not None:
+            for line in df.read_text().splitlines():
+                if line.startswith("USER ") and not __import__("re").match(r"USER \d+(:\d+)?\s*$", line):
+                    errs.append(f"{sid}: Dockerfile '{line}' must use a numeric UID (e.g. USER 65532:65532)")
         # 2a00. k8s label values cannot contain '@' or '/': owner_team ("@org") must go through owner_label
         for kf in (tdir / "k8s").rglob("*") if (tdir / "k8s").is_dir() else []:
             if kf.is_file() and 'team: "{{ owner_team }}"' in kf.read_text():

@@ -32,7 +32,8 @@ ENV PORT={{ port }} \
     OTEL_SDK_DISABLED=true \
     OTEL_SERVICE_NAME={{ project_name }}{% endif %}
 
-USER nonroot
+# Numeric UID: Kubernetes cannot verify runAsNonRoot for a named user. 65532 is the distroless "nonroot" user.
+USER 65532:65532
 EXPOSE {{ port }}
 
 # distroless has no shell: liveness/readiness are Kubernetes probes on /actuator/health/{liveness,readiness}.

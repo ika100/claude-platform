@@ -16,7 +16,8 @@ RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 
 FROM python:{{ python_version }}-slim AS runtime
 
-RUN groupadd -r app && useradd -r -g app -d /app -s /usr/sbin/nologin app
+# Fixed numeric IDs: Kubernetes cannot verify runAsNonRoot for a named user.
+RUN groupadd -r -g 10001 app && useradd -r -u 10001 -g app -d /app -s /usr/sbin/nologin app
 
 WORKDIR /app
 
@@ -28,7 +29,7 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT={{ port }}
 
-USER app
+USER 10001:10001
 
 EXPOSE {{ port }}
 
