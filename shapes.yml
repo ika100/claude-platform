@@ -1,0 +1,101 @@
+# shapes.yml — canonical shape registry for ika100-claude (ADR-015).
+#
+# Adding a shape: add an entry here, a template under templates/<template>/, a plugin
+# under plugins/<plugin>/, and a matching sniff rule in scripts/detect-shape.sh.
+# `scripts/shapes.py check` (run in CI) keeps this file, the templates, and the PRD §4 table consistent.
+shapes:
+  - id: service-python
+    plugin: svc
+    template: service-python
+    deployable: true
+    library: false
+    detection:
+      copier_src: templates/service-python
+      sniff:
+        - "pyproject.toml + Dockerfile"
+    default_stack:
+      language: python
+      version: "3.12"
+      framework: fastapi
+    status: stable
+    adr: null
+
+  - id: library-python
+    plugin: svc
+    template: library-python
+    deployable: false
+    library: true
+    detection:
+      copier_src: templates/library-python
+      sniff:
+        - "pyproject.toml without Dockerfile"
+    default_stack:
+      language: python
+      version: "3.12"
+    status: stable
+    adr: null
+
+  - id: web-nextjs
+    plugin: web
+    template: web-nextjs
+    deployable: true
+    library: false
+    detection:
+      copier_src: templates/web-nextjs
+      sniff:
+        - "next.config.*"
+        - "package.json contains \"next\""
+    default_stack:
+      language: typescript
+      runtime: node-lts
+      framework: nextjs-app-router
+    status: planned
+    adr: [2, 3, 4, 5]
+
+  - id: gitops-app
+    plugin: gitops
+    template: gitops-app
+    deployable: false
+    library: false
+    detection:
+      copier_src: templates/gitops-app
+      sniff:
+        - "applications/*/applicationset.yaml"
+    default_stack:
+      kind: kustomize+argocd
+    status: planned
+    adr: [6, 14]
+
+  - id: service-java
+    plugin: svc-java
+    template: service-java
+    deployable: true
+    library: false
+    detection:
+      copier_src: templates/service-java
+      sniff:
+        - "pom.xml"
+        - "build.gradle*"
+    default_stack:
+      language: java
+      version: "21"
+      build_tool: maven
+      framework: spring-boot-3
+    status: planned
+    adr: [9]
+
+  - id: service-go
+    plugin: svc-go
+    template: service-go
+    deployable: true
+    library: false
+    detection:
+      copier_src: templates/service-go
+      sniff:
+        - "go.mod"
+    default_stack:
+      language: go
+      version: "1.22"
+      router: chi
+    status: planned
+    adr: [10]

@@ -37,6 +37,17 @@ jobs:
             echo "OK $plugin_name @ $plugin_version"
           done
 
+  validate-shapes:
+    name: shape registry + detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: shapes.yml is valid and consistent with templates, plugins and the PRD table
+        run: uv run scripts/shapes.py check
+      - name: shape detection fixtures
+        run: bash scripts/test-detect-shape.sh
+
   smoke-test-templates:
     name: smoke-test Copier templates
     runs-on: ubuntu-latest

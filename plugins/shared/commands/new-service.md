@@ -1,8 +1,8 @@
 ---
-description: "Bootstrap a new Python service or library repo from a Copier template, init git, create the GitHub repo, and tag it for GitOps. Usage: /shared:new-service <name> [description words...] [--library] [--python 3.12|3.13] [--org <org>] [--ref <git-ref>]"
+description: "Bootstrap a new repo of any registered shape (see shapes.yml) from a Copier template, init git, create the GitHub repo, and tag it for GitOps. Usage: /shared:new-service <name> [description words...] [--type <shape>] [--library|--web|--gitops] [--python 3.12|3.13] [--org <org>] [--ref <git-ref>]"
 ---
 
-You are the **bootstrap orchestrator** for new Python repos. Goal: scaffold a repo end-to-end with as little user interaction as possible. Default to zero further questions once a project name is supplied.
+You are the **bootstrap orchestrator** for new repos of any registered shape (`shapes.yml` in the platform repo is the registry). Goal: scaffold a repo end-to-end with as little user interaction as possible. Default to zero further questions once a project name is supplied.
 
 **Request:** $ARGUMENTS
 
@@ -13,8 +13,10 @@ You are the **bootstrap orchestrator** for new Python repos. Goal: scaffold a re
 Treat `$ARGUMENTS` as one free-form line. Extract in this order:
 
 1. **Flags** (consume wherever they appear, then strip from the stream):
-   - `--library` → `TEMPLATE=library-python` (else `service-python`)
-   - `--python <ver>` → `PYTHON_VERSION=<ver>` (default `3.12`)
+   - `--type <shape>` → `SHAPE=<shape>` (any `id` in `shapes.yml`)
+   - Aliases: `--library` → `SHAPE=library-python`, `--web` → `SHAPE=web-nextjs`, `--gitops` → `SHAPE=gitops-app`. If more than one of `--type`/aliases is given, stop and report the conflict.
+   - No shape flag → `SHAPE=service-python` (backward-compatible default).
+   - `--python <ver>` → `PYTHON_VERSION=<ver>` (only for `service-python` / `library-python`; if the flag is absent for those shapes set `PYTHON_VERSION=3.12`; for all other shapes leave it unset and ignore the flag)
    - `--org <org>` → `GITHUB_ORG=<org>`
    - `--description "<text>"` → legacy alias, appended to the description stream
    - `--ref <git-ref>` → `PLATFORM_REF=<ref>` (default `main`)
@@ -27,7 +29,7 @@ Treat `$ARGUMENTS` as one free-form line. Extract in this order:
 **Never** ask the user to confirm resolved inputs. Print one compact line and proceed:
 
 ```
-Bootstrapping <TEMPLATE> "<PROJECT_NAME>" (module: <MODULE_NAME>, org: <GITHUB_ORG>, python: <PYTHON_VERSION>) — "<DESCRIPTION>"
+Bootstrapping <SHAPE> "<PROJECT_NAME>" (module: <MODULE_NAME>, org: <GITHUB_ORG>[, python: <PYTHON_VERSION>]) — "<DESCRIPTION>"
 ```
 
 ---
@@ -52,9 +54,9 @@ Resolve `GITHUB_ORG` if still unset:
 
 ---
 
-## Phase 2 — Run Copier
+## Phase 2 — Fetch platform, resolve shape, run Copier
 
-Copier does not accept subdirectory paths in `gh:` URLs. Shallow-clone first, then point Copier at the template subdir:
+Copier does not accept subdirectory paths in `gh:` URLs. Shallow-clone first, then resolve the shape from the registry in the clone and point Copier at the template subdir:
 
 ```bash
 PLATFORM_REF="${PLATFORM_REF:-main}"
@@ -63,13 +65,24 @@ trap 'rm -rf "$PLATFORM_DIR"' EXIT
 git clone --depth 1 --branch "$PLATFORM_REF" \
   https://github.com/ika100/claude-platform.git "$PLATFORM_DIR" 2>&1 | tail -2
 
+# Resolve the shape from the registry (single source of truth: shapes.yml)
+reg() { uv run "$PLATFORM_DIR/scripts/shapes.py" get "$SHAPE" "$1"; }
+TEMPLATE=$(reg template) || { echo "Unknown shape '$SHAPE'. Valid: $(uv run "$PLATFORM_DIR/scripts/shapes.py" ids | tr '\n' ' ')"; exit 1; }
+SHAPE_STATUS=$(reg status); DEPLOYABLE=$(reg deployable); SHAPE_PLUGIN=$(reg plugin)
+[ -d "$PLATFORM_DIR/templates/$TEMPLATE" ] || { echo "Shape '$SHAPE' is registered (status: $SHAPE_STATUS) but templates/$TEMPLATE does not exist at ref $PLATFORM_REF yet."; exit 1; }
+```
+
+If the registry lookup or the template-directory check fails, stop and report the printed message — do not fall back to another shape.
+
+Copier questions are shape-specific. Always pass `project_name`, `module_name`, `description`, `github_org`, `platform_marketplace_ref`; pass `python_version` **only** for `service-python` / `library-python`. Any other question a template defines falls back to its `--defaults` value.
+
 copier copy "$PLATFORM_DIR/templates/<TEMPLATE>" ./<PROJECT_NAME> \
   --defaults --trust \
   --data project_name=<PROJECT_NAME> \
   --data module_name=<MODULE_NAME> \
   --data description="<DESCRIPTION>" \
   --data github_org=<GITHUB_ORG> \
-  --data python_version=<PYTHON_VERSION> \
+  ${PYTHON_VERSION:+--data python_version=$PYTHON_VERSION} \
   --data platform_marketplace_ref="$PLATFORM_REF"
 ```
 
@@ -134,26 +147,26 @@ If creation fails (e.g. repo already exists), surface the `gh` error and continu
 
 ---
 
-## Phase 5 — Tag for GitOps discovery (service-python only; skip if `SKIP_GITHUB=1`)
+## Phase 5 — Tag for GitOps discovery (only when the registry says `deployable: true`; skip if `SKIP_GITHUB=1`)
 
 ```bash
 gh repo edit <GITHUB_ORG>/<PROJECT_NAME> --add-topic deployable-service
 ```
 
-This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up on the next reconcile. For `library-python` skip this step.
+This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up on the next reconcile. Skip this step when `DEPLOYABLE=false` (libraries, `gitops-app`).
 
 ---
 
 ## Phase 6 — Final report
 
 ```
-## <TEMPLATE> repo bootstrapped: <PROJECT_NAME>
+## <SHAPE> repo bootstrapped: <PROJECT_NAME>
 
 | Item | Value |
 |---|---|
 | GitHub | https://github.com/<GITHUB_ORG>/<PROJECT_NAME>   (or: "skipped — see commands below") |
 | Local path | <abs-path>/<PROJECT_NAME> |
-| Topic | deployable-service (service-python only) |
+| Topic | deployable-service (only if deployable; otherwise "none") |
 | Argo discovery | ~3 min after the topic is applied |
 
 ### Next steps
@@ -162,7 +175,7 @@ This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up o
 3. `/svc:plan-feature <your first feature>` — start designing
 ```
 
-If `SKIP_GITHUB=1`, append a fenced block with the exact `gh repo create` + (for services) `gh repo edit --add-topic deployable-service` commands the user should run from inside `devbox shell` (which provisions `gh`).
+If `SKIP_GITHUB=1`, append a fenced block with the exact `gh repo create` + (for deployable shapes) `gh repo edit --add-topic deployable-service` commands the user should run from inside `devbox shell` (which provisions `gh`).
 
 If `devbox` was missing on the host, note that the user needs to install it (`brew install jetify-com/devbox/devbox`) before step 1 will work.
 
@@ -173,6 +186,6 @@ If `devbox` was missing on the host, note that the user needs to install it (`br
 - **Default to zero further questions** once a project name is in hand. Ask only when an input is *required* and *missing*. Never ask for confirmation of resolved inputs.
 - **Auto-install `copier`; never auto-install `gh`.** `gh` requires interactive login; "skip GitHub steps and print commands" is a better fallback than aborting.
 - **Never overwrite a non-empty target directory.** Empty / `.claude`-only stubs may be removed.
-- **`deployable-service` topic is service-only.** Libraries don't appear in the ApplicationSet.
+- **`deployable-service` topic follows the registry.** Only shapes with `deployable: true` in `shapes.yml` get it; libraries and `gitops-app` repos don't appear in the ApplicationSet.
 - **Private by default.** Public release is a separate, explicit action.
 - **One progress line per phase.** No verbose narration — the user reads the diff/output, not your prose.

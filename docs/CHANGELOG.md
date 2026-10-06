@@ -4,6 +4,26 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [Unreleased]
+
+Phase 1 of the multi-shape platform redesign ([platform-vision](requirements/platform-vision.md), ADR-008/013/015). Foundation only — no new shapes ship yet.
+
+### Added
+
+- **`shapes.yml`** — machine-readable shape registry (all six PRD shapes; the four new ones are `status: planned`).
+- **`scripts/detect-shape.sh`** — shape detection from `.copier-answers.yml` with sniffing fallback (ADR-008), plus `scripts/test-detect-shape.sh` fixtures.
+- **`scripts/shapes.py`** — validates `shapes.yml` and checks it against templates, plugins and the PRD §4 table.
+- **`plugins/shared/fragments/shape-detection.md`** — canonical detection procedure for commands and agents.
+- CI job `validate-shapes`; `devbox run shapes-check` and `devbox run test-detect` (included in `devbox run smoke`).
+
+### Plugins
+
+- **shared 0.4.0**: `/shared:new-service` gains `--type <shape>` (aliases `--library`, `--web`, `--gitops`); template, topic and `--python` handling are read from `shapes.yml`. With no flag it still produces a `service-python` repo. Requesting a `planned` shape fails with a clear message.
+
+### Migration
+
+- Run `/plugin marketplace update`. No `copier update` needed — templates are unchanged.
+
 ## [1.0.1] — 2026-05-22
 
 CI-only patch. No plugin or template behavior changes.

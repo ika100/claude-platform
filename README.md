@@ -71,7 +71,7 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/svc:release` | svc | Quality gate → test gate → security gate → version bump → tag → close issues |
 | `/gitops:promote <svc> <from> <to> [version]` | gitops | Pin a service version in an environment overlay, open PR |
 | `/shared:check-quality` | shared | Read-only quality + security audit |
-| `/shared:new-service <name>` | shared | Bootstrap a new repo from the service-python or library-python Copier template |
+| `/shared:new-service <name>` | shared | Bootstrap a new repo of any registered shape (`shapes.yml`; default `service-python`, `--type <shape>` to choose) |
 
 ## Updates
 

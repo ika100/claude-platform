@@ -14,7 +14,7 @@ Common agents and commands used by both `svc` and `gitops` plugins. Pre-approves
 | Command | Purpose |
 |---|---|
 | `/shared:check-quality` | Runs `quality` + `security` agents in parallel (read-only). |
-| `/shared:new-service <name> [--description "<text>"] [--library]` | Bootstraps a new repo from the appropriate Copier template, creates the GitHub repo, tags it for GitOps discovery. |
+| `/shared:new-service <name> [--description "<text>"] [--type <shape>] [--library\|--web\|--gitops]` | Bootstraps a new repo from the appropriate Copier template, creates the GitHub repo, tags it for GitOps discovery. |
 
 ## Pre-approved operations (settings.json)
 
