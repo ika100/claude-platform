@@ -23,7 +23,7 @@ Required files [checked unless noted]:
 | `Dockerfile`, `k8s/base`, `k8s/overlays/{local,staging,prod}` | Deployable shapes. `k8s/base` must be a valid standalone Kustomize base (gitops-app repos consume `path: k8s/base`) and the image must be named `<registry>/<project_name>` |
 | `docs/adr/000-bootstrap.md`, `docs/env-vars.md`, `README.md` | Project-owned after generation |
 
-**Always re-templated vs project-owned.** Skeleton files (CI, devbox, Dockerfile, k8s base, CLAUDE.md, lint config) are overwritten by `/shared:update-service`. Application files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, manifests of the dependency tree like `go.mod`/`pom.xml`/`package.json` once created, `docs/adr/**`) go in `_skip_if_exists`.
+**Always re-templated vs project-owned.** Skeleton files (CI, devbox, Dockerfile, k8s base, CLAUDE.md, lint config) are overwritten by `/shared:update-service`. `k8s/base/deployment.yaml` is **project-owned** (every app edits its env vars, resources and ports; re-templating it would wipe those edits — found by the todo-app e2e test). Application files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, manifests of the dependency tree like `go.mod`/`pom.xml`/`package.json` once created, `docs/adr/**`) go in `_skip_if_exists`.
 
 ### Pitfalls found while building the Go, Java and web shapes
 

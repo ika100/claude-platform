@@ -22,6 +22,7 @@ _skip_if_exists:
   - k8s/monitoring/**
   - public/**
   - pnpm-workspace.yaml
+  - k8s/base/deployment.yaml
 
 _exclude:
   - "copier.yml"

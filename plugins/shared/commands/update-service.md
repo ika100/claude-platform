@@ -37,7 +37,7 @@ copier copy "$PLATFORM_DIR/templates/$TEMPLATE" . \
 ```
 
 - Recorded answers are reused; questions the template gained since get their defaults (tell the user which new answers took defaults — compare the old and new `.copier-answers.yml`).
-- Files the template marks project-owned (`_skip_if_exists`: `src/`, `app/`, `cmd/`, `internal/`, `tests/`, `docs/adr/`, manifests like `pyproject.toml`/`pom.xml`/`go.mod`, …) are **not** overwritten. Skeleton files are overwritten — including any local customisation of them.
+- Files the template marks project-owned (`_skip_if_exists`: `k8s/base/deployment.yaml`, `src/`, `app/`, `cmd/`, `internal/`, `tests/`, `docs/adr/`, manifests like `pyproject.toml`/`pom.xml`/`go.mod`, …) are **not** overwritten. Skeleton files are overwritten — including any local customisation of them.
 - Afterwards restore the stable source in the answers file so detection and future updates stay clean: set `_src_path` back to `gh:ika100/claude-platform/templates/<TEMPLATE>` (copier writes the temp clone path).
 
 ## Phase 3 — Review and commit
