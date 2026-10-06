@@ -1,0 +1,27 @@
+# Environment variables
+
+Configuration is read exclusively from environment variables. Defaults match `src/main/resources/application.yml` and `k8s/base/deployment.yaml`. Override per environment via the Kustomize overlays in `k8s/overlays/`.
+
+## Core
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `{{ port }}` | HTTP port (`server.port`). |
+| `LOG_LEVEL` | `INFO` | Root log level (`logging.level.root`). |
+| `JAVA_TOOL_OPTIONS` | `-XX:MaxRAMPercentage=75` | JVM flags; keeps the heap inside the container memory limit. |
+{%- if needs_observability %}
+
+## Observability
+
+| Variable | Default | Description |
+|---|---|---|
+| `OTEL_SDK_DISABLED` | `true` (image default) | Set to `false` to enable the OpenTelemetry Java agent. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(unset)_ | OTLP endpoint traces are exported to (required when the agent is enabled). |
+| `OTEL_SERVICE_NAME` | `{{ project_name }}` | Service name reported in traces. |
+{%- endif %}
+
+## Build / CI
+
+| Variable | Description |
+|---|---|
+| `NVD_API_KEY` | NVD API key for `devbox run audit` (OWASP Dependency-Check). Store as a CI secret. |

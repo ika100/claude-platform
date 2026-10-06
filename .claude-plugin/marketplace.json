@@ -10,15 +10,47 @@
     {
       "name": "svc",
       "source": "./plugins/svc",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "description": "Multi-agent pipeline for Python service repos (product-manager → architect → coder → quality → tester → security → deployment).",
       "category": "agents",
       "tags": ["python", "fastapi", "devbox", "k8s"]
     },
     {
+      "name": "web",
+      "source": "./plugins/web",
+      "version": "0.1.0",
+      "description": "Agents for Next.js (App Router, pnpm, TypeScript) web repos: coder, tester, deployment, observability, release.",
+      "category": "agents",
+      "tags": ["nextjs", "typescript", "pnpm", "devbox", "k8s"]
+    },
+    {
+      "name": "app",
+      "source": "./plugins/app",
+      "version": "0.1.0",
+      "description": "Multi-repo planning for gitops-app repos: /app:build-feature (plan-only) and /app:plans lifecycle.",
+      "category": "agents",
+      "tags": ["planning", "multi-repo", "gitops"]
+    },
+    {
+      "name": "svc-go",
+      "source": "./plugins/svc-go",
+      "version": "0.1.0",
+      "description": "Agents for Go service repos (chi, slog, golangci-lint, distroless): coder, tester, deployment, observability, release.",
+      "category": "agents",
+      "tags": ["go", "chi", "devbox", "k8s"]
+    },
+    {
+      "name": "svc-java",
+      "source": "./plugins/svc-java",
+      "version": "0.1.0",
+      "description": "Agents for Java service repos (Spring Boot 3, Maven, JDK 21, distroless): coder, tester, deployment, observability, release.",
+      "category": "agents",
+      "tags": ["java", "spring-boot", "maven", "devbox", "k8s"]
+    },
+    {
       "name": "gitops",
       "source": "./plugins/gitops",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Promotion and ApplicationSet management for the GitOps repo (ArgoCD).",
       "category": "agents",
       "tags": ["argocd", "gitops", "k8s"]
@@ -26,8 +58,8 @@
     {
       "name": "shared",
       "source": "./plugins/shared",
-      "version": "0.3.1",
-      "description": "Common quality and security agents plus the /new-service bootstrap command.",
+      "version": "0.5.0",
+      "description": "Common quality and security agents plus the /new-service bootstrap command (shape-aware via shapes.yml).",
       "category": "agents",
       "tags": ["quality", "security", "bootstrap"]
     }

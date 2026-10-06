@@ -1,0 +1,15 @@
+.git/
+.github/
+.devbox/
+bin/
+docs/
+k8s/
+*.test
+coverage.*
+.copier-answers.yml
+.secrets.baseline.json
+.gitignore
+.dockerignore
+CLAUDE.md
+CHANGELOG.md
+.claude/

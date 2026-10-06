@@ -48,9 +48,9 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 
 1. Edit files under `templates/<template>/`.
 2. Test locally: `copier copy ./templates/service-python /tmp/test --defaults --data project_name=test-svc --data module_name=test_svc`.
-3. Add to `_skip_if_exists` in `copier.yml` if the file should NOT be re-templated on `copier update` (project-owned files).
+3. Add to `_skip_if_exists` in `copier.yml` if the file should NOT be overwritten by `/shared:update-service` (project-owned files).
 4. Tag a release in the platform repo.
-5. Downstream repos run `copier update` to pull the change.
+5. Downstream repos run `/shared:update-service` to pull the change.
 
 ## Smoke test before pushing
 

@@ -1,0 +1,40 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ project_name }}-alerts
+  labels:
+    app: {{ project_name }}
+    team: "{{ owner_team }}"
+spec:
+  groups:
+    - name: {{ project_name }}
+      rules:
+        - alert: HighErrorRate
+          expr: sum(rate(http_requests_total{service="{{ project_name }}",status=~"5.."}[5m])) / sum(rate(http_requests_total{service="{{ project_name }}"}[5m])) > 0.05
+          for: 2m
+          labels:
+            severity: warning
+            service: {{ project_name }}
+          annotations:
+            summary: "High error rate detected for {{ project_name }}"
+            description: "Error rate is {% raw %}{{ $value | humanizePercentage }}{% endraw %} over the last 5 minutes."
+
+        - alert: HighLatencyP95
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{service="{{ project_name }}"}[5m])) by (le)) > 1.0
+          for: 5m
+          labels:
+            severity: warning
+            service: {{ project_name }}
+          annotations:
+            summary: "High p95 request latency for {{ project_name }}"
+            description: "p95 latency is {% raw %}{{ $value }}{% endraw %}s over the last 5 minutes."
+
+        - alert: PodRestarting
+          expr: increase(kube_pod_container_status_restarts_total{namespace="{{ project_name }}"}[1h]) > 3
+          for: 0m
+          labels:
+            severity: critical
+            service: {{ project_name }}
+          annotations:
+            summary: "Pod restarting frequently in {{ project_name }}"
+            description: "Pod {% raw %}{{ $labels.pod }}{% endraw %} has restarted {% raw %}{{ $value }}{% endraw %} times in the last hour."

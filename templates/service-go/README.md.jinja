@@ -1,0 +1,15 @@
+# {{ project_name }}
+
+{{ description }}
+
+Go service generated from the `service-go` template of [`ika100/claude-platform`](https://github.com/ika100/claude-platform).
+
+```bash
+devbox shell
+devbox run dev        # http://localhost:{{ port }}/health
+devbox run quality    # golangci-lint + go build
+devbox run test       # go test -race -cover
+devbox run image-build
+```
+
+See `CLAUDE.md` for conventions and the full recipe list. Skeleton updates: `/shared:update-service`.

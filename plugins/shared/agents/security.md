@@ -103,3 +103,7 @@ Print a one-line verdict:
 - **Do not** modify application code, dependencies, or Dockerfile.
 - Always write the scan report file — even if all checks pass (provides audit trail).
 - Clean up temporary Docker images created during scanning (the image tag is defined in `devbox.json` as `image-build`).
+
+## Non-Python shapes
+
+Other shapes use their own audit tools (`pnpm audit`, OWASP Dependency-Check, `govulncheck`) behind the same `devbox run security` / `devbox run audit` recipes, plus detect-secrets and trivy. Run the recipes, report with the same table layout (substitute the tool name for "pip-audit"), and never install or invoke the language tools directly. For `gitops-app` repos, run `devbox run security` (secret scan + manifest policy checks) — there is no image to scan.

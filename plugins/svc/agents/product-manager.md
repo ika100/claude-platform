@@ -43,3 +43,7 @@ Clients file bug reports and feature requests as GitHub Issues using the templat
 
 - **Never close client issues yourself.** They close automatically (or by hand) when the STORY they Track is done.
 - **One commit per triage session.** Treat the backlog edits as a reviewable change — don't bundle them with code changes.
+
+## Multi-repo features
+
+A feature may span repos of different shapes (e.g. "add billing" → API service + web frontend + gitops pin). When it does, tag each user story with the repo (or shape) it targets, e.g. `**Repo:** my-saas-web (web-nextjs)`, so the architect can plan per repo and `/app:build-feature` can split work. Keep stories shape-agnostic otherwise.

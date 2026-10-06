@@ -1,5 +1,5 @@
 {%- if not needs_observability -%}
-# Observability scaffolding was disabled at template time. Re-run `copier update`
+# Observability scaffolding was disabled at template time. Run `/shared:update-service`
 # with --data needs_observability=true to enable structlog/prometheus/OTel.
 {%- else -%}
 """Structured JSON logging via structlog."""

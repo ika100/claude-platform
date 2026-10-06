@@ -3,6 +3,7 @@
   "packages": [
     "jq@latest",
     "python@3.13",
+    "nodejs@24",
     "uv@latest",
     "git@latest",
     "gh@latest"
@@ -16,7 +17,14 @@
       "validate":      "jq -e . .claude-plugin/marketplace.json >/dev/null && for f in plugins/*/.claude-plugin/plugin.json; do jq -e . \"$f\" >/dev/null; done && for f in plugins/*/hooks/hooks.json; do [ -f \"$f\" ] && jq -e . \"$f\" >/dev/null; done; echo 'OK: marketplace, plugin manifests, and hook files all valid'",
       "smoke-service": "rm -rf /tmp/test-svc && uv tool run --from copier copier copy ./templates/service-python /tmp/test-svc --defaults --trust --data project_name=test-svc --data module_name=test_svc --data description=test && cd /tmp/test-svc && devbox install && devbox run lint && devbox run typecheck",
       "smoke-library": "rm -rf /tmp/test-lib && uv tool run --from copier copier copy ./templates/library-python /tmp/test-lib --defaults --trust --data project_name=test-lib --data module_name=test_lib --data description=test && cd /tmp/test-lib && devbox install && devbox run lint && devbox run typecheck",
-      "smoke":         "devbox run validate && devbox run smoke-service && devbox run smoke-library"
+      "shapes-check":  "uv run scripts/shapes.py check",
+      "test-detect":   "bash scripts/test-detect-shape.sh",
+      "smoke-gitops":  "rm -rf /tmp/test-gitops && uv tool run --from copier copier copy ./templates/gitops-app /tmp/test-gitops --defaults --trust --skip-tasks --data project_name=test-gitops --data app_name=test --data description=test && cd /tmp/test-gitops && uv run scripts/render.py --check",
+      "smoke-web":     "rm -rf /tmp/test-web && uv tool run --from copier copier copy ./templates/web-nextjs /tmp/test-web --defaults --trust --skip-tasks --data project_name=test-web --data description=test && cd /tmp/test-web && npx -y pnpm@12.9.1 install && npx -y pnpm@12.9.1 lint && npx -y pnpm@12.9.1 typecheck && npx -y pnpm@12.9.1 test && npx -y pnpm@12.9.1 build",
+      "test-plan":     "bash scripts/test-plan.sh",
+      "smoke-go":      "rm -rf /tmp/test-go && uv tool run --from copier copier copy ./templates/service-go /tmp/test-go --defaults --trust --skip-tasks --data project_name=test-go && cd /private/tmp/test-go && git init -q && devbox run quality && devbox run test",
+      "smoke-java":    "rm -rf /tmp/test-java && uv tool run --from copier copier copy ./templates/service-java /tmp/test-java --defaults --trust --skip-tasks --data project_name=test-java && cd /private/tmp/test-java && git init -q && devbox run quality && devbox run test",
+      "smoke":         "devbox run validate && devbox run shapes-check && devbox run test-detect && devbox run test-plan && devbox run smoke-service && devbox run smoke-library && devbox run smoke-gitops && devbox run smoke-web && devbox run smoke-go && devbox run smoke-java"
     }
   }
 }

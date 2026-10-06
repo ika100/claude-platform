@@ -1,8 +1,10 @@
 ---
-description: Runs quality (ruff + mypy) and security (pip-audit + detect-secrets + trivy) checks in parallel against the current codebase. Produces a combined report. Does not change any code. Usage: /shared:check-quality
+description: Runs quality and security checks (Python: ruff + mypy + pip-audit; other shapes: their own tools via devbox recipes, plus detect-secrets + trivy) in parallel against the current codebase. Produces a combined report. Does not change any code. Usage: /shared:check-quality
 ---
 
 You are the **orchestrator** for a read-only quality and security check. Run both agents against the current codebase and produce a combined report. Do not modify any files.
+
+First detect the shape per `plugins/shared/fragments/shape-detection.md` and print `Shape: <shape>`. The commands below are the same for every shape (the repo's `devbox.json` maps them to the right tools). Image build/scan only applies when a `Dockerfile` exists.
 
 ---
 
@@ -28,10 +30,10 @@ Print a unified report:
 ## Quality & Security Check Report
 Date: <YYYY-MM-DD>
 
-### Quality (ruff + mypy)
+### Quality
 <paste quality agent verdict and violation summary>
 
-### Security (pip-audit + detect-secrets + trivy)
+### Security
 <paste security agent verdict and findings summary>
 
 ---
@@ -40,10 +42,9 @@ Date: <YYYY-MM-DD>
 
 | Check | Result |
 |---|---|
-| Ruff lint | PASS / FAIL (N violations) |
-| Ruff format | PASS / FAIL (N files) |
-| Mypy | PASS / FAIL (N errors) |
-| pip-audit | PASS / FAIL / WARN (N critical, N high) |
+| Lint / format (ruff, ESLint, Spotless, golangci-lint, kubeconform …) | PASS / FAIL (N violations) |
+| Type check (mypy, `tsc`, compiler …) | PASS / FAIL (N errors) |
+| Dependency audit (pip-audit, pnpm audit, OWASP DC, govulncheck …) | PASS / FAIL / WARN (N critical, N high) |
 | detect-secrets | PASS / N potential secrets found |
 | trivy | PASS / FAIL / SKIPPED |
 

@@ -1,0 +1,38 @@
+# syntax=docker/dockerfile:1.7
+
+FROM maven:3.9-eclipse-temurin-{{ java_version }} AS builder
+WORKDIR /build
+
+# Resolve dependencies first for layer caching.
+COPY pom.xml ./
+COPY config ./config
+RUN mvn -B -q dependency:go-offline
+
+COPY src ./src
+RUN mvn -B -q -DskipTests package
+{%- if needs_observability %}
+
+# OpenTelemetry Java agent (zero-code tracing). Pinned; disabled at runtime unless OTEL_SDK_DISABLED=false.
+ARG OTEL_AGENT_VERSION=2.32.0
+ADD https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/${OTEL_AGENT_VERSION}/opentelemetry-javaagent-${OTEL_AGENT_VERSION}.jar /otel/opentelemetry-javaagent.jar
+{%- endif %}
+
+
+FROM gcr.io/distroless/java{{ java_version }}-debian12:nonroot AS runtime
+WORKDIR /app
+
+COPY --from=builder /build/target/app.jar /app/app.jar
+{%- if needs_observability %}
+COPY --from=builder /otel/opentelemetry-javaagent.jar /otel/opentelemetry-javaagent.jar
+{%- endif %}
+
+ENV PORT={{ port }} \
+    JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75"{% if needs_observability %} \
+    OTEL_SDK_DISABLED=true \
+    OTEL_SERVICE_NAME={{ project_name }}{% endif %}
+
+USER nonroot
+EXPOSE {{ port }}
+
+# distroless has no shell: liveness/readiness are Kubernetes probes on /actuator/health/{liveness,readiness}.
+ENTRYPOINT ["java"{% if needs_observability %}, "-javaagent:/otel/opentelemetry-javaagent.jar"{% endif %}, "-jar", "/app/app.jar"]

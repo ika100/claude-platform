@@ -37,6 +37,17 @@ jobs:
             echo "OK $plugin_name @ $plugin_version"
           done
 
+  validate-shapes:
+    name: shape registry + detection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: shapes.yml is valid and consistent with templates, plugins and the PRD table
+        run: uv run scripts/shapes.py check
+      - name: shape detection fixtures
+        run: bash scripts/test-detect-shape.sh
+
   smoke-test-templates:
     name: smoke-test Copier templates
     runs-on: ubuntu-latest
@@ -73,6 +84,171 @@ jobs:
           else
             grep -F -e '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
           fi
+
+  smoke-test-gitops-app:
+    name: smoke-test gitops-app template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/gitops-app /tmp/test-gitops --defaults --trust --skip-tasks \
+            --data project_name=test-gitops --data app_name=test --data description="Smoke test"
+      - name: Confirm key files exist
+        run: |
+          test -f /tmp/test-gitops/devbox.json
+          test -f /tmp/test-gitops/.claude/settings.json
+          test -f /tmp/test-gitops/applications/test/services.yaml
+          test -f /tmp/test-gitops/applications/test/applicationset.yaml
+          test -d /tmp/test-gitops/applications/test/overlays/dev
+          test -d /tmp/test-gitops/applications/test/overlays/staging
+          test -d /tmp/test-gitops/applications/test/overlays/prod
+          test -f /tmp/test-gitops/bootstrap/test-root.yaml
+      - name: Shape is detected as gitops-app
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-gitops)" = "gitops-app"
+      - name: Rendered files are in sync and survive adding a service
+        run: |
+          cd /tmp/test-gitops
+          uv run scripts/render.py --check
+          printf 'services:\n  - name: demo-api\n    repo: ika100/demo-api\n    shape: service-python\n    path: k8s/base\n' > applications/test/services.yaml
+          uv run scripts/render.py
+          uv run scripts/render.py --check
+          test -f applications/test/overlays/prod/demo-api/kustomization.yaml
+          grep -F 'demo-api' applications/test/applicationset.yaml
+      - name: plan.py tests (ADR-011 validation, topo order, lifecycle)
+        run: bash scripts/test-plan.sh
+      - name: kustomize + kubeconform on the ApplicationSet
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
+          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml /tmp/test-gitops/bootstrap/test-root.yaml
+
+  smoke-test-web-nextjs:
+    name: smoke-test web-nextjs template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project (defaults)
+        run: |
+          copier copy ./templates/web-nextjs /tmp/test-web --defaults --trust --skip-tasks \
+            --data project_name=test-web --data description="Smoke test"
+      - name: Confirm key files exist
+        run: |
+          for f in devbox.json package.json Dockerfile .claude/settings.json .github/workflows/ci.yml \
+                   app/layout.tsx app/page.tsx app/api/health/route.ts app/api/ready/route.ts \
+                   app/api/metrics/route.ts instrumentation.ts k8s/base/kustomization.yaml pnpm-workspace.yaml; do
+            test -f /tmp/test-web/$f || { echo "missing $f"; exit 1; }
+          done
+          test ! -e /tmp/test-web/e2e
+      - name: Shape is detected as web-nextjs
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-web)" = "web-nextjs"
+      - name: Install, lint, typecheck, test, build
+        working-directory: /tmp/test-web
+        run: |
+          npx -y pnpm@12.9.1 install
+          npx -y pnpm@12.9.1 lint
+          npx -y pnpm@12.9.1 typecheck
+          npx -y pnpm@12.9.1 test
+          npx -y pnpm@12.9.1 build
+      - name: Variant — e2e on, observability off
+        run: |
+          copier copy ./templates/web-nextjs /tmp/test-web2 --defaults --trust --skip-tasks \
+            --data project_name=test-web2 --data needs_e2e=true --data needs_observability=false
+          test -f /tmp/test-web2/e2e/smoke.spec.ts
+          test -f /tmp/test-web2/playwright.config.ts
+          test ! -e /tmp/test-web2/instrumentation.ts
+          test ! -e /tmp/test-web2/app/api/metrics
+          test ! -e /tmp/test-web2/tests/metrics.test.ts
+          grep -q '"@playwright/test"' /tmp/test-web2/package.json
+          ! grep -q 'prom-client' /tmp/test-web2/package.json
+
+  smoke-test-service-go:
+    name: smoke-test service-go template
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        observability: [true, false]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/service-go /tmp/test-go --defaults --trust --skip-tasks \
+            --data project_name=test-go --data needs_observability=${{ matrix.observability }}
+      - name: Confirm key files exist
+        run: |
+          for f in devbox.json go.mod go.sum Dockerfile .golangci.yml .claude/settings.json .github/workflows/ci.yml \
+                   cmd/test-go/main.go internal/server/server.go internal/config/config.go k8s/base/kustomization.yaml; do
+            test -f /tmp/test-go/$f || { echo "missing $f"; exit 1; }
+          done
+      - name: Shape is detected as service-go
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-go)" = "service-go"
+      - name: go.mod / go.sum are tidy
+        working-directory: /tmp/test-go
+        run: |
+          git init -q && git add -A && git -c user.email=ci@x -c user.name=ci commit -qm init
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+      - name: vet, gofmt, build, test
+        working-directory: /tmp/test-go
+        run: |
+          test -z "$(gofmt -l .)"
+          go vet ./...
+          go build ./...
+          go test -race -cover ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          working-directory: /tmp/test-go
+          version: latest
+
+  smoke-test-service-java:
+    name: smoke-test service-java template
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        observability: [true, false]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/service-java /tmp/test-java --defaults --trust --skip-tasks \
+            --data project_name=test-java --data needs_observability=${{ matrix.observability }}
+      - name: Confirm key files exist
+        run: |
+          for f in devbox.json pom.xml Dockerfile config/checkstyle.xml .claude/settings.json .github/workflows/ci.yml \
+                   src/main/resources/application.yml k8s/base/kustomization.yaml; do
+            test -f /tmp/test-java/$f || { echo "missing $f"; exit 1; }
+          done
+          test -f /tmp/test-java/src/main/java/io/github/ika100/testjava/Application.java
+      - name: Shape is detected as service-java
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-java)" = "service-java"
+      - name: spotless + checkstyle (lint)
+        working-directory: /tmp/test-java
+        run: mvn -B -q spotless:check checkstyle:check
+      - name: verify (tests + JaCoCo 80% gate)
+        working-directory: /tmp/test-java
+        run: mvn -B verify
 
   pr-title:
     name: pr-title (conventional commits)

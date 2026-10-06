@@ -1,16 +1,33 @@
 ---
-description: Promotes a service version across environments (e.g. staging→prod). Opens a PR pinning the image tag and kustomize ref. Argo reconciles after merge. Usage: /gitops:promote <service> <from> <to> [version]
+description: Promotes one or more services across environments (e.g. dev→staging→prod). Works in the platform GitOps repo and in gitops-app repos (also from a service repo via .platform-app.yml). Opens one PR pinning image tags and kustomize refs; Argo reconciles after merge. Usage: /gitops:promote <service> [<service>...] <from> <to> [version]
 ---
 
 You are the **promotion orchestrator**. Drive an environment promotion through pre-flight checks, manifest dry-run, branch+PR creation. Argo handles reconciliation after merge.
 
 **Arguments:** $ARGUMENTS
 
-Expected format: `<service> <from-env> <to-env> [version]`. Examples:
+Expected format: `<service> [<service>...] <from-env> <to-env> [version]` (a trailing semver-looking token is `version`; `--all` instead of services means every service in `services.yaml`; `version` is only valid with a single service). Examples:
 - `payments-api staging prod` — promote latest staging tag to prod
 - `payments-api staging prod v1.4.2` — pin to a specific version
 
 If `$ARGUMENTS` is empty or malformed, print usage and stop.
+
+---
+
+## Phase 0 — Resolve the target repo and mode
+
+Detect the shape of the current directory per `plugins/shared/fragments/shape-detection.md`:
+
+- **`gitops-app`** → **app mode**, operate here.
+- **Not `gitops-app` but `.platform-app.yml` exists** (a service repo that belongs to an app, [ADR-014](../../../docs/adr/014-gitops-app-composition-spec.md)) → read `gitops_apps`. If it lists several, ask the user which one (free-form text, once). Clone it next to the work: `gh repo clone <org>/<repo> "$(mktemp -d)/gitops-app"`, `cd` into the clone, and run every later phase there. Tell the user the clone path in the final report.
+- **Otherwise** → **platform mode**: the existing platform GitOps repo flow below (`overrides/<service>/<env>/kustomization.yaml`).
+
+In **app mode** the pins live in `applications/<app>/overlays/<env>/<service>/kustomization.yaml` (both the `?ref=` of the remote base and `images[].newTag` change together). Every named service must be in `applications/<app>/services.yaml`. `--all` expands to that list. Version rules in app mode:
+- `dev→staging`: `sha-<short>` of the newest image built from the service's `main` (GHCR tags starting with `sha-`).
+- `staging→prod`: a semver `vX.Y.Z` — the explicit `version`, else the newest `v*` release tag of the service repo that exists as an image tag.
+- Target `dev` is not promotable (it tracks `main`).
+
+After editing, **app mode** runs `devbox run render-check` (the pins survive re-rendering) and `devbox run validate` instead of `deploy-check`. Replace `overrides/<SERVICE>/<TO_ENV>/kustomization.yaml` with the overlay paths above wherever it appears below. One PR per invocation covers all listed services; branch `promote/<services-or-all>-<TO_ENV>-<version-or-shas>`.
 
 ---
 
@@ -29,7 +46,7 @@ If `$ARGUMENTS` is empty or malformed, print usage and stop.
    git merge --ff-only origin/main
    ```
 
-3. Service exists: confirm `overrides/<SERVICE>/` or matching ApplicationSet entry. If neither exists, stop and ask the user to create the initial overlay structure first.
+3. Service exists: in platform mode confirm `overrides/<SERVICE>/` or matching ApplicationSet entry; in app mode confirm each service is in `services.yaml`. If neither exists, stop and ask the user to create the initial overlay structure first.
 
 ---
 
@@ -132,5 +149,5 @@ To roll back: revert the merged PR and Argo will reconcile back.
 - **Never auto-merge.** Promotions are intentional — humans approve.
 - **Never `kubectl apply` directly.** Argo owns reconciliation.
 - **Prod requires the explicit gate message** (Phase 3) — never skip it.
-- **One service, one promotion PR.** Don't batch multiple services into one PR.
+- **One invocation, one promotion PR.** All services named in a single invocation (or `--all`) go into one PR; separate invocations never share a PR.
 - **Stop on dry-run failures.** A broken kustomization shouldn't reach Argo.

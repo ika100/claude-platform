@@ -1,0 +1,10 @@
+/bin/
+/dist/
+*.test
+*.out
+coverage.*
+.env
+.env.local
+.devbox/
+.DS_Store
+*.log

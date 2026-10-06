@@ -4,6 +4,55 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [Unreleased]
+
+Phase 1 of the multi-shape platform redesign ([platform-vision](requirements/platform-vision.md), ADR-008/013/015). Foundation only — no new shapes ship yet.
+
+### Added
+
+- **`shapes.yml`** — machine-readable shape registry (all six PRD shapes; the four new ones are `status: planned`).
+- **`scripts/detect-shape.sh`** — shape detection from `.copier-answers.yml` with sniffing fallback (ADR-008), plus `scripts/test-detect-shape.sh` fixtures.
+- **`scripts/shapes.py`** — validates `shapes.yml` and checks it against templates, plugins and the PRD §4 table.
+- **`plugins/shared/fragments/shape-detection.md`** — canonical detection procedure for commands and agents.
+- **`scripts/shapes.py check` now enforces the add-a-shape contract** (PRD §4.1): canonical devbox recipes, CLAUDE.md, plugin enablement in the template settings, plugin agents, detection registration. Documented in the new `docs/templates.md`.
+- CI job `validate-shapes`; `devbox run shapes-check` and `devbox run test-detect` (included in `devbox run smoke`).
+
+### Plugins
+
+- **shared 0.5.0** (docs/UX pass): new `/shared:update-service [--ref] [--data k=v]` — `copier update` cannot work on repos bootstrapped by `/shared:new-service` (the template has no git history of its own), so the command re-applies the template with the repo's recorded answers on a review branch and lists overwritten skeleton files. `/shared:new-service` now records a stable `_src_path`, no longer passes the Python-style `module_name` to non-Python templates (it had turned the Go module path into `my_saas`), and runs its clone+copier steps in one shell. All docs that pointed at `copier update` now point at `/shared:update-service`; ADOPTING has a shape table, an end-to-end product flow, and a corrected migration guide (`/shared:check-quality`, not `/svc:check-quality`).
+- **shared 0.4.0**: `/shared:new-service` gains `--type <shape>` (aliases `--library`, `--web`, `--gitops`); template, topic and `--python` handling are read from `shapes.yml`. With no flag it still produces a `service-python` repo. Requesting a `planned` shape fails with a clear message.
+
+- **svc 1.1.0** (phase 2): every orchestration command resolves `$SHAPE` and routes coder/tester/deployment/observability/release to `$SHAPE_PLUGIN:<role>` via the new `plugins/svc/fragments/shape-dispatch.md`. The architect plan metadata gains a required `shape:` field (missing → `service-python` with a deprecation notice). `/svc:build-feature` gains `--from-plan <path> [<repo-id>]` (ADR-011) and skips deployment for non-deployable shapes. `/svc:release` dispatches to the shape's release agent. `/shared:check-quality` and the quality/security agents are shape-neutral.
+
+- **gitops 0.3.0** (phase 3): new `compose` agent and `/gitops:compose add|remove <service...>`; `/gitops:promote` works in `gitops-app` repos, from a service repo via `.platform-app.yml`, with batch/`--all` and one PR per invocation.
+
+- **web 0.1.0** (new, phase 4): `coder`, `tester`, `deployment`, `observability`, `release` agents for Next.js repos, plus a SessionStart hook that runs `devbox run install`. The `svc` SessionStart hook now only runs `uv sync` when `pyproject.toml` exists.
+
+- **app 0.1.0** (new, phase 5): `/app:build-feature <desc>` (PM stories per repo → `planner` agent → validated topo-sorted multi-repo plan; **plan-only**, ADR-007) and `/app:plans list|show|start|done|abandon` (ADR-011 lifecycle).
+- svc: `/svc:build-feature --from-plan` no longer edits the plan file (it lives in the gitops-app repo); progress is recorded with `/app:plans`.
+
+- **svc-go 0.1.0** and **svc-java 0.1.0** (new, phase 6): `coder`, `tester`, `deployment`, `observability`, `release` agents for Go and Spring Boot repos; releases follow ADR-012 (`pom.xml` via `versions:set`; Go has no version file — the git tag is the version).
+
+### Templates
+
+- **service-go** (new, phase 6): chi + slog, golangci-lint v2, `govulncheck`, optional Prometheus `/metrics`, distroless static image with ldflags version, pre-resolved `go.mod`/`go.sum`. Verified by running `devbox run test`/`quality`/`audit` on rendered projects (both observability variants).
+- **service-java** (new, phase 6): Spring Boot 3.5 / JDK 21 / Maven, Spotless (google-java-format) + Checkstyle, JUnit 5 + JaCoCo 80% gate, Actuator probes, optional Micrometer Prometheus + OTel Java agent, distroless java21 image. Verified by running `devbox run lint`/`test`/`quality` on rendered projects and booting the jar.
+- ADR-009 / ADR-010 amendments record where the implementation differs from the ADR text.
+- **gitops-app** generates a root Argo Application (`bootstrap/<app>-root.yaml`, app-of-apps) and a human-only `devbox run bootstrap` recipe, so after one `kubectl apply` per cluster all changes deploy through merged PRs; `validate` also schema-checks it with kubeconform (ADR-014 amendment).
+- **gitops-app** gains `scripts/plan.py` (plan validation + lifecycle), `devbox run plan-check` (part of `validate`), and enables the `app` plugin.
+- **web-nextjs** (new, phase 4): Next.js 16 App Router, TypeScript strict, pnpm (`packageManager` pinned, `pnpm-workspace.yaml` with `allowBuilds`), Node 24 LTS pinned in `package.json`/`devbox.json`/Dockerfile, Vitest + Testing Library (80% gate), optional Playwright (`needs_e2e`), optional `/api/metrics` + OpenTelemetry (`needs_observability`), `/api/health` + `/api/ready`, standalone-output multi-stage non-root Dockerfile, Kustomize base/overlays, CI. The rendered project is verified in CI (`pnpm install`, lint, typecheck, test, build).
+- **gitops-app** (new, phase 3): product-scoped GitOps repo — `applications/<app>/{services.yaml,applicationset.yaml,overlays/<env>/<service>/}` generated by `scripts/render.py`, devbox recipes (`render`, `validate` = render-check + kustomize + kubeconform, `security`), CI, CLAUDE.md. See the ADR-013/014 amendments.
+- `/shared:new-service` gains `--app <org>/<repo>` (writes `.platform-app.yml`).
+
+### Documentation
+
+- `docs/templates.md` (new): template authoring guide with the pitfalls found while building the Go, Java and web shapes. README, ARCHITECTURE, ADOPTING (web and gitops-app migration sections), AGENTS updated; PRD marked implemented.
+
+### Migration
+
+- Run `/plugin marketplace update`. No `copier update` needed for existing Python repos (their templates are unchanged).
+- New repos: `/shared:new-service <name> --web | --gitops | --type service-java | --type service-go`.
+
 ## [1.0.1] — 2026-05-22
 
 CI-only patch. No plugin or template behavior changes.

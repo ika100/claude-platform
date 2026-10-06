@@ -6,6 +6,8 @@ You are the **orchestrator**. Drive a feature from idea to deployment by delegat
 
 **Feature request:** $ARGUMENTS
 
+**`--from-plan <path> [<repo-id>]`** (optional, [ADR-011](../../../docs/adr/011-multi-repo-plan-format.md)): if `$ARGUMENTS` starts with this flag, read the multi-repo plan at `<path>`, pick the `repos[]` entry whose `id` is `<repo-id>` (default: the current repo's name, or the `repo` in `.platform-app.yml`), and use that entry's `arguments` block as the feature request from here on. The plan file lives in the gitops-app repo, so do **not** edit it from here; instead tell the user to run `/app:plans start <slug>` before and `/app:plans done <slug> <repo-id>` (in the gitops-app repo) after the Phase 7 PR merges, and include those two commands in the Final Report.
+
 Work through the phases in order. Complete each phase fully before starting the next. After each phase, print `## Phase N complete` with a one-line summary.
 
 ---
@@ -35,6 +37,8 @@ Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Spec
 
 Print `## Phase 0b complete — on $FEATURE_BRANCH, BASE_REF=<short-sha>`.
 
+**Shape dispatch.** After the prelude, resolve the shape and route agents per `plugins/svc/fragments/shape-dispatch.md`: detect `$SHAPE`, look up `$SHAPE_PLUGIN` / `$DEPLOYABLE` in `shapes.yml`, and spawn coder/tester, deployment, observability (deployment/observability only when `$DEPLOYABLE` is true; skip Phase 5 for libraries) as `$SHAPE_PLUGIN:<role>` (`svc:<role>` for Python shapes). Quality and security stay `shared:<role>`. On a `gitops-app` repo stop and recommend `/gitops:compose` or `/app:build-feature`. Print `Shape: $SHAPE (plugin: $SHAPE_PLUGIN)`.
+
 ---
 
 ## Phase 1 — Product Definition
@@ -61,7 +65,7 @@ Extract the acceptance criteria checklist when the agent finishes — reused in 
 Use the **architect** agent. Prompt prelude: same `<project-map>` block. Then:
 - Pass the user stories and acceptance criteria from Phase 1
 - Instruction to read the existing codebase before designing
-- Instruction to **emit the structured plan format documented in the architect agent's system prompt** — a YAML metadata block listing every task with `id`, `files`, `parallel_safe`, `depends_on`, followed by per-task prose
+- Instruction to record `shape: $SHAPE` in the plan metadata and to **emit the structured plan format documented in the architect agent's system prompt** — a YAML metadata block listing every task with `id`, `files`, `parallel_safe`, `depends_on`, followed by per-task prose
 
 The architect produces:
 1. An implementation plan at `docs/plan/<feature-slug>.md` with the mandatory YAML metadata
@@ -192,7 +196,7 @@ Print `## Phase 4 complete — QA fan-out passed (tests: N, coverage X%, sec: PA
 
 ## Phase 5 — Deployment
 
-Use the **deployment** agent. Prompt prelude: `<project-map>` + `<touched-files>` (refreshed). Then:
+Skip with `## Phase 5 skipped — $SHAPE is not deployable` when `$DEPLOYABLE` is false. Otherwise use the **deployment** agent (`$SHAPE_PLUGIN:deployment`). Prompt prelude: `<project-map>` + `<touched-files>` (refreshed). Then:
 - The list of changed/new modules (from `$TOUCHED_FILES`)
 - Instruction to update or create: Dockerfile, k8s manifests in `k8s/`, and any needed `devbox run` script
 - Instruction to verify manifests with `devbox run deploy-check`
@@ -245,7 +249,7 @@ After Phase 6:
 
    ## Checklist
 
-   - [x] `devbox run quality` passes (ruff + mypy)
+   - [x] `devbox run quality` passes
    - [x] `devbox run test` passes with coverage ≥ 80%
    - [x] `devbox run security` passes (no CRITICAL findings)
    - [x] No secrets, credentials, or API keys committed

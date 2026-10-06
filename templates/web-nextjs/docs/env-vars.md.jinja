@@ -1,0 +1,23 @@
+# Environment variables
+
+Configuration is read exclusively from environment variables. Defaults match `k8s/base/deployment.yaml`. Override per environment via the Kustomize overlays in `k8s/overlays/`.
+
+## Core
+
+| Variable | Default | Description |
+|---|---|---|
+| `PORT` | `{{ port }}` | HTTP port the server listens on. |
+| `NODE_ENV` | `production` (in the image) | Node environment. |
+{%- if needs_observability %}
+
+## Observability
+
+| Variable | Default | Description |
+|---|---|---|
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | _(unset — tracing disabled)_ | OTLP endpoint; when set, `instrumentation.ts` enables OpenTelemetry tracing. |
+| `OTEL_SERVICE_NAME` | `{{ project_name }}` | Service name reported in traces. |
+{%- endif %}
+
+## Public (browser-exposed)
+
+Variables prefixed `NEXT_PUBLIC_` are inlined into the client bundle at build time. Never put secrets in them.

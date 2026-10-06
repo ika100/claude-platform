@@ -14,6 +14,7 @@ Before starting planning work:
 
 1. Run `git status --porcelain`. If the working tree is dirty, stop: "Working tree has uncommitted changes — commit or stash before planning a new feature."
 2. Run `git symbolic-ref --short HEAD` and print the current branch. Planning is branch-agnostic (no branch creation), but the user should know where they are.
+3. Detect `$SHAPE` per `plugins/svc/fragments/shape-dispatch.md` and print `Shape: $SHAPE`. Pass it to the architect so the plan records `shape: $SHAPE`. On a `gitops-app` repo stop and recommend `/app:build-feature`.
 
 ---
 

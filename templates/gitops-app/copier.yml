@@ -1,0 +1,73 @@
+# Copier template: gitops-app
+# A product-scoped GitOps repo: one SaaS application = a set of services + their per-environment pins
+# (Kustomize + ArgoCD ApplicationSet, env-only overlays dev/staging/prod — ADR-006, ADR-014).
+#
+# Usage:
+#   copier copy <platform-checkout>/templates/gitops-app ./<project> --data project_name=<name>
+
+_min_copier_version: "9.0.0"
+
+# Only *.jinja files are rendered. Argo CD ({{name}}) and GitHub Actions (${{ }}) use the same
+# delimiters as Jinja, so everything else is copied verbatim.
+_templates_suffix: .jinja
+
+_answers_file: .copier-answers.yml
+
+# Project-owned once generated: /shared:update-service must not overwrite these.
+_skip_if_exists:
+  - applications/**/services.yaml
+  - applications/**/overlays/**
+  - applications/**/applicationset.yaml
+  - bootstrap/**
+  - docs/plan/**
+
+_exclude:
+  - "copier.yml"
+  - ".git"
+
+_tasks:
+  - "git init -q"
+  - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from gitops-app template'"
+  - "echo 'Bootstrap complete. Run: cd {{ project_name }} && devbox run quality'"
+
+project_name:
+  type: str
+  help: "GitOps repo name (kebab-case, e.g. 'my-saas-gitops')."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+app_name:
+  type: str
+  help: "Application (product) name. Becomes applications/<app_name>/ and the namespace prefix."
+  default: "{{ project_name | replace('-gitops', '') }}"
+  validator: >-
+    {%- if not (app_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    app_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the application."
+  default: "GitOps repo for the {{ app_name }} application"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that owns the repo and the service repos."
+  default: "ika100"
+
+cluster_server:
+  type: str
+  help: "Kubernetes API server Argo deploys to (in-cluster by default)."
+  default: "https://kubernetes.default.svc"
+
+docker_registry:
+  type: str
+  help: "Container registry namespace the services push to."
+  default: "ghcr.io/{{ github_org }}"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to."
+  default: "main"

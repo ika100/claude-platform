@@ -1,0 +1,78 @@
+package server
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func newTestServer() *httptest.Server {
+	return httptest.NewServer(New(slog.New(slog.NewJSONHandler(io.Discard, nil)), "test"))
+}
+
+// get performs a GET against the test server and returns the status code and body.
+func get(t *testing.T, url string) (int, string) {
+	t.Helper()
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, http.NoBody)
+	if err != nil {
+		t.Fatalf("building request for %s: %v", url, err)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", url, err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("reading body of %s: %v", url, err)
+	}
+	return resp.StatusCode, string(body)
+}
+
+func TestHealth(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	status, body := get(t, ts.URL+"/health")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if !strings.Contains(body, `"status":"ok"`) || !strings.Contains(body, `"version":"test"`) {
+		t.Errorf("unexpected body: %s", body)
+	}
+}
+
+func TestReady(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	status, body := get(t, ts.URL+"/ready")
+	if status != http.StatusOK || !strings.Contains(body, `"status":"ready"`) {
+		t.Errorf("status = %d body = %s", status, body)
+	}
+}
+
+func TestUnknownRouteIs404(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	if status, _ := get(t, ts.URL+"/nope"); status != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", status)
+	}
+}
+{%- if needs_observability %}
+
+func TestMetricsExposesRequestCounters(t *testing.T) {
+	ts := newTestServer()
+	defer ts.Close()
+	get(t, ts.URL+"/health")
+	status, body := get(t, ts.URL+"/metrics")
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if !strings.Contains(body, "http_requests_total") || !strings.Contains(body, "http_request_duration_seconds") {
+		t.Errorf("metrics missing request series")
+	}
+}
+{%- endif %}

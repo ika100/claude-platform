@@ -1,0 +1,92 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+**{{ project_name }}** — {{ description }}
+
+Owned by {{ owner_team }}. Go {{ go_version }}, module `{{ module_name }}`. Container image: `{{ docker_registry }}/{{ project_name }}`.
+
+## Development Environment
+
+This project uses [devbox](https://www.jetify.com/devbox) to manage the dev environment.
+
+```bash
+devbox shell        # enter the dev environment
+devbox run dev      # go run ./cmd/{{ project_name }} (port {{ port }})
+devbox run test     # go test -race -cover ./...
+devbox run quality  # golangci-lint + go build gate
+```
+
+Canonical `devbox run` scripts (configured in `devbox.json`):
+
+| Script | Purpose |
+|---|---|
+| `dev` | `go run ./cmd/{{ project_name }}` |
+| `test` | `go test -race -cover ./...` |
+| `test-fast` | `go test ./...` |
+| `lint` | `golangci-lint run` (vet, staticcheck, gosec, errcheck, gocritic, revive, …; see `.golangci.yml`) |
+| `lint-fix` | `gofmt -w . && goimports -w . && golangci-lint run --fix` |
+| `typecheck` | `go build ./...` |
+| `quality` | `lint` then `typecheck` — the gate CI runs |
+| `audit` | `govulncheck ./...` |
+| `secrets-scan` | detect-secrets against `.secrets.baseline.json` |
+| `security` | `audit` + `secrets-scan` |
+| `image-build` | Build local image `{{ project_name }}:scan` |
+| `image-scan` | trivy against `{{ project_name }}:scan` |
+| `deploy` | `kubectl apply -k k8s/overlays/local/` |
+| `deploy-check` | `kubectl apply --dry-run=client -k k8s/overlays/local/` |
+
+**Rule for every agent (human, CI, and AI): never call `go`, `gofmt`, `goimports`, `golangci-lint`, `govulncheck`, `detect-secrets`, or `trivy` directly. Always go through `devbox run <script>`. Adding a dependency: `devbox run -- go get <module>` then `devbox run -- go mod tidy`.**
+
+## Claude Code agents
+
+Agents and slash commands come from the [`ika100/claude-platform`](https://github.com/ika100/claude-platform) marketplace, enabled in `.claude/settings.json`:
+
+- `svc-go@ika100-claude` — Go coder, tester, deployment, observability, release agents
+- `svc@ika100-claude` — orchestrators (`/svc:*`), product-manager, architect
+- `shared@ika100-claude` — quality, security, `/shared:check-quality`, `/shared:new-service`
+
+### Common workflows
+
+| Task | Command |
+|---|---|
+| Plan a feature, no code | `/svc:plan-feature <description>` |
+| Build a feature end-to-end | `/svc:build-feature <description>` |
+| Small change | `/svc:quick-task <description>` |
+| Fix a bug | `/svc:fix-bug <description or error>` |
+| Read-only quality + security audit | `/shared:check-quality` |
+| Release | `/svc:release` |
+
+## Feature Branch Workflow
+
+Branch prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `release/`. Slugs: lowercase, hyphens, ≤40 chars. Main is protected; all changes via PR. Required CI checks: `quality`, `test`, `security`, `pr-title`, `docker`. PR titles follow Conventional Commits (`type(scope): description ≤72 chars`).
+
+## Module layout and conventions
+
+```
+cmd/{{ project_name }}/main.go   entrypoint: config, slog JSON logger, graceful shutdown; `Version` set via ldflags
+internal/config/                 environment-based configuration
+internal/server/                 chi router, handlers, middleware{% if needs_observability %} (metrics.go: Prometheus){% endif %}
+```
+
+- **Router:** `github.com/go-chi/chi/v5`; handlers are plain `http.Handler`/`http.HandlerFunc`, middleware is `func(http.Handler) http.Handler`. No bespoke context types.
+- **Logging:** stdlib `log/slog` (`slog.JSONHandler`); pass `*slog.Logger` explicitly, structured key/values, never log secrets.
+- **Config:** environment variables only (see `docs/env-vars.md`).
+- **Probes:** `GET /health` and `GET /ready` must keep responding.
+{%- if needs_observability %}
+- **Metrics:** `GET /metrics` (Prometheus `client_golang`); request counter/latency are recorded by the `instrument` middleware, labelled by chi route pattern.
+{%- endif %}
+- **Errors:** wrap with `fmt.Errorf("…: %w", err)`; no panics for control flow.
+- **Tests:** stdlib `testing` next to the code (`*_test.go`), table-driven where it helps; `httptest` for handlers. `testify` only if requested.
+- **Version:** never hardcode; it comes from the git tag via `-ldflags "-X main.Version=…"` (ADR-012).
+- **Docs:** plans in `docs/plan/`, ADRs in `docs/adr/`, backlog in `docs/backlog.md`.
+
+## Docker image pipeline
+
+CI's `docker` job builds the static binary into `gcr.io/distroless/static-debian12:nonroot` (no shell; probes are Kubernetes-side) and pushes on `main` (`latest`, `sha-<short>`) and on `v*.*.*` tags (semver tags; the tag is passed as `VERSION` build arg). Registry: `{{ docker_registry }}/{{ project_name }}`.
+
+## GitOps deployment
+
+Registered for ArgoCD discovery through the GitHub topic `deployable-service`. In a product, a `gitops-app` repo lists it in `services.yaml` (`/gitops:compose add {{ project_name }}`) and pins versions with `/gitops:promote {{ project_name }} <from> <to>`. Local Kubernetes (k3d): `devbox run deploy`.

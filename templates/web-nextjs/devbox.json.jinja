@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@{{ node_major }}",
+    "pnpm@latest",
+    "k3d@latest",
+    "kubectl@latest",
+    "k9s@latest",
+    "detect-secrets@latest",
+    "trivy@latest",
+    "git@latest",
+    "gh@latest"
+  ],
+  "shell": {
+    "init_hook": ["[ -d node_modules ] || pnpm install 2>/dev/null || true"],
+    "scripts": {
+      "install":      "pnpm install --frozen-lockfile",
+      "dev":          "pnpm dev",
+      "build":        "pnpm build",
+      "test":         "pnpm test",
+      "test-fast":    "pnpm test:fast",
+      "lint":         "pnpm lint",
+      "lint-fix":     "pnpm lint:fix",
+      "typecheck":    "pnpm typecheck",
+      "quality":      "devbox run lint && devbox run typecheck",
+{%- if needs_e2e %}
+      "e2e":          "pnpm e2e",
+{%- endif %}
+      "audit":        "pnpm audit --prod --audit-level high",
+      "secrets-scan": "git ls-files -z ':!pnpm-lock.yaml' | xargs -0 detect-secrets-hook --baseline .secrets.baseline.json",
+      "security":     "devbox run audit && devbox run secrets-scan",
+      "image-build":  "docker build -t {{ project_name }}:scan .",
+      "image-scan":   "trivy image --severity CRITICAL,HIGH --format table {{ project_name }}:scan",
+      "deploy":       "kubectl apply -k k8s/overlays/local/",
+      "deploy-check": "kubectl apply --dry-run=client -k k8s/overlays/local/"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.16.0/.schema/devbox.schema.json",
+  "packages": [
+    "jdk{{ java_version }}@latest",
+    "maven@latest",
+    "k3d@latest",
+    "kubectl@latest",
+    "k9s@latest",
+    "detect-secrets@latest",
+    "trivy@latest",
+    "git@latest",
+    "gh@latest"
+  ],
+  "shell": {
+    "scripts": {
+      "dev":          "mvn -B spring-boot:run",
+      "test":         "mvn -B verify",
+      "test-fast":    "mvn -B test",
+      "lint":         "mvn -B spotless:check checkstyle:check",
+      "lint-fix":     "mvn -B spotless:apply",
+      "typecheck":    "mvn -B -DskipTests compile test-compile",
+      "quality":      "devbox run lint && devbox run typecheck",
+      "audit":        "mvn -B org.owasp:dependency-check-maven:check -DfailBuildOnCVSS=7 -DnvdApiKey=$NVD_API_KEY",
+      "secrets-scan": "git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline.json",
+      "security":     "devbox run audit && devbox run secrets-scan",
+      "image-build":  "docker build -t {{ project_name }}:scan .",
+      "image-scan":   "trivy image --severity CRITICAL,HIGH --format table {{ project_name }}:scan",
+      "deploy":       "kubectl apply -k k8s/overlays/local/",
+      "deploy-check": "kubectl apply --dry-run=client -k k8s/overlays/local/"
+    }
+  }
+}

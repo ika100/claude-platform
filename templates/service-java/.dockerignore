@@ -1,0 +1,14 @@
+.git/
+.github/
+.devbox/
+target/
+docs/
+k8s/
+.idea/
+.copier-answers.yml
+.secrets.baseline.json
+.gitignore
+.dockerignore
+CLAUDE.md
+CHANGELOG.md
+.claude/

@@ -6,6 +6,10 @@
       "Bash(gh repo edit * --add-topic *)",
       "Bash(gh api user *)",
       "Bash(gh api user)",
+      "Bash(git clone --depth 1 *)",
+      "Bash(uv tool install copier)",
+      "Bash(uv run * shapes.py *)",
+      "Bash(mktemp -d)",
       "Bash(copier copy *)",
       "Bash(copier update *)",
       "Bash(copier --version)"

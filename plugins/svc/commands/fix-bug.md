@@ -20,6 +20,8 @@ Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Spec
 
 Print `## Phase 0 — on $WORK_BRANCH, BASE_REF=<short-sha>`.
 
+**Shape dispatch.** After the prelude, resolve the shape and route agents per `plugins/svc/fragments/shape-dispatch.md`: detect `$SHAPE`, look up `$SHAPE_PLUGIN` / `$DEPLOYABLE` in `shapes.yml`, and spawn coder/tester as `$SHAPE_PLUGIN:<role>` (`svc:<role>` for Python shapes). Quality and security stay `shared:<role>`. On a `gitops-app` repo stop and recommend `/gitops:compose` or `/app:build-feature`. Print `Shape: $SHAPE (plugin: $SHAPE_PLUGIN)`.
+
 ---
 
 ## Step 1 — Diagnose and fix

@@ -1,0 +1,57 @@
+// Package server builds the HTTP handler: chi router, probes{% if needs_observability %}, metrics{% endif %}, request logging.
+package server
+
+import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+{%- if needs_observability %}
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+{%- endif %}
+)
+
+// New returns the service's root handler.
+func New(logger *slog.Logger, version string) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.RequestID)
+	r.Use(middleware.Recoverer)
+{%- if needs_observability %}
+	r.Use(instrument)
+{%- endif %}
+	r.Use(requestLogger(logger))
+
+	r.Get("/health", writeJSON(map[string]string{"status": "ok", "version": version}))
+	r.Get("/ready", writeJSON(map[string]string{"status": "ready"}))
+{%- if needs_observability %}
+	r.Method(http.MethodGet, "/metrics", promhttp.Handler())
+{%- endif %}
+	return r
+}
+
+func writeJSON(body any) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(body)
+	}
+}
+
+func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			start := time.Now()
+			ww := middleware.NewWrapResponseWriter(w, req.ProtoMajor)
+			next.ServeHTTP(ww, req)
+			logger.Info("request",
+				"method", req.Method,
+				"path", req.URL.Path,
+				"status", ww.Status(),
+				"duration_ms", time.Since(start).Milliseconds(),
+				"request_id", middleware.GetReqID(req.Context()),
+			)
+		})
+	}
+}

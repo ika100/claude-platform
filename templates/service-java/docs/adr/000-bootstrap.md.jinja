@@ -1,0 +1,26 @@
+# ADR-000: Bootstrap
+
+## Status
+
+Accepted on bootstrap.
+
+## Context
+
+`{{ project_name }}` was created from the `service-java` Copier template at `ika100/claude-platform`. The template encodes the platform's Java conventions (platform ADR-009):
+
+- JDK {{ java_version }} LTS and Maven via devbox; Spring Boot 3.x
+- Spotless (google-java-format) + a minimal Checkstyle config as the quality gate
+- JUnit 5 + Spring Boot Test, JaCoCo with an 80% line gate
+- Actuator probes{% if needs_observability %}, Micrometer Prometheus and the OpenTelemetry Java agent{% endif %}
+- Multi-stage build → `gcr.io/distroless/java{{ java_version }}-debian12:nonroot` → `{{ docker_registry }}/{{ project_name }}`
+- Kustomize manifests in `k8s/base/` + `k8s/overlays/{local,staging,prod}/`
+- GitHub topic `deployable-service` for ArgoCD discovery
+- Claude Code agents from the `ika100-claude` marketplace (`svc-java` + `svc` + `shared`)
+
+## Decision
+
+We adopt the platform conventions verbatim. Any deviation must be justified in a new ADR.
+
+## Consequences
+
+Skeleton updates (CI, devbox recipes, Dockerfile, JDK bump) arrive through `copier update`; `pom.xml`, `src/`, `config/` and `docs/adr/` are project-owned and never overwritten.

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-hooks.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if ! command -v devbox >/dev/null 2>&1; then echo 'devbox not found on PATH — install: curl -fsSL https://get.jetify.com/devbox/install.sh | bash'; exit 0; fi; [ -f devbox.json ] || exit 0; [ -f pom.xml ] || exit 0; devbox install >/dev/null 2>&1 || true",
+            "timeout": 120,
+            "statusMessage": "Checking devbox environment"
+          }
+        ]
+      }
+    ]
+  }
+}
