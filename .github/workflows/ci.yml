@@ -47,6 +47,17 @@ jobs:
         run: uv run scripts/shapes.py check
       - name: shape detection fixtures
         run: bash scripts/test-detect-shape.sh
+      - name: rendered k8s manifests have valid label values
+        run: |
+          uv tool install copier
+          for t in service-python service-java service-go web-nextjs; do
+            copier copy ./templates/$t /tmp/labels-$t --defaults --trust --skip-tasks --data project_name=labels-test
+            uv run scripts/check-k8s-labels.py /tmp/labels-$t
+          done
+          # an org-style owner must be sanitised too
+          copier copy ./templates/service-go /tmp/labels-org --defaults --trust --skip-tasks \
+            --data project_name=labels-test --data owner_team="@my-org/platform team"
+          uv run scripts/check-k8s-labels.py /tmp/labels-org
 
   smoke-test-templates:
     name: smoke-test Copier templates

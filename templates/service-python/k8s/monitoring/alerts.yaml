@@ -8,7 +8,7 @@ metadata:
   name: {{ project_name }}-alerts
   labels:
     app: {{ project_name }}
-    team: "{{ owner_team }}"
+    team: "{{ owner_label }}"
 spec:
   groups:
     - name: {{ project_name }}

@@ -116,6 +116,10 @@ def check_contract(shapes: list[dict]) -> list[str]:
                     break  # svc owns the python shapes and is checked by its own manifest
                 if not (pdir / "agents" / f"{a}.md").is_file():
                     errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 2a00. k8s label values cannot contain '@' or '/': owner_team ("@org") must go through owner_label
+        for kf in (tdir / "k8s").rglob("*") if (tdir / "k8s").is_dir() else []:
+            if kf.is_file() and 'team: "{{ owner_team }}"' in kf.read_text():
+                errs.append(f"{sid}: {kf.relative_to(tdir)} uses owner_team as a label value; use owner_label")
         # 2a0. the Deployment is edited per app (env vars, resources); re-templating it wipes those edits on update
         if s["deployable"]:
             cy = (tdir / "copier.yml").read_text()
