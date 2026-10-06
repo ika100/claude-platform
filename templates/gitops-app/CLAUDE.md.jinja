@@ -25,6 +25,10 @@ docs/plan/                        multi-repo plans written by /app:build-feature
 
 Argo must be able to read this repo and the service repos. Then, once per cluster, a human runs `devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`). That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git. From then on every change — new services, removals, promotions — reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
 
+## CI access to private service repos
+
+`kustomize build` fetches each service's `k8s/base` from GitHub. If the service repos are private, add a repository secret `SERVICE_REPOS_TOKEN` (fine-grained PAT with *Contents: read* on them); otherwise CI runs only `validate-static` and prints a warning.
+
 ## Pin policy
 
 - `dev`: tracks `main` / `latest` — merges to a service's `main` show up automatically.
@@ -39,7 +43,8 @@ Argo must be able to read this repo and the service repos. Then, once per cluste
 | `render` | Regenerate applicationset + overlays from `services.yaml` |
 | `render-check` | Fail if generated files are stale |
 | `plan-check` | Validate multi-repo plans in `docs/plan/` (ADR-011) |
-| `validate` | render-check + plan-check + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
+| `validate-static` | render-check + plan-check + kubeconform (no network to service repos) |
+| `validate` | `validate-static` + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
 | `lint` / `quality` / `test` / `deploy-check` | aliases of `validate` |
 | `lint-fix` | alias of `render` |
 | `bootstrap` | **human, once per cluster**: apply the root Application |
