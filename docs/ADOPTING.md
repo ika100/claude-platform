@@ -138,7 +138,8 @@ For an existing product GitOps repo (Kustomize + Argo):
 1. Enable `gitops`, `app`, `svc` and `shared`.
 2. Restructure to `applications/<app>/{services.yaml,applicationset.yaml,overlays/<env>/<service>/}` (ADR-014): put every component service in `services.yaml`, copy `scripts/render.py` and `scripts/plan.py` plus the `devbox.json` recipes from `templates/gitops-app`, run `devbox run render`, and review that the generated overlays reproduce your current pins (render preserves existing `newTag`/`?ref=` values).
 3. Write `.copier-answers.yml` with `_src_path` ending in `templates/gitops-app` (or rely on the `applications/*/applicationset.yaml` sniff).
-4. In each service repo add `.platform-app.yml` (`gitops_apps: [<org>/<repo>]`) so `/gitops:promote` works from there.
+4. Run `scripts/render.py` (via `devbox run render`) to produce `bootstrap/<app>-root.yaml`, review it, and — once per cluster, as a human — `devbox run bootstrap` so Argo manages the ApplicationSets from git. If you already apply ApplicationSets by hand, delete that setup after the root Application is healthy.
+5. In each service repo add `.platform-app.yml` (`gitops_apps: [<org>/<repo>]`) so `/gitops:promote` works from there.
 
 ## Migrating a Java or Go repo
 

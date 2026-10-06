@@ -15,10 +15,15 @@ applications/{{ app_name }}/
 ├── services.yaml                 human-edited registry of component services
 ├── applicationset.yaml           GENERATED — one ApplicationSet per env
 └── overlays/<env>/<service>/     GENERATED — kustomization.yaml with the remote base + image pin
+bootstrap/{{ app_name }}-root.yaml        GENERATED — root Argo Application (app-of-apps), applied once by a human
 docs/plan/                        multi-repo plans written by /app:build-feature
 ```
 
-`applicationset.yaml` and `overlays/` are derived from `services.yaml` by `devbox run render` (preserving existing pins). Never hand-edit them; use the commands below.
+`applicationset.yaml`, `overlays/` and `bootstrap/` are derived from `services.yaml` by `devbox run render` (preserving existing pins). Never hand-edit them; use the commands below.
+
+## One-time cluster bootstrap (human only)
+
+Argo must be able to read this repo and the service repos. Then, once per cluster, a human runs `devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`). That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git. From then on every change — new services, removals, promotions — reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
 
 ## Pin policy
 
@@ -37,6 +42,7 @@ docs/plan/                        multi-repo plans written by /app:build-feature
 | `validate` | render-check + plan-check + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
 | `lint` / `quality` / `test` / `deploy-check` | aliases of `validate` |
 | `lint-fix` | alias of `render` |
+| `bootstrap` | **human, once per cluster**: apply the root Application |
 | `security` | detect-secrets |
 
 **Rule for every agent: never call `kustomize`, `kubeconform`, `kubectl`, or `detect-secrets` directly. Always `devbox run <script>`. Never `kubectl apply` — Argo owns reconciliation.**

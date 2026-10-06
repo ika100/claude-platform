@@ -193,7 +193,7 @@ This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up o
 3. `/svc:plan-feature <your first feature>` — start designing
 ```
 
-For `gitops-app` repos replace the next steps with: (1) `cd <PROJECT_NAME> && devbox shell`, (2) `devbox run quality`, (3) `/gitops:compose add <service>` to declare the first services, (4) `/gitops:promote <service> dev staging` once images exist. The `<PROJECT_NAME>` here is the GitOps repo name; the application name defaults to it minus a `-gitops` suffix.
+For `gitops-app` repos replace the next steps with: (1) `cd <PROJECT_NAME> && devbox shell`, (2) `devbox run quality`, (3) **once per cluster, by a human:** `devbox run bootstrap` (creates the root Argo Application; Argo needs read access to the repos), (4) `/gitops:compose add <service>` to declare the first services, (5) `/gitops:promote <service> dev staging` once images exist. The `<PROJECT_NAME>` here is the GitOps repo name; the application name defaults to it minus a `-gitops` suffix.
 
 If `SKIP_GITHUB=1`, append a fenced block with the exact `gh repo create` + (for deployable shapes) `gh repo edit --add-topic deployable-service` commands the user should run from inside `devbox shell` (which provisions `gh`).
 

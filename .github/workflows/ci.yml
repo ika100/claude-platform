@@ -106,6 +106,7 @@ jobs:
           test -d /tmp/test-gitops/applications/test/overlays/dev
           test -d /tmp/test-gitops/applications/test/overlays/staging
           test -d /tmp/test-gitops/applications/test/overlays/prod
+          test -f /tmp/test-gitops/bootstrap/test-root.yaml
       - name: Shape is detected as gitops-app
         run: test "$(bash scripts/detect-shape.sh /tmp/test-gitops)" = "gitops-app"
       - name: Rendered files are in sync and survive adding a service
@@ -122,7 +123,7 @@ jobs:
       - name: kustomize + kubeconform on the ApplicationSet
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
-          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml
+          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml /tmp/test-gitops/bootstrap/test-root.yaml
 
   smoke-test-web-nextjs:
     name: smoke-test web-nextjs template

@@ -43,7 +43,7 @@ Three ideas carry everything:
 | devbox | `curl -fsSL https://get.jetify.com/devbox/install.sh \| bash` |
 | GitHub CLI, logged in | `gh auth login` (without it, `/shared:new-service` prints the GitHub commands instead of running them) |
 | copier | installed for you via `uv` on first use |
-| A Kubernetes cluster with ArgoCD | out of scope here; Argo needs read access to your GitHub repos |
+| A Kubernetes cluster with ArgoCD installed | out of scope here; Argo needs read access to your GitHub repos (and the cluster must be able to pull your images) |
 
 Make the platform's commands available (once per machine/user, or pre-wired in each repo — step 1 of every new repo does that for you):
 
@@ -65,12 +65,12 @@ You can already create repos with just `shared`. Every generated repo enables th
 What happens (no questions asked beyond the name and a description):
 
 1. The `gitops-app` template is rendered, committed, and pushed to a new **private** repo `<you>/taskboard`.
-2. You get `applications/taskboard/` with an empty `services.yaml`, generated ApplicationSets (dev/staging/prod) and `overlays/`, plus CI that validates everything (`kustomize build`, `kubeconform`, secret scan).
+2. You get `applications/taskboard/` with an empty `services.yaml`, generated ApplicationSets (dev/staging/prod) and `overlays/`, a `bootstrap/` root Argo Application, plus CI that validates everything (`kustomize build`, `kubeconform` incl. the Argo CRDs, secret scan).
 3. It is *not* tagged `deployable-service` (it is the GitOps source, not a service).
 
 Open it: `cd taskboard && claude`. Its `CLAUDE.md` already explains the layout and pin policy to Claude.
 
-> **One-time cluster step (manual).** Give Argo the ApplicationSets once, e.g. `kubectl apply -n argocd -f applications/taskboard/applicationset.yaml`, and make sure Argo can read the repos. After that everything is driven by pull requests — no more `kubectl apply`.
+> **One-time cluster step (human, once per cluster).** Make sure Argo can read your GitHub repos (repo credentials), then run `devbox run bootstrap` in `taskboard` (it applies `bootstrap/taskboard-root.yaml`). That root Application watches `applications/taskboard/applicationset.yaml` in git — from then on every change reaches the cluster through merged pull requests, and agents never run `kubectl apply`.
 
 ---
 
@@ -212,7 +212,7 @@ Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`
 
 - Plugin commands are Claude prompts, not scripts: they follow the documented flow but ask you before pushing or opening PRs.
 - Cross-repo work is **plan-only** in v1: you run `/svc:build-feature --from-plan` in each repo yourself.
-- ArgoCD/cluster setup and registry credentials are outside the platform (see the one-time step in Chapter 1).
+- The cluster itself, ArgoCD installation and its repo/registry credentials are outside the platform; the only manual cluster step is `devbox run bootstrap` once (Chapter 1).
 - Skeleton updates overwrite customised skeleton files by design; the review branch is where you keep or restore your changes.
 
 ## Where to read more

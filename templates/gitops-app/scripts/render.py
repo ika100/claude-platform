@@ -6,6 +6,7 @@
 
 services.yaml is the human-edited registry. This script derives:
   applications/<app>/applicationset.yaml                    one ApplicationSet per env (dev/staging/prod)
+  bootstrap/<app>-root.yaml                                 root Argo Application (app-of-apps), applied once by a human
   applications/<app>/overlays/<env>/<service>/kustomization.yaml
 
 Existing image pins (`newTag`) and kustomize refs in overlays are preserved, so running this after
@@ -89,6 +90,27 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
             }
         )
     out[app_dir / "applicationset.yaml"] = "---\n".join(dump(d) for d in docs)
+
+    # Root Application: Argo watches applications/<app>/applicationset.yaml in git, so ApplicationSet
+    # changes (compose add/remove) reach the cluster through PRs. Applied once: `devbox run bootstrap`.
+    out[ROOT / "bootstrap" / f"{app}-root.yaml"] = dump(
+        {
+            "apiVersion": "argoproj.io/v1alpha1",
+            "kind": "Application",
+            "metadata": {"name": f"{app}-root", "namespace": "argocd"},
+            "spec": {
+                "project": "default",
+                "source": {
+                    "repoURL": gitops_repo,
+                    "targetRevision": "main",
+                    "path": f"applications/{app}",
+                    "directory": {"include": "applicationset.yaml"},
+                },
+                "destination": {"server": server, "namespace": "argocd"},
+                "syncPolicy": {"automated": {"prune": True, "selfHeal": True}},
+            },
+        }
+    )
 
     for env in ENVS:
         for s in services:

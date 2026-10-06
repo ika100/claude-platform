@@ -6,6 +6,7 @@ GitOps repo for the **{{ app_name }}** application (platform shape `gitops-app`)
 
 ```bash
 devbox shell
+devbox run bootstrap               # once per cluster, by a human: creates the root Argo Application
 /gitops:compose add my-api my-web     # in Claude Code: declare services
 devbox run quality                    # validate overlays + ApplicationSets
 /gitops:promote my-api dev staging    # pin staging to the dev image
