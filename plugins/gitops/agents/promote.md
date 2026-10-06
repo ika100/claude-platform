@@ -16,14 +16,21 @@ All shell commands go through `devbox run <script>`.
 The orchestrator tells you the mode ([`/gitops:promote` Phase 0](../commands/promote.md)):
 
 - **platform** — the platform GitOps repo; edit `overrides/<SERVICE>/<TO_ENV>/kustomization.yaml` as described below.
-- **app** — a `gitops-app` repo; edit `applications/<app>/overlays/<TO_ENV>/<SERVICE>/kustomization.yaml`: set the remote base's `?ref=<VERSION>` and `images[].newTag: <VERSION>` together, for each service, then run `devbox run render-check` and `devbox run validate` (not `deploy-check`). Never edit `applicationset.yaml` or `services.yaml`. `dev` is never a target. In app mode `VERSION` is `sha-<short>` for `staging` and semver for `prod`; verify the tag exists in GHCR before editing.
+- **app** — a `gitops-app` repo; edit `applications/<app>/overlays/<TO_ENV>/<SERVICE>/kustomization.yaml`, for each service, then run `devbox run render-check` and `devbox run validate` (not `deploy-check`). Never edit `applicationset.yaml` or `services.yaml`. `dev` is never a target. **The git ref and the image tag are different strings — set both, never copy one into the other** (verified against real kustomize/GHCR):
+
+  | Target | `resources: …?ref=` (a real git ref) | `images[].newTag` (a tag CI actually pushed) |
+  |---|---|---|
+  | `staging` | the **full 40-character commit SHA** the image was built from (`gh api repos/<org>/<SERVICE>/commits/main -q .sha`); `?ref=sha-<short>` and a short SHA both fail in kustomize | `sha-<first 7 chars of that SHA>` (docker/metadata-action `type=sha,format=short`) |
+  | `prod` | the git tag `vX.Y.Z` | `X.Y.Z` — **without the `v`**: CI publishes semver images as `1.2.3`/`1.2`/`1` (`type=semver,pattern={{version}}`) |
+
+  Verify before editing: the commit exists, and the image tag exists in GHCR (`gh api /user/packages/container/<SERVICE>/versions`, or a registry manifest check). Verify after editing with `devbox run validate` (it `kustomize build`s the new ref).
 
 ## Inputs (from the orchestrator)
 
 - `SERVICE` — the service name (app mode: one or more) (matches the GitHub repo name and the Argo Application name)
 - `FROM_ENV` — current environment (typically `staging`)
 - `TO_ENV` — target environment (typically `prod`)
-- `VERSION` — the semver tag to pin (e.g. `v1.4.2`). If omitted, read the current tag in the `FROM_ENV` overlay of this service.
+- `VERSION` — the release tag to pin (e.g. `v1.4.2`; for staging the commit SHA, see the table under *Modes*). If omitted, read the current pin in the `FROM_ENV` overlay of this service.
 
 ## Workflow
 
