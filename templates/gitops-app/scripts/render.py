@@ -83,7 +83,7 @@ def load_services(app_dir: Path) -> list[dict]:
         if "port" not in s or "probes" not in s:
             raise RenderError(
                 f"service '{n}' uses the v1 format (remote kustomize base). v2 needs port/probes/...: "
-                "run `/gitops:compose import " + n + "` (or see docs/ADOPTING.md → migrating to v2)")
+                "run `/gitops:compose add " + n + " --from-k8s` (see docs/ADOPTING.md → migrating from v1 to v2)")
         for k in ("image", "probes"):
             if k not in s:
                 raise RenderError(f"service '{n}': missing '{k}'")

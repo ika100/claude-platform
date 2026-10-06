@@ -54,7 +54,8 @@ def branch_name() -> str:
 
 
 def plan(req: dict) -> Report:
-    r = Report(title=f"Update {req['repo'].name} ({req['shape']}) from platform {req['old'] or 'unknown'} → {req['new']}")
+    was = req["old"] or "none — this repo has no .platform-version stamp yet"
+    r = Report(title=f"Update {req['repo'].name} ({req['shape']}) from platform {was} → {req['new']}")
     cur = run(["git", "symbolic-ref", "--short", "HEAD"], cwd=req["repo"], check=False).stdout.strip()
     if cur in ("main", "master"):
         r.will_do.append(f"create review branch {branch_name()}")
