@@ -11,6 +11,7 @@ Fixes found by running the platform end to end on a real todo app (see `docs/USE
 ### Fixed
 
 - **web-nextjs:** bootstrap failed (`devbox run -- pnpm install` → `SyntaxError`) because `packageManager: pnpm@12.9.1` was newer than the pnpm devbox provides (11.x). Both pins are now `pnpm@11.22.0` and `shapes.py check` enforces that they match (ADR-003 amendment).
+- **All templates:** the generated CI workflow did not trigger on pushes to `main`, so merged code was never built and no `latest`/`sha-*` image was pushed (the GitOps flow depends on them). `main` is now in the push triggers and `shapes.py check` enforces it.
 - **gitops-app:** the bootstrap did not run `devbox install`, so `devbox.lock` was left untracked after the first `devbox run`.
 
 ## [1.1.0] — 2026-10-06
