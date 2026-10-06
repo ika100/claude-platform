@@ -1,5 +1,5 @@
 ---
-description: "Bootstrap a new repo of any registered shape (see shapes.yml) from a Copier template, init git, create the GitHub repo, and tag it for GitOps. Usage: /shared:new-service <name> [description words...] [--type <shape>] [--library|--web|--gitops] [--python 3.12|3.13] [--org <org>] [--ref <git-ref>]"
+description: "Bootstrap a new repo of any registered shape (see shapes.yml) from a Copier template, init git, create the GitHub repo, and tag it for GitOps. Usage: /shared:new-service <name> [description words...] [--type <shape>] [--library|--web|--gitops] [--python 3.12|3.13] [--app <org>/<gitops-app-repo>] [--org <org>] [--ref <git-ref>]"
 ---
 
 You are the **bootstrap orchestrator** for new repos of any registered shape (`shapes.yml` in the platform repo is the registry). Goal: scaffold a repo end-to-end with as little user interaction as possible. Default to zero further questions once a project name is supplied.
@@ -17,6 +17,7 @@ Treat `$ARGUMENTS` as one free-form line. Extract in this order:
    - Aliases: `--library` → `SHAPE=library-python`, `--web` → `SHAPE=web-nextjs`, `--gitops` → `SHAPE=gitops-app`. If more than one of `--type`/aliases is given, stop and report the conflict.
    - No shape flag → `SHAPE=service-python` (backward-compatible default).
    - `--python <ver>` → `PYTHON_VERSION=<ver>` (only for `service-python` / `library-python`; if the flag is absent for those shapes set `PYTHON_VERSION=3.12`; for all other shapes leave it unset and ignore the flag)
+   - `--app <org>/<repo>` → `GITOPS_APP=<org>/<repo>` (service shapes only: writes `.platform-app.yml` so `/gitops:promote` can find the application repo)
    - `--org <org>` → `GITHUB_ORG=<org>`
    - `--description "<text>"` → legacy alias, appended to the description stream
    - `--ref <git-ref>` → `PLATFORM_REF=<ref>` (default `main`)
@@ -130,6 +131,15 @@ fi
 
 Never fail the bootstrap on a missing git identity or a no-op amend.
 
+If `GITOPS_APP` is set and `DEPLOYABLE=true`, add `.platform-app.yml` and amend the bootstrap commit ([ADR-014](../../../docs/adr/014-gitops-app-composition-spec.md)):
+
+```bash
+printf '# Application repos this service belongs to (read by /gitops:promote)\ngitops_apps:\n  - %s\n' "<GITOPS_APP>" > .platform-app.yml
+git add .platform-app.yml && git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit --amend --no-edit -q
+```
+
+Ignore `--app` (with a one-line note) for shapes that are not deployable.
+
 ---
 
 ## Phase 4 — Create the GitHub repo (skip if `SKIP_GITHUB=1`)
@@ -174,6 +184,8 @@ This tells the ArgoCD ApplicationSet in the gitops repo to pick the service up o
 2. `devbox run quality && devbox run test` — sanity-check the tree
 3. `/svc:plan-feature <your first feature>` — start designing
 ```
+
+For `gitops-app` repos replace the next steps with: (1) `cd <PROJECT_NAME> && devbox shell`, (2) `devbox run quality`, (3) `/gitops:compose add <service>` to declare the first services, (4) `/gitops:promote <service> dev staging` once images exist. The `<PROJECT_NAME>` here is the GitOps repo name; the application name defaults to it minus a `-gitops` suffix.
 
 If `SKIP_GITHUB=1`, append a fenced block with the exact `gh repo create` + (for deployable shapes) `gh repo edit --add-topic deployable-service` commands the user should run from inside `devbox shell` (which provisions `gh`).
 

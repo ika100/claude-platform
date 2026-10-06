@@ -85,6 +85,43 @@ jobs:
             grep -F -e '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
           fi
 
+  smoke-test-gitops-app:
+    name: smoke-test gitops-app template
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: Install copier
+        run: uv tool install copier
+      - name: Generate test project
+        run: |
+          copier copy ./templates/gitops-app /tmp/test-gitops --defaults --trust --skip-tasks \
+            --data project_name=test-gitops --data app_name=test --data description="Smoke test"
+      - name: Confirm key files exist
+        run: |
+          test -f /tmp/test-gitops/devbox.json
+          test -f /tmp/test-gitops/.claude/settings.json
+          test -f /tmp/test-gitops/applications/test/services.yaml
+          test -f /tmp/test-gitops/applications/test/applicationset.yaml
+          test -d /tmp/test-gitops/applications/test/overlays/dev
+          test -d /tmp/test-gitops/applications/test/overlays/staging
+          test -d /tmp/test-gitops/applications/test/overlays/prod
+      - name: Shape is detected as gitops-app
+        run: test "$(bash scripts/detect-shape.sh /tmp/test-gitops)" = "gitops-app"
+      - name: Rendered files are in sync and survive adding a service
+        run: |
+          cd /tmp/test-gitops
+          uv run scripts/render.py --check
+          printf 'services:\n  - name: demo-api\n    repo: ika100/demo-api\n    shape: service-python\n    path: k8s/base\n' > applications/test/services.yaml
+          uv run scripts/render.py
+          uv run scripts/render.py --check
+          test -f applications/test/overlays/prod/demo-api/kustomization.yaml
+          grep -F 'demo-api' applications/test/applicationset.yaml
+      - name: kustomize + kubeconform on the ApplicationSet
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
+          /tmp/kubeconform -strict -ignore-missing-schemas -summary /tmp/test-gitops/applications/test/applicationset.yaml
+
   pr-title:
     name: pr-title (conventional commits)
     runs-on: ubuntu-latest

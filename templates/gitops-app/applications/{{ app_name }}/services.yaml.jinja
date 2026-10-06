@@ -1,0 +1,9 @@
+# Registry of component services for the {{ app_name }} application (ADR-014).
+# Edit with `/gitops:compose add|remove <service>` — then `devbox run render` regenerates
+# applicationset.yaml and the overlay kustomizations. Every repo listed here must carry the
+# `deployable-service` GitHub topic.
+services: []
+#  - name: my-api
+#    repo: {{ github_org }}/my-api
+#    shape: service-python
+#    path: k8s/base          # path in the service repo used as the Kustomize base

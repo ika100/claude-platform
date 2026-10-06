@@ -127,3 +127,10 @@ Batch mode is the default ergonomic for multi-service products; single-service i
 - [platform-vision.md §6 B5, B6](../requirements/platform-vision.md)
 - [ADR-006](006-gitops-app-overlay-structure.md) — env-only overlay decision this ADR concretises
 - [end-to-end-scenario.md Q13, Q14, Q15](../requirements/end-to-end-scenario.md)
+
+## Amendment (implementation, phase 3)
+
+The shipped `gitops-app` template differs from the sketch above in two places, both to make the ApplicationSet actually work:
+
+- **Overlays are per service**: `overlays/<env>/<service>/kustomization.yaml` (remote base `https://github.com/<repo>//<path>?ref=<ref>` + `images[].newTag`), with no separate `images.yaml`. The List-generator ApplicationSet creates one Application per service whose `path` is that directory; a single flat overlay per env would have made every Application render every service. `/gitops:promote` edits the pin (`?ref=` and `newTag` together) in this file.
+- **Generated, not hand-written**: `applicationset.yaml` and the overlay kustomizations are rendered from `services.yaml` by `scripts/render.py` (`devbox run render`). Existing pins are preserved on re-render and `render --check` is part of `devbox run quality`. A new service starts at `main`/`latest` in every env until promoted.

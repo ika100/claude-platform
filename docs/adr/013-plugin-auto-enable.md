@@ -45,3 +45,7 @@ Repos onboarded via the existing `ADOPTING.md` flow (not via `/shared:new-servic
 - [ADR-015](015-shape-registry-as-code.md) — source of the plugin mapping
 - [ADOPTING.md](../ADOPTING.md) — the migration flow that does NOT auto-enable
 - [end-to-end-scenario.md Q19](../requirements/end-to-end-scenario.md)
+
+## Amendment (implementation, phase 3)
+
+`gitops-app` repos (and every shape whose orchestration is driven by `/svc:*` commands: `web-nextjs`, `service-java`, `service-go`) enable **`svc` in addition to the shape plugin and `shared`**. The `/svc:*` orchestrators and the shape-agnostic `product-manager` / `architect` agents live in `svc` (see `plugins/svc/fragments/shape-dispatch.md`), so a repo without `svc` cannot run `/svc:build-feature`. Resulting sets: `gitops-app` → `gitops, svc, shared`; `web-nextjs` → `web, svc, shared`; `service-java` → `svc-java, svc, shared`; `service-go` → `svc-go, svc, shared`.

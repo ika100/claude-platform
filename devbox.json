@@ -18,7 +18,8 @@
       "smoke-library": "rm -rf /tmp/test-lib && uv tool run --from copier copier copy ./templates/library-python /tmp/test-lib --defaults --trust --data project_name=test-lib --data module_name=test_lib --data description=test && cd /tmp/test-lib && devbox install && devbox run lint && devbox run typecheck",
       "shapes-check":  "uv run scripts/shapes.py check",
       "test-detect":   "bash scripts/test-detect-shape.sh",
-      "smoke":         "devbox run validate && devbox run shapes-check && devbox run test-detect && devbox run smoke-service && devbox run smoke-library"
+      "smoke-gitops":  "rm -rf /tmp/test-gitops && uv tool run --from copier copier copy ./templates/gitops-app /tmp/test-gitops --defaults --trust --skip-tasks --data project_name=test-gitops --data app_name=test --data description=test && cd /tmp/test-gitops && uv run scripts/render.py --check",
+      "smoke":         "devbox run validate && devbox run shapes-check && devbox run test-detect && devbox run smoke-service && devbox run smoke-library && devbox run smoke-gitops"
     }
   }
 }

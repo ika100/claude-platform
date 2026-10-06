@@ -7,13 +7,20 @@ Agents and commands for the GitOps repository — the single repo that wires ser
 | Agent | Model | Purpose |
 |---|---|---|
 | `deployment` | sonnet | Maintains the ApplicationSet, cluster-wide add-ons, and per-service overrides |
-| `promote` | sonnet | Pins image tags + kustomize refs when promoting a service across environments |
+| `promote` | sonnet | Pins image tags + kustomize refs when promoting services across environments (platform repo or gitops-app repo) |
+| `compose` | sonnet | Adds/removes services in a gitops-app repo (`services.yaml` + generated ApplicationSets/overlays) |
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `/gitops:promote <service> <from> <to> [version]` | Opens a PR pinning `<service>` to `<version>` in the `<to>` overlay |
+| `/gitops:promote <service...> <from> <to> [version]` | Opens one PR pinning the services to `<version>` in the `<to>` overlay (also `--all`; works from a service repo via `.platform-app.yml`) |
+| `/gitops:compose add\|remove <service...>` | gitops-app repos: declare which services make up the application; one PR |
+
+## Two kinds of GitOps repo
+
+- **Platform GitOps repo** (one per fleet): discovers every `deployable-service` repo via topic. Layout in the `deployment` agent.
+- **Application repo** (`gitops-app` shape, one per SaaS product): pins which services/versions/environments make up the product. Created with `/shared:new-service <name> --gitops`.
 
 ## Conventions enforced
 

@@ -1,0 +1,83 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ app_name }}-dev
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements: []
+  template:
+    metadata:
+      name: '{% raw %}{{name}}{% endraw %}-dev'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/{{ github_org }}/{{ project_name }}
+        targetRevision: main
+        path: applications/{{ app_name }}/overlays/dev/{% raw %}{{name}}{% endraw %}
+      destination:
+        server: {{ cluster_server }}
+        namespace: {{ app_name }}-dev
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ app_name }}-staging
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements: []
+  template:
+    metadata:
+      name: '{% raw %}{{name}}{% endraw %}-staging'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/{{ github_org }}/{{ project_name }}
+        targetRevision: main
+        path: applications/{{ app_name }}/overlays/staging/{% raw %}{{name}}{% endraw %}
+      destination:
+        server: {{ cluster_server }}
+        namespace: {{ app_name }}-staging
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ app_name }}-prod
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements: []
+  template:
+    metadata:
+      name: '{% raw %}{{name}}{% endraw %}-prod'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/{{ github_org }}/{{ project_name }}
+        targetRevision: main
+        path: applications/{{ app_name }}/overlays/prod/{% raw %}{{name}}{% endraw %}
+      destination:
+        server: {{ cluster_server }}
+        namespace: {{ app_name }}-prod
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+        - CreateNamespace=true

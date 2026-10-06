@@ -1,0 +1,57 @@
+# CLAUDE.md
+
+Guidance for Claude Code (claude.ai/code) in this repository.
+
+## Project
+
+**{{ project_name }}** — {{ description }}
+
+This is a `gitops-app` repo: the GitOps source of truth for the **{{ app_name }}** application. It declares which service repos make up the product and which image version each environment (`dev`, `staging`, `prod`) runs. ArgoCD reconciles it. There is no application code here.
+
+## Layout
+
+```
+applications/{{ app_name }}/
+├── services.yaml                 human-edited registry of component services
+├── applicationset.yaml           GENERATED — one ApplicationSet per env
+└── overlays/<env>/<service>/     GENERATED — kustomization.yaml with the remote base + image pin
+docs/plan/                        multi-repo plans written by /app:build-feature
+```
+
+`applicationset.yaml` and `overlays/` are derived from `services.yaml` by `devbox run render` (preserving existing pins). Never hand-edit them; use the commands below.
+
+## Pin policy
+
+- `dev`: tracks `main` / `latest` — merges to a service's `main` show up automatically.
+- `staging`: `sha-<short>` pins, edited only by `/gitops:promote`.
+- `prod`: semver pins (`vX.Y.Z`), edited only by `/gitops:promote`.
+- A service newly added by `compose` starts at `main`/`latest` in every env; promote it before relying on staging/prod.
+
+## Commands (devbox)
+
+| Script | Purpose |
+|---|---|
+| `render` | Regenerate applicationset + overlays from `services.yaml` |
+| `render-check` | Fail if generated files are stale |
+| `validate` | render-check + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
+| `lint` / `quality` / `test` / `deploy-check` | aliases of `validate` |
+| `lint-fix` | alias of `render` |
+| `security` | detect-secrets |
+
+**Rule for every agent: never call `kustomize`, `kubeconform`, `kubectl`, or `detect-secrets` directly. Always `devbox run <script>`. Never `kubectl apply` — Argo owns reconciliation.**
+
+## Claude Code agents
+
+Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `svc` (planning agents), `shared` (quality/security).
+
+| Task | Command |
+|---|---|
+| Add services to the app | `/gitops:compose add <service...>` |
+| Remove services | `/gitops:compose remove <service...>` |
+| Promote versions | `/gitops:promote <service...> <from> <to> [version]` |
+| Plan a feature across repos | `/app:build-feature <description>` |
+
+## Conventions
+
+- Branches: `compose/<slug>`, `promote/<slug>`, `feature/<slug>`, `chore/<slug>`. Never commit to `main` directly.
+- Conventional Commits for commit messages and PR titles.

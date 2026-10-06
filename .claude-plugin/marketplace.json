@@ -18,7 +18,7 @@
     {
       "name": "gitops",
       "source": "./plugins/gitops",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "description": "Promotion and ApplicationSet management for the GitOps repo (ArgoCD).",
       "category": "agents",
       "tags": ["argocd", "gitops", "k8s"]

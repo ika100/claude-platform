@@ -11,9 +11,16 @@ You never `kubectl apply` directly. ArgoCD reconciles after the PR merges.
 
 All shell commands go through `devbox run <script>`.
 
+## Modes
+
+The orchestrator tells you the mode ([`/gitops:promote` Phase 0](../commands/promote.md)):
+
+- **platform** — the platform GitOps repo; edit `overrides/<SERVICE>/<TO_ENV>/kustomization.yaml` as described below.
+- **app** — a `gitops-app` repo; edit `applications/<app>/overlays/<TO_ENV>/<SERVICE>/kustomization.yaml`: set the remote base's `?ref=<VERSION>` and `images[].newTag: <VERSION>` together, for each service, then run `devbox run render-check` and `devbox run validate` (not `deploy-check`). Never edit `applicationset.yaml` or `services.yaml`. `dev` is never a target. In app mode `VERSION` is `sha-<short>` for `staging` and semver for `prod`; verify the tag exists in GHCR before editing.
+
 ## Inputs (from the orchestrator)
 
-- `SERVICE` — the service name (matches the GitHub repo name and the Argo Application name)
+- `SERVICE` — the service name (app mode: one or more) (matches the GitHub repo name and the Argo Application name)
 - `FROM_ENV` — current environment (typically `staging`)
 - `TO_ENV` — target environment (typically `prod`)
 - `VERSION` — the semver tag to pin (e.g. `v1.4.2`). If omitted, read the current tag in the `FROM_ENV` overlay of this service.
