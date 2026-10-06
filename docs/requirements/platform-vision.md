@@ -1,6 +1,6 @@
 ### Platform Vision PRD — Multi-Service-Type Claude Platform
 
-**Status:** Draft — open decisions resolved 2026-05-22, Java/Go shapes added as extensibility test 2026-05-22
+**Status:** Implemented (P0 + P1; P2 items C4 `/app:release`, E3 deferred) — open decisions resolved 2026-05-22, Java/Go shapes added as extensibility test 2026-05-22
 **Author:** @ika100
 **Last updated:** 2026-05-22
 **Audience:** Future implementers (human + Claude agents)
@@ -34,12 +34,12 @@ The platform supports the following shapes. New shapes are added per §4.1.
 
 | Shape | Plugin | Template | Default stack | Status |
 |---|---|---|---|---|
-| `service-python` | `svc` | `service-python` | Python 3.12, uv, FastAPI | exists |
-| `library-python` | `svc` (subset) | `library-python` | Python 3.12, uv | exists |
-| `web-nextjs` | `web` | `web-nextjs` | Node LTS, pnpm, Next.js App Router | new — P0 |
-| `gitops-app` | `gitops` | `gitops-app` | Kustomize + ArgoCD ApplicationSet, env-only overlays | new — P0 |
-| `service-java` | `svc-java` | `service-java` | JDK 21 LTS, Maven, Spring Boot 3.x | new — P1 (extensibility case study) |
-| `service-go` | `svc-go` | `service-go` | Go 1.22+, stdlib `net/http` + `chi` router | new — P1 (extensibility case study) |
+| `service-python` | `svc` | `service-python` | Python 3.12, uv, FastAPI | stable |
+| `library-python` | `svc` (subset) | `library-python` | Python 3.12, uv | stable |
+| `web-nextjs` | `web` | `web-nextjs` | Node LTS, pnpm, Next.js App Router | stable |
+| `gitops-app` | `gitops` | `gitops-app` | Kustomize + ArgoCD ApplicationSet, env-only overlays | stable |
+| `service-java` | `svc-java` | `service-java` | JDK 21 LTS, Maven, Spring Boot 3.x | stable (extensibility case study) |
+| `service-go` | `svc-go` | `service-go` | Go 1.22+, stdlib `net/http` + `chi` router | stable (extensibility case study) |
 
 `gitops-app` is distinct from the single platform-wide GitOps repo we already have. The platform-wide repo discovers all `deployable-service` repos via topic. A `gitops-app` repo is product-scoped — it pins which services, which versions, which environments make up one SaaS product. A user with N SaaS products has N `gitops-app` repos.
 

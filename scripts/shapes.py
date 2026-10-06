@@ -66,6 +66,64 @@ def check_files(shapes: list[dict]) -> list[str]:
     return errs
 
 
+CORE_RECIPES = ["lint", "lint-fix", "quality", "test", "test-fast", "security"]
+DEPLOY_RECIPES = ["image-build", "image-scan", "deploy-check"]
+CONTRACT_AGENTS = ["coder", "tester"]
+DEPLOY_AGENTS = ["deployment", "observability", "release"]
+
+
+def _template_file(tdir: Path, name: str) -> Path | None:
+    for cand in (tdir / name, tdir / f"{name}.jinja"):
+        if cand.is_file():
+            return cand
+    return None
+
+
+def check_contract(shapes: list[dict]) -> list[str]:
+    """PRD §4.1 contract: every non-planned shape ships the template, plugin and detection artifacts."""
+    errs: list[str] = []
+    detect = (ROOT / "scripts" / "detect-shape.sh").read_text()
+    fixtures = (ROOT / "scripts" / "test-detect-shape.sh").read_text()
+    for s in shapes:
+        if s["status"] == "planned":
+            continue
+        sid, tdir, pdir = s["id"], ROOT / "templates" / s["template"], ROOT / "plugins" / s["plugin"]
+        # 1. template: devbox recipes, CLAUDE.md, plugin enablement
+        devbox = _template_file(tdir, "devbox.json")
+        if devbox is None:
+            errs.append(f"{sid}: template has no devbox.json")
+        else:
+            text = devbox.read_text()
+            need = CORE_RECIPES + (DEPLOY_RECIPES if s["deployable"] else [])
+            for r in need:
+                if f'"{r}"' not in text:
+                    errs.append(f"{sid}: devbox.json missing canonical recipe '{r}'")
+        if _template_file(tdir, "CLAUDE.md") is None:
+            errs.append(f"{sid}: template has no CLAUDE.md")
+        settings = _template_file(tdir / ".claude", "settings.json")
+        if settings is None:
+            errs.append(f"{sid}: template has no .claude/settings.json")
+        else:
+            st = settings.read_text()
+            for plugin in (s["plugin"], "shared"):
+                if f'"{plugin}@ika100-claude": true' not in st:
+                    errs.append(f"{sid}: .claude/settings.json does not enable '{plugin}'")
+        # 2. plugin: agents
+        if s["plugin"] != "gitops":
+            agents = CONTRACT_AGENTS + (DEPLOY_AGENTS if s["deployable"] else [])
+            for a in agents:
+                if s["plugin"] == "svc":
+                    break  # svc owns the python shapes and is checked by its own manifest
+                if not (pdir / "agents" / f"{a}.md").is_file():
+                    errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 3. detection registration
+        if f"templates/{s['template']}" not in detect:
+            errs.append(f"{sid}: scripts/detect-shape.sh has no copier_src case for templates/{s['template']}")
+        if "for s in" not in fixtures:  # fixtures iterate over every id in shapes.yml
+            errs.append(f"{sid}: detection fixtures do not iterate the registry")
+    return errs
+
+
 def prd_rows() -> dict[str, tuple[str, str]]:
     """Parse the §4 table: shape id -> (plugin, template)."""
     text = PRD.read_text()
@@ -111,7 +169,7 @@ def main(argv: list[str]) -> int:
         return 0
     errs = validate(shapes)
     if cmd == "check":
-        errs += check_files(shapes) + check_prd(shapes)
+        errs += check_files(shapes) + check_contract(shapes) + check_prd(shapes)
     elif cmd != "validate":
         print(__doc__)
         return 2

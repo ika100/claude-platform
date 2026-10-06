@@ -1,6 +1,6 @@
 # svc plugin
 
-Multi-agent pipeline for Python service repos. Pair with the `shared` plugin for quality/security and the `service-python` Copier template for the canonical project skeleton.
+Orchestrators (`/svc:*`) and the shape-agnostic product-manager and architect agents, plus the Python agents (coder, tester, migrations, observability, release, deployment). Commands detect the repo shape (`shapes.yml`) and route coder/tester/deployment/observability/release to the shape's plugin (`web`, `svc-java`, `svc-go`). Pair with the `shared` plugin for quality/security and the `service-python` Copier template for the canonical project skeleton.
 
 ## Agents
 
@@ -27,7 +27,7 @@ Multi-agent pipeline for Python service repos. Pair with the `shared` plugin for
 
 ## Hooks
 
-- `SessionStart` runs `devbox run -- uv sync --all-extras` to keep the venv current.
+- `SessionStart` runs `devbox run -- uv sync --all-extras` to keep the venv current (only when `pyproject.toml` exists).
 
 ## Dependencies
 
@@ -35,7 +35,7 @@ This plugin assumes:
 
 1. **`shared` plugin is also enabled** (provides `quality` + `security` agents that several commands invoke).
 2. **Project has a `devbox.json` with the canonical recipes** (`test`, `lint`, `quality`, `security`, `image-build`, `deploy-check`, …). Use the `service-python` Copier template to bootstrap a project with the right shape.
-3. **Project is a Python repo** using `uv` and `pyproject.toml`.
+3. For the Python agents: a Python repo using `uv` and `pyproject.toml`. Other shapes use their own plugin's agents (this plugin must still be enabled for the orchestrators).
 
 Enable both plugins via `.claude/settings.json`:
 

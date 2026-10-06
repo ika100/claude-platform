@@ -14,17 +14,23 @@ The ika100 fleet has many Python service repos (FastAPI-style, devbox-driven, k8
 
 Two channels of distribution:
 
-1. **Claude Code marketplace** — three plugins (`svc`, `gitops`, `shared`) published from this repo. Consumers reference the marketplace in their `.claude/settings.json`; updates flow via `/plugin marketplace update`.
+1. **Claude Code marketplace** — seven plugins (`svc`, `web`, `svc-java`, `svc-go`, `gitops`, `app`, `shared`) published from this repo. Consumers reference the marketplace in their `.claude/settings.json`; updates flow via `/plugin marketplace update`.
 
 2. **Copier templates** — two templates (`service-python`, `library-python`) that ship the project skeleton: `devbox.json`, CI workflow, `CLAUDE.md`, Dockerfile, k8s manifests, `pyproject.toml`. Updates flow via `copier update`.
 
 These two channels run at different speeds — agents evolve frequently, project skeletons evolve rarely — and `copier update` does the conflict resolution Copier is good at. Maintaining two artifacts is cheaper than maintaining one big one that conflates both.
 
+## Shapes
+
+The platform is multi-shape: `service-python`, `library-python`, `web-nextjs`, `gitops-app`, `service-java`, `service-go`. `shapes.yml` is the registry (id → plugin, template, deployable?, detection). Commands detect a repo's shape from `.copier-answers.yml` (fallback: file sniffing, `scripts/detect-shape.sh`) and route each role to `<plugin>:<role>`; the `/svc:*` orchestrators, product-manager and architect stay shape-agnostic. Adding a shape is a documented checklist (`docs/templates.md`) enforced by `scripts/shapes.py check` in CI. Decisions: ADR-008 (detection), ADR-013 (plugin enablement), ADR-015 (registry).
+
+**Two kinds of GitOps repo.** The *platform* GitOps repo (one per fleet) discovers every `deployable-service` repo by topic. A *`gitops-app`* repo (one per SaaS product) lists the product's services in `services.yaml` and pins versions per environment (`dev` tracks main, `staging`/`prod` are pinned by `/gitops:promote`); the ApplicationSets and overlays are generated from it (ADR-006/014). `/app:build-feature` plans work across a product's repos (plan-only in v1, ADR-007/011).
+
 ## Why not GitHub Templates
 
 GitHub Templates fork once and then drift forever. Copier's `copier update` reconciles a generated repo with template changes, including conflict resolution for files the consumer customised. That's the killer feature: improvements to the CI workflow or devbox recipes can flow into existing repos without re-cloning.
 
-## Why three plugins, not one
+## Why several plugins, not one
 
 Different repo roles need different agents:
 
@@ -32,9 +38,9 @@ Different repo roles need different agents:
 - The GitOps repo needs `deployment` (a different one — focused on ApplicationSets) and `promote`; no Python `coder`.
 - A library needs `coder` / `tester` but no `deployment`.
 
-Single-plugin would force every consumer to load every agent. The three-plugin split lets each repo enable only what it uses.
+Single-plugin would force every consumer to load every agent. The split lets each repo enable only what it uses (`svc` is enabled everywhere a `/svc:*` command is used, because it owns the orchestrators and the shape-agnostic PM/architect).
 
-`shared` exists because `quality` and `security` are needed by every repo. Pulling them into a shared plugin avoids three definitions of the same agent drifting apart.
+`shared` exists because `quality` and `security` are needed by every repo. Pulling them into a shared plugin avoids one definition per shape drifting apart.
 
 ## Why ArgoCD ApplicationSet
 

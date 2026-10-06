@@ -122,7 +122,7 @@ jobs:
       - name: kustomize + kubeconform on the ApplicationSet
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
-          /tmp/kubeconform -strict -ignore-missing-schemas -summary /tmp/test-gitops/applications/test/applicationset.yaml
+          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml
 
   smoke-test-web-nextjs:
     name: smoke-test web-nextjs template

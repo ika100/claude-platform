@@ -118,7 +118,9 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
                                                                                   ▼
                                                                           changelog + tag + PR
 
-/gitops:promote <svc> <from> <to>   ──►  promote agent  ──►  PR (Argo reconciles on merge)
+/gitops:promote <svc...> <from> <to>   ──►  promote agent  ──►  PR (Argo reconciles on merge)
+/gitops:compose add|remove <svc...>    ──►  compose agent  ──►  PR (services.yaml + generated ApplicationSets)
+/app:build-feature <desc>              ──►  product-manager ──► planner ──►  docs/plan/<slug>.md  (then /svc:build-feature --from-plan per repo)
 ```
 
 ---
@@ -138,19 +140,58 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 | `release` | sonnet | Semver, CHANGELOG, release branch + PR |
 | `deployment` | sonnet | Dockerfile, base k8s, CI/CD |
 
+Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`$SHAPE_PLUGIN:<role>`, see `plugins/svc/fragments/shape-dispatch.md`); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `quality` and `security` are shape-agnostic.
+
+### `web` plugin (`web-nextjs`)
+
+| Agent | Model | Job |
+|---|---|---|
+| `coder` | sonnet | App Router + strict TypeScript; sonnet is enough for pattern-driven UI/route work |
+| `tester` | sonnet | Vitest + Testing Library, Playwright when enabled |
+| `deployment` | sonnet | Standalone-output Dockerfile, k8s base, CI |
+| `observability` | sonnet | `/api/metrics`, OpenTelemetry instrumentation, alerts |
+| `release` | sonnet | `package.json` version, CHANGELOG, release PR |
+
+### `svc-java` plugin (`service-java`)
+
+| Agent | Model | Job |
+|---|---|---|
+| `coder` | sonnet | Spring Boot 3 / Java 21 implementation |
+| `tester` | sonnet | JUnit 5 + Spring Boot Test, JaCoCo gate |
+| `deployment` | sonnet | Distroless Java image, JVM-aware probes |
+| `observability` | sonnet | Actuator + Micrometer + OTel agent |
+| `release` | sonnet | `pom.xml` version via `versions:set` |
+
+### `svc-go` plugin (`service-go`)
+
+| Agent | Model | Job |
+|---|---|---|
+| `coder` | sonnet | Idiomatic Go (chi, slog) |
+| `tester` | sonnet | stdlib `testing` + httptest, race detector |
+| `deployment` | sonnet | distroless/static image, ldflags version |
+| `observability` | sonnet | slog + Prometheus client_golang |
+| `release` | sonnet | CHANGELOG + PR; version is the git tag |
+
 ### `gitops` plugin
 
 | Agent | Model | Job |
 |---|---|---|
-| `deployment` | sonnet | ArgoCD ApplicationSet, cluster add-ons, overrides |
-| `promote` | sonnet | Cross-environment version pinning |
+| `deployment` | sonnet | ArgoCD ApplicationSet, cluster add-ons, overrides (platform GitOps repo) |
+| `promote` | sonnet | Cross-environment version pinning (platform repo and gitops-app repos, batch) |
+| `compose` | sonnet | Add/remove services in a gitops-app repo (`services.yaml` → generated ApplicationSets/overlays); validates the `deployable-service` topic |
+
+### `app` plugin
+
+| Agent | Model | Job |
+|---|---|---|
+| `planner` | opus | Multi-repo plan (`docs/plan/<slug>.md`, ADR-011): which repos change, in what order, with paste-ready prompts. opus because decomposition across repos is the hard judgement call |
 
 ### `shared` plugin
 
 | Agent | Model | Job |
 |---|---|---|
-| `quality` | sonnet | ruff + mypy |
-| `security` | sonnet | pip-audit + detect-secrets + bandit + trivy |
+| `quality` | sonnet | Runs `devbox run quality` for the repo's shape (ruff + mypy, ESLint + tsc, Spotless + Checkstyle, golangci-lint, kustomize/kubeconform, …) |
+| `security` | sonnet | Runs `devbox run security` (pip-audit/pnpm audit/OWASP DC/govulncheck + detect-secrets) and trivy on images |
 
 ---
 
