@@ -4,9 +4,9 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
-## [Unreleased]
+## [1.1.1] — 2026-10-06
 
-Fixes found by running the platform end to end on a real todo app (see `docs/USER-JOURNEY.md`).
+Fixes found by running the platform end to end on a real todo app (Java API + Next.js UI + gitops-app on a local k3d/ArgoCD cluster): 12 defects, several of which made every generated deployable service undeployable. Plugin versions: shared 0.5.1, gitops 0.3.1. **Existing repos:** run `/shared:update-service` (skeleton fixes: CI, Dockerfiles, devbox), and see the migration notes in the entries below for project-owned files (`k8s/base/deployment.yaml` label value, `pom.xml` patched Tomcat/Jackson for Java).
 
 ### Added
 
