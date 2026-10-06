@@ -250,3 +250,14 @@ def test_v1_entry_is_migrated_in_place_keeping_environments_and_pins(gitops_repo
     assert pin(gitops_repo, "staging", "todo-web") == "sha-1234567"             # pins survive the migration
     assert not (app / "overlays/prod/todo-web").exists()
     assert (app / "overlays/dev/todo-web/deployment.yaml").is_file()
+
+
+def test_compose_refuses_a_half_migrated_file_before_touching_anything(gitops_repo, gh):
+    app = gitops_repo / "applications/todo"
+    (app / "services.yaml").write_text(V1_SERVICES + "  - name: todo-api\n    repo: acme/todo-api\n    shape: service-java\n    path: k8s/base\n")
+    commit(gitops_repo, "two v1 services")
+    before = (app / "services.yaml").read_text()
+    with pytest.raises(core.PlatformError, match="still use the v1 format") as e:
+        run_compose(gitops_repo, "add", "todo-web", "--from-k8s")
+    assert "todo-web todo-api --from-k8s" in e.value.hint
+    assert (app / "services.yaml").read_text() == before

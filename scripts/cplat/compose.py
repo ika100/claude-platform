@@ -141,6 +141,11 @@ def main(argv: list[str]) -> int:
     y, data = gitops.load(app_dir)
     services = gitops.services_of(data)
     existing = {s["name"]: s for s in services}
+    # a half-migrated services.yaml cannot be rendered: refuse before touching anything, and say how to finish in one go
+    v1_left = [n for n, e in existing.items() if "port" not in e and "probes" not in e and resolve_slug(n, org)[0] not in [resolve_slug(x, org)[0] for x in ns.services]]
+    if v1_left and ns.action == "add":
+        raise PlatformError(f"other services still use the v1 format: {', '.join(v1_left)}",
+                            hint=f"migrate them together in one command: compose add {' '.join(list(ns.services) + v1_left)} --from-k8s")
     r = Report(title=f"compose {ns.action}: {', '.join(ns.services)} ({app_dir.name})")
     names: list[str] = []
     replaced: list[str] = []
