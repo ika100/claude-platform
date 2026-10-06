@@ -23,8 +23,8 @@ Detect the shape of the current directory per `plugins/shared/fragments/shape-de
 - **Otherwise** → **platform mode**: the existing platform GitOps repo flow below (`overrides/<service>/<env>/kustomization.yaml`).
 
 In **app mode** the pins live in `applications/<app>/overlays/<env>/<service>/kustomization.yaml` (both the `?ref=` of the remote base and `images[].newTag` change together). Every named service must be in `applications/<app>/services.yaml`. `--all` expands to that list. Version rules in app mode:
-- `dev→staging`: `sha-<short>` of the newest image built from the service's `main` (GHCR tags starting with `sha-`).
-- `staging→prod`: a semver `vX.Y.Z` — the explicit `version`, else the newest `v*` release tag of the service repo that exists as an image tag.
+- `dev→staging`: the newest commit of the service's `main` that has a built image. Pin the **full commit SHA** as `?ref=` and `sha-<first 7 chars>` as `newTag` (a `sha-…` string is not a git ref).
+- `staging→prod`: a release `vX.Y.Z` — the explicit `version`, else the newest `v*` release tag of the service repo whose image exists. `?ref=vX.Y.Z` but `newTag: X.Y.Z` (CI publishes semver images without the `v`).
 - Target `dev` is not promotable (it tracks `main`).
 
 After editing, **app mode** runs `devbox run render-check` (the pins survive re-rendering) and `devbox run validate` instead of `deploy-check`. Replace `overrides/<SERVICE>/<TO_ENV>/kustomization.yaml` with the overlay paths above wherever it appears below. One PR per invocation covers all listed services; branch `promote/<services-or-all>-<TO_ENV>-<version-or-shas>`.
