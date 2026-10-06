@@ -33,7 +33,8 @@ docs/plan/                        multi-repo plans written by /app:build-feature
 |---|---|
 | `render` | Regenerate applicationset + overlays from `services.yaml` |
 | `render-check` | Fail if generated files are stale |
-| `validate` | render-check + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
+| `plan-check` | Validate multi-repo plans in `docs/plan/` (ADR-011) |
+| `validate` | render-check + plan-check + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
 | `lint` / `quality` / `test` / `deploy-check` | aliases of `validate` |
 | `lint-fix` | alias of `render` |
 | `security` | detect-secrets |
@@ -42,7 +43,7 @@ docs/plan/                        multi-repo plans written by /app:build-feature
 
 ## Claude Code agents
 
-Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `svc` (planning agents), `shared` (quality/security).
+Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `app` (multi-repo planning), `svc` (product-manager, architect), `shared` (quality/security).
 
 | Task | Command |
 |---|---|
@@ -50,6 +51,7 @@ Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `svc` (
 | Remove services | `/gitops:compose remove <service...>` |
 | Promote versions | `/gitops:promote <service...> <from> <to> [version]` |
 | Plan a feature across repos | `/app:build-feature <description>` |
+| List / inspect / close plans | `/app:plans list\|show\|start\|done\|abandon` |
 
 ## Conventions
 

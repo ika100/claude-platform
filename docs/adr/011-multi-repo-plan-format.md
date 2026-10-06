@@ -91,3 +91,9 @@ A final section describes the gitops-app PR that pins the resulting image tags.
 - [platform-vision.md §6 C2](../requirements/platform-vision.md)
 - [ADR-007](007-cross-repo-orchestration-scope.md) — the plan-only v1 decision this ADR operationalises
 - [end-to-end-scenario.md Q8/Q9](../requirements/end-to-end-scenario.md) — the gap this resolves
+
+## Amendment (implementation, phase 5)
+
+- `/app:build-feature` and `/app:plans` ship in their own marketplace plugin, **`app`** (a plugin's name is the slash-command namespace), enabled by the `gitops-app` template next to `gitops`, `svc` and `shared`.
+- Validation and lifecycle edits are implemented by `scripts/plan.py` **in the `gitops-app` template** (not the platform repo), so every application repo has it: `devbox run plan-check` (also part of `devbox run validate`, hence CI), and `plan.py list|show|start|done|abandon`. The platform repo tests it in `scripts/test-plan.sh` against `tests/fixtures/plans/`.
+- `/svc:build-feature --from-plan` runs in a *component* repo, so it never edits the plan file. The user (or `/app:plans`) records progress in the gitops-app repo with `/app:plans start <slug>` and `/app:plans done <slug> <repo-id>`.

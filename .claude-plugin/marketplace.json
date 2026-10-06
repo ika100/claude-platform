@@ -24,6 +24,14 @@
       "tags": ["nextjs", "typescript", "pnpm", "devbox", "k8s"]
     },
     {
+      "name": "app",
+      "source": "./plugins/app",
+      "version": "0.1.0",
+      "description": "Multi-repo planning for gitops-app repos: /app:build-feature (plan-only) and /app:plans lifecycle.",
+      "category": "agents",
+      "tags": ["planning", "multi-repo", "gitops"]
+    },
+    {
       "name": "gitops",
       "source": "./plugins/gitops",
       "version": "0.3.0",

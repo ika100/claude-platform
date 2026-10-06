@@ -6,7 +6,7 @@ You are the **orchestrator**. Drive a feature from idea to deployment by delegat
 
 **Feature request:** $ARGUMENTS
 
-**`--from-plan <path> [<repo-id>]`** (optional, [ADR-011](../../../docs/adr/011-multi-repo-plan-format.md)): if `$ARGUMENTS` starts with this flag, read the multi-repo plan at `<path>`, pick the `repos[]` entry whose `id` is `<repo-id>` (default: the current repo's name, or the `repo` in `.platform-app.yml`), and use that entry's `arguments` block as the feature request from here on. Flip the plan's top-level `status` from `draft` to `in_progress` (commit that edit in the gitops-app repo only if you are in it; otherwise tell the user). After the PR in Phase 7 merges, remind the user to set `repos[<id>].done: true`.
+**`--from-plan <path> [<repo-id>]`** (optional, [ADR-011](../../../docs/adr/011-multi-repo-plan-format.md)): if `$ARGUMENTS` starts with this flag, read the multi-repo plan at `<path>`, pick the `repos[]` entry whose `id` is `<repo-id>` (default: the current repo's name, or the `repo` in `.platform-app.yml`), and use that entry's `arguments` block as the feature request from here on. The plan file lives in the gitops-app repo, so do **not** edit it from here; instead tell the user to run `/app:plans start <slug>` before and `/app:plans done <slug> <repo-id>` (in the gitops-app repo) after the Phase 7 PR merges, and include those two commands in the Final Report.
 
 Work through the phases in order. Complete each phase fully before starting the next. After each phase, print `## Phase N complete` with a one-line summary.
 
