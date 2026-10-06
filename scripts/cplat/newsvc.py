@@ -1,0 +1,181 @@
+"""`new-service`: create a repo of any registered shape from its Copier template (and, optionally, on GitHub)."""
+from __future__ import annotations
+
+import argparse
+import re
+from pathlib import Path
+
+import core
+from core import PLATFORM_ROOT, PlatformError, Report, run
+
+NAME_RE = re.compile(r"^[a-z][a-z0-9-]{1,39}$")
+ALIASES = {"library": "library-python", "web": "web-nextjs", "gitops": "gitops-app"}
+PYTHON_SHAPES = {"service-python", "library-python"}
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="cplat new-service", description=__doc__)
+    p.add_argument("words", nargs="*", help="<name> [description words...]")
+    p.add_argument("--type", dest="shape", help="shape id from shapes.yml")
+    for alias in ALIASES:
+        p.add_argument(f"--{alias}", action="store_true", help=f"alias for --type {ALIASES[alias]}")
+    p.add_argument("--python", help="Python version (Python shapes only)")
+    p.add_argument("--org", help="GitHub org/user (default: your gh login)")
+    p.add_argument("--ref", default="main", help="platform git ref recorded for the plugin marketplace (default main)")
+    p.add_argument("--app", help="<org>/<gitops-app-repo>: write .platform-app.yml (deployable shapes)")
+    p.add_argument("--description", help="legacy alias; appended to the description words")
+    p.add_argument("--dir", default=".", help="parent directory for the new repo (default: current directory)")
+    p.add_argument("--no-github", action="store_true", help="local repo only; do not create a GitHub repo")
+    p.add_argument("--skip-tasks", action="store_true", help="skip the template's bootstrap tasks (tests/CI)")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--json", action="store_true")
+    return p
+
+
+def resolve(argv: list[str]) -> dict:
+    """Parse and validate the request; no side effects. Raises PlatformError with a hint on bad input."""
+    ns = build_parser().parse_intermixed_args(argv)
+    chosen = [ALIASES[a] for a in ALIASES if getattr(ns, a)]
+    if ns.shape:
+        chosen.append(ns.shape)
+    if len(set(chosen)) > 1:
+        raise PlatformError(f"conflicting shape flags: {', '.join(sorted(set(chosen)))}", hint="pass only one of --type/--library/--web/--gitops")
+    shape = chosen[0] if chosen else "service-python"
+
+    shapes = {s["id"]: s for s in core.registry.load()}
+    if shape not in shapes:
+        raise PlatformError(f"unknown shape '{shape}'", hint="valid shapes: " + ", ".join(sorted(shapes)))
+    entry = shapes[shape]
+    if entry["status"] == "planned":
+        raise PlatformError(f"shape '{shape}' is registered but not available yet (status: planned)")
+    template_dir = PLATFORM_ROOT / "templates" / entry["template"]
+    if not template_dir.is_dir():
+        raise PlatformError(f"templates/{entry['template']} does not exist in this platform checkout")
+
+    if not ns.words:
+        raise PlatformError("a project name is required", hint="usage: new-service <name> <one-line description> [--web|--gitops|--library|--type <shape>]")
+    name, desc_words = ns.words[0], ns.words[1:]
+    if ns.description:
+        desc_words.append(ns.description)
+    if not NAME_RE.match(name):
+        raise PlatformError(f"invalid project name '{name}'", hint="kebab-case, 2-40 chars, must start with a letter: ^[a-z][a-z0-9-]{1,39}$")
+    description = " ".join(desc_words).strip()
+    if not description:
+        raise PlatformError("a one-line description is required", hint="usage: new-service <name> <one-line description> ...")
+
+    python = entry["default_stack"].get("language") == "python" or shape in PYTHON_SHAPES
+    org = ns.org
+    if not org and not ns.no_github:
+        org = core.gh_login()
+    org = org or "ika100"
+
+    target = Path(ns.dir).resolve() / name
+    if target.exists() and any(p.name != ".claude" for p in target.iterdir()):
+        raise PlatformError(f"{target} already exists and is not empty", hint="choose another name or remove the directory")
+
+    data = {"project_name": name, "description": description, "github_org": org, "platform_marketplace_ref": ns.ref}
+    if python:
+        data["module_name"] = name.replace("-", "_")
+        data["python_version"] = ns.python or "3.12"
+    return {
+        "shape": shape, "entry": entry, "template": entry["template"], "name": name, "description": description,
+        "org": org, "target": target, "data": data, "app": ns.app if entry["deployable"] else None,
+        "ignored_app": bool(ns.app and not entry["deployable"]), "github": not ns.no_github and core.has_gh(),
+        "want_github": not ns.no_github, "skip_tasks": ns.skip_tasks, "dry_run": ns.dry_run, "json": ns.json, "ref": ns.ref,
+    }
+
+
+def plan(req: dict) -> Report:
+    r = Report(title=f"New {req['shape']} repo: {req['name']}")
+    r.will_do.append(f"render templates/{req['template']} into {req['target']} (answers: " +
+                     ", ".join(f"{k}={v}" for k, v in req["data"].items() if k in ("github_org", "module_name", "python_version")) + ")")
+    r.will_do.append("run the template's bootstrap tasks (git init, devbox install, lockfiles) and create the first commit")
+    if req["app"]:
+        r.will_do.append(f"write .platform-app.yml linking the repo to {req['app']}")
+    r.will_do.append("stamp .platform-version and record the stable template source in .copier-answers.yml")
+    if req["want_github"]:
+        if req["github"]:
+            r.will_do.append(f"[outward] create PRIVATE GitHub repo {req['org']}/{req['name']} and push")
+            if req["entry"]["deployable"]:
+                r.will_do.append("[outward] add topic deployable-service (so it can be composed into a gitops-app)")
+        else:
+            r.will_do.append("gh is not available: skip GitHub steps and print the commands instead")
+    if req["ignored_app"]:
+        r.will_do.append(f"note: --app ignored, shape {req['shape']} is not deployable")
+    return r
+
+
+def _next_steps(req: dict) -> list[str]:
+    n, shape = req["name"], req["shape"]
+    if shape == "gitops-app":
+        return [f"cd {n} && devbox shell", "devbox run quality", f"/gitops:compose add <service>  (after the services exist)",
+                "devbox run cluster-up   # local k3d + ArgoCD (needs Docker)"]
+    return [f"cd {n} && devbox shell", "devbox run quality && devbox run test", "/svc:plan-feature <your first feature>"]
+
+
+def execute(req: dict) -> Report:
+    r = plan(req)
+    target: Path = req["target"]
+    if target.exists():  # empty or .claude-only stub (checked in resolve)
+        import shutil
+        shutil.rmtree(target)
+
+    cmd = [*core.find_copier(), "copy", str(PLATFORM_ROOT / "templates" / req["template"]), str(target), "--defaults", "--trust"]
+    if req["skip_tasks"]:
+        cmd.append("--skip-tasks")
+    for k, v in req["data"].items():
+        cmd += ["--data", f"{k}={v}"]
+    run(cmd)
+    r.did.append(f"rendered templates/{req['template']} → {target}")
+
+    # copier records the (temporary) template path; point it at the stable source so shape detection and docs make sense
+    answers = target / ".copier-answers.yml"
+    text = answers.read_text()
+    answers.write_text(re.sub(r"^_src_path:.*$", f"_src_path: gh:ika100/claude-platform/templates/{req['template']}", text, flags=re.M))
+    core.write_stamp(target, req["shape"], req["ref"])
+    if req["app"]:
+        (target / ".platform-app.yml").write_text(
+            "# Application repos this service belongs to (read by /gitops:promote)\n"
+            f"gitops_apps:\n  - {req['app']}\n")
+        r.did.append(f".platform-app.yml → {req['app']}")
+
+    # one commit owned by the user (copier's task commit uses a generic identity)
+    if not (target / ".git").exists():
+        run(["git", "init", "-q"], cwd=target)
+    run(["git", "add", "-A"], cwd=target)
+    ident = core.git_identity(target)
+    msg = (f"chore: bootstrap from {req['template']} template\n\nGenerated by /shared:new-service.\n"
+           f"Template: ika100/claude-platform/templates/{req['template']} (platform {core.platform_version()})\nDescription: {req['description']}")
+    has_head = run(["git", "rev-parse", "--verify", "-q", "HEAD"], cwd=target, check=False).returncode == 0
+    run(["git", *ident, "commit", "-q", *(["--amend", "--reset-author"] if has_head else []), "-m", msg], cwd=target)
+    run(["git", "branch", "-M", "main"], cwd=target, check=False)
+    r.did.append("created the bootstrap commit on branch main")
+
+    cmds_if_manual = []
+    slug = f"{req['org']}/{req['name']}"
+    if req["want_github"] and req["github"]:
+        run(["gh", "repo", "create", slug, "--private", "--description", req["description"], "--source=.", "--remote=origin", "--push"], cwd=target)
+        r.did.append(f"created private GitHub repo https://github.com/{slug} and pushed")
+        if req["entry"]["deployable"]:
+            run(["gh", "repo", "edit", slug, "--add-topic", "deployable-service"])
+            r.did.append("added topic deployable-service")
+        r.undo.append(f"gh repo delete {slug} --yes   (needs the delete_repo scope: gh auth refresh -s delete_repo)")
+    elif req["want_github"]:
+        cmds_if_manual = [f"gh repo create {slug} --private --source=. --remote=origin --push"]
+        if req["entry"]["deployable"]:
+            cmds_if_manual.append(f"gh repo edit {slug} --add-topic deployable-service")
+        r.did.append("skipped GitHub (gh missing)")
+        r.next_steps.append("install and log in to gh, then run: " + " && ".join(cmds_if_manual))
+    r.undo.append(f"rm -rf {target}")
+    r.next_steps = _next_steps(req) + r.next_steps
+    r.data = {"path": str(target), "shape": req["shape"], "repo": slug if req["github"] else None}
+    return r
+
+
+def main(argv: list[str]) -> int:
+    req = resolve(argv)
+    if req["dry_run"]:
+        plan(req).emit(True, req["json"])
+        return 0
+    execute(req).emit(False, req["json"])
+    return 0

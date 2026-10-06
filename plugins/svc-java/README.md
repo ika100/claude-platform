@@ -1,6 +1,6 @@
 # svc-java plugin
 
-Agents for **Java service repos** — the `service-java` shape (Spring Boot 3.x, JDK 21, Maven). Used by the `/svc:*` orchestrators (which route to `svc-java:<role>` when the detected shape is `service-java`; see `plugins/svc/fragments/shape-dispatch.md`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `service-java` Copier template.
+Agents for **Java service repos** — the `service-java` shape (Spring Boot 3.x, JDK 21, Maven). Used by the `/svc:*` orchestrators (which route to `svc-java:<role>` when the detected shape is `service-java`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `service-java` Copier template.
 
 ## Agents
 

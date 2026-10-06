@@ -14,7 +14,7 @@ Before starting planning work:
 
 1. Run `git status --porcelain`. If the working tree is dirty, stop: "Working tree has uncommitted changes — commit or stash before planning a new feature."
 2. Run `git symbolic-ref --short HEAD` and print the current branch. Planning is branch-agnostic (no branch creation), but the user should know where they are.
-3. Detect `$SHAPE` per `plugins/svc/fragments/shape-dispatch.md` and print `Shape: $SHAPE`. Pass it to the architect so the plan records `shape: $SHAPE`. On a `gitops-app` repo stop and recommend `/app:build-feature`.
+3. Resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It prints JSON: `shape`, `plugin`, `deployable`, `library` and `agents` (the subagent type for every role — spawn each role with exactly that type, e.g. `agents.coder`). If `unsupported` is present, stop and show it. Roles missing from `agents` (e.g. deployment for a library) are skipped. Print `Shape: <shape>` and pass it to the architect so the plan records `shape: <shape>`.
 
 ---
 

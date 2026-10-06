@@ -10,7 +10,7 @@ You are the **orchestrator** in bug-fix mode. No planning or deployment phases �
 
 ## Phase 0 — Prelude
 
-Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Specifically:
+Run the prelude:
 
 1. `git status --porcelain` — stop if dirty.
 2. `git symbolic-ref --short HEAD` → record `$WORK_BRANCH`.
@@ -20,7 +20,7 @@ Run the canonical prelude — see `plugins/svc/fragments/phase-prelude.md`. Spec
 
 Print `## Phase 0 — on $WORK_BRANCH, BASE_REF=<short-sha>`.
 
-**Shape dispatch.** After the prelude, resolve the shape and route agents per `plugins/svc/fragments/shape-dispatch.md`: detect `$SHAPE`, look up `$SHAPE_PLUGIN` / `$DEPLOYABLE` in `shapes.yml`, and spawn coder/tester as `$SHAPE_PLUGIN:<role>` (`svc:<role>` for Python shapes). Quality and security stay `shared:<role>`. On a `gitops-app` repo stop and recommend `/gitops:compose` or `/app:build-feature`. Print `Shape: $SHAPE (plugin: $SHAPE_PLUGIN)`.
+**Shape dispatch.** After the prelude, run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It prints JSON: `shape`, `plugin`, `deployable`, `library` and `agents` (the subagent type for every role — spawn each role with exactly that type, e.g. `agents.coder`). If `unsupported` is present, stop and show it. Roles missing from `agents` (e.g. deployment for a library) are skipped. Print `Shape: <shape>`.
 
 ---
 

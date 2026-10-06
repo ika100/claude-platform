@@ -1,6 +1,6 @@
 # svc-go plugin
 
-Agents for **Go service repos** — the `service-go` shape. Used by the `/svc:*` orchestrators (which route to `svc-go:<role>` when the detected shape is `service-go`; see `plugins/svc/fragments/shape-dispatch.md`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `service-go` Copier template.
+Agents for **Go service repos** — the `service-go` shape. Used by the `/svc:*` orchestrators (which route to `svc-go:<role>` when the detected shape is `service-go`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `service-go` Copier template.
 
 ## Agents
 

@@ -7,6 +7,8 @@
       "Bash(gh api user *)",
       "Bash(gh api user)",
       "Bash(git clone --depth 1 *)",
+      "Bash(git -C * fetch -q --depth 1 origin *)",
+      "Bash(uv run * cplat.py *)",
       "Bash(uv tool install copier)",
       "Bash(uv run * shapes.py *)",
       "Bash(mktemp -d)",

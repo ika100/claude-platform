@@ -43,13 +43,12 @@ Required files [checked unless noted]:
 - `coder` writes the shape's idioms and never edits lock/format config by hand; `tester` never fixes bugs; `deployment` verifies manifests with `deploy-check`; `observability` verifies-then-extends the scaffolding the template ships.
 - The `release` agent differs only in how the version is bumped ([ADR-012](adr/012-per-plugin-release-agent.md)).
 
-The `/svc:*` orchestrators route to `<plugin>:<role>` through `plugins/svc/fragments/shape-dispatch.md`; nothing in `svc` needs editing for a new backend shape.
+The `/svc:*` orchestrators route to `<plugin>:<role>` through `cplat shape` (`scripts/cplat/shapecmd.py`, driven by `shapes.yml`); nothing in `svc` needs editing for a new backend shape.
 
 ## 4. Detection [checked]
 
 - `scripts/detect-shape.sh`: add a `templates/<id>` case (primary) and a sniff rule positioned so it stays unambiguous ([ADR-008](adr/008-shape-detection.md)).
 - `scripts/test-detect-shape.sh`: add a sniff fixture; the copier-answers fixtures iterate `shapes.yml` automatically.
-- Update the sniff list in `plugins/shared/fragments/shape-detection.md`.
 
 ## 5. CI and docs
 
