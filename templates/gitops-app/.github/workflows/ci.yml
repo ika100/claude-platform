@@ -37,7 +37,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .{1,72}$'
+          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .{1,72}$'
           if ! echo "$PR_TITLE" | grep -qE "$pattern"; then
             echo "ERROR: PR title does not follow Conventional Commits."
             echo "  Got: $PR_TITLE"

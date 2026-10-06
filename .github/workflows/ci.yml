@@ -173,9 +173,10 @@ jobs:
         run: |
           for f in devbox.json package.json Dockerfile .claude/settings.json .github/workflows/ci.yml \
                    app/layout.tsx app/page.tsx app/api/health/route.ts app/api/ready/route.ts \
-                   app/api/metrics/route.ts instrumentation.ts k8s/base/kustomization.yaml pnpm-workspace.yaml; do
+                   app/api/metrics/route.ts instrumentation.ts pnpm-workspace.yaml; do
             test -f /tmp/test-web/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-web/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
           test ! -e /tmp/test-web/e2e
       - name: Shape is detected as web-nextjs
         run: test "$(bash scripts/detect-shape.sh /tmp/test-web)" = "web-nextjs"
@@ -227,9 +228,10 @@ jobs:
       - name: Confirm key files exist
         run: |
           for f in devbox.json go.mod go.sum Dockerfile .golangci.yml .claude/settings.json .github/workflows/ci.yml \
-                   cmd/test-go/main.go internal/server/server.go internal/config/config.go k8s/base/kustomization.yaml; do
+                   cmd/test-go/main.go internal/server/server.go internal/config/config.go; do
             test -f /tmp/test-go/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-go/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
       - name: Shape is detected as service-go
         run: test "$(bash scripts/detect-shape.sh /tmp/test-go)" = "service-go"
       - name: go.mod / go.sum are tidy
@@ -280,9 +282,10 @@ jobs:
       - name: Confirm key files exist
         run: |
           for f in devbox.json pom.xml Dockerfile config/checkstyle.xml .claude/settings.json .github/workflows/ci.yml \
-                   src/main/resources/application.yml k8s/base/kustomization.yaml; do
+                   src/main/resources/application.yml; do
             test -f /tmp/test-java/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-java/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
           test -f /tmp/test-java/src/main/java/io/github/ika100/testjava/Application.java
       - name: Shape is detected as service-java
         run: test "$(bash scripts/detect-shape.sh /tmp/test-java)" = "service-java"
@@ -309,7 +312,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .{1,72}$'
+          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .{1,72}$'
           if ! echo "$PR_TITLE" | grep -qE "$pattern"; then
             echo "ERROR: PR title does not follow Conventional Commits."
             echo "  Got:     $PR_TITLE"
