@@ -116,6 +116,14 @@ def check_contract(shapes: list[dict]) -> list[str]:
                     break  # svc owns the python shapes and is checked by its own manifest
                 if not (pdir / "agents" / f"{a}.md").is_file():
                     errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 2a. CI must run on pushes to main, otherwise merged code is never built/pushed (found by the e2e test)
+        ci = _template_file(tdir / ".github" / "workflows", "ci.yml")
+        if ci is None:
+            errs.append(f"{sid}: template has no .github/workflows/ci.yml")
+        else:
+            on_push = ci.read_text().split("pull_request", 1)[0]
+            if not __import__("re").search(r"(^|\s|\[|,)main(\s|,|\]|$)", on_push.split("push:", 1)[-1]):
+                errs.append(f"{sid}: ci.yml does not trigger on push to main")
         # 2b. pinned toolchains must agree (a mismatch broke bootstrap: devbox's pnpm cannot switch to a newer pinned one)
         if s["id"] == "web-nextjs":
             import re as _re
