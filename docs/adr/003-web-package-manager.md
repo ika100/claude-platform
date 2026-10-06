@@ -27,3 +27,7 @@ Use **pnpm**. Pinned via `packageManager` field in `package.json` and the corres
 ## References
 
 - [platform-vision.md §11.2](../requirements/platform-vision.md)
+
+## Amendment (found by the todo-app end-to-end test)
+
+The `packageManager` field **must equal the pnpm version devbox provides**. With `pnpm@latest` from devbox (nixpkgs, 11.x) and `packageManager: pnpm@12.9.1`, the bootstrap `devbox run -- pnpm install` failed: pnpm 11 self-switches to the pinned version and the downloaded v12 launcher cannot be executed (`SyntaxError: Invalid or unexpected token`). The template now pins one version in both places (`pnpm@11.22.0`); `scripts/shapes.py check` fails if they differ, and CI/`smoke-web` use the same pin. Bump both together, only to versions nixpkgs/devbox offers (`devbox search pnpm`).

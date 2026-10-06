@@ -116,6 +116,13 @@ def check_contract(shapes: list[dict]) -> list[str]:
                     break  # svc owns the python shapes and is checked by its own manifest
                 if not (pdir / "agents" / f"{a}.md").is_file():
                     errs.append(f"{sid}: plugins/{s['plugin']}/agents/{a}.md missing")
+        # 2b. pinned toolchains must agree (a mismatch broke bootstrap: devbox's pnpm cannot switch to a newer pinned one)
+        if s["id"] == "web-nextjs":
+            import re as _re
+            pm = _re.search(r'"packageManager":\s*"pnpm@([0-9.]+)"', (tdir / "package.json.jinja").read_text())
+            dv = _re.search(r'"pnpm@([0-9.]+)"', devbox.read_text()) if devbox else None
+            if not pm or not dv or pm.group(1) != dv.group(1):
+                errs.append(f"{sid}: package.json packageManager pnpm@{pm and pm.group(1)} must equal the devbox.json pin pnpm@{dv and dv.group(1)}")
         # 3. detection registration
         if f"templates/{s['template']}" not in detect:
             errs.append(f"{sid}: scripts/detect-shape.sh has no copier_src case for templates/{s['template']}")
