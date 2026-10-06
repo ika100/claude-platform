@@ -91,14 +91,15 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/app:build-feature <desc>` | app | gitops-app repos: plan a feature across repos (plan-only), topo-sorted |
 | `/app:plans [list\|show\|start\|done\|abandon]` | app | Multi-repo plan lifecycle |
 | `/shared:check-quality` | shared | Read-only quality + security audit |
+| `/shared:update-service [--ref <tag>]` | shared | Pull the latest skeleton (CI, devbox, Dockerfile, CLAUDE.md…) into an existing repo on a review branch |
 | `/shared:new-service <name>` | shared | Bootstrap a new repo of any registered shape (`shapes.yml`; default `service-python`, `--type <shape>` to choose) |
 
 ## Updates
 
 - **Agent / command changes:** bump the version in `plugins/<name>/.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`, tag, and push. Consumers run `/plugin marketplace update`.
-- **Template changes:** edit `templates/<shape>/`, commit, tag. Consumers run `copier update` in their repo to pull the diff.
+- **Template changes:** edit `templates/<shape>/`, commit, tag. Consumers run `/shared:update-service` (optionally `--ref <tag>`) in their repo: it re-applies the template on a review branch and leaves project-owned files alone.
 
-These two channels are independent — you can ship new agents without forcing all repos to re-run `copier update`, and vice versa.
+These two channels are independent — you can ship new agents without forcing all repos to run `/shared:update-service`, and vice versa.
 
 ## License
 

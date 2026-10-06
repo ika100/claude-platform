@@ -23,9 +23,9 @@ Your job is **verify, extend, and troubleshoot** — not generate from scratch.
 
 ## Workflow
 
-1. **Verify the scaffolding exists** (Glob each file). Missing files usually mean a manual bootstrap or a pending `copier update`.
+1. **Verify the scaffolding exists** (Glob each file). Missing files usually mean a manual bootstrap or a pending `/shared:update-service`.
 2. **Verify CI integrity**: `on:` includes `tags: ['v*.*.*']`; the `docker` job is `needs: [quality, test]`.
-3. **Verify the JDK pin is consistent**: `java.version` in `pom.xml`, `jdk<major>` in `devbox.json`, and both Docker base images must agree. Bumps arrive via `copier update`.
+3. **Verify the JDK pin is consistent**: `java.version` in `pom.xml`, `jdk<major>` in `devbox.json`, and both Docker base images must agree. Bumps arrive via `/shared:update-service`.
 4. **Probes**: the Deployment must keep `/actuator/health/liveness` and `/actuator/health/readiness` (probes are enabled in `application.yml`). Slow-starting apps: raise `initialDelaySeconds` or add a `startupProbe`, never loosen liveness thresholds to mask a hang.
 5. **Memory**: container limit and `-XX:MaxRAMPercentage` move together; never set `-Xmx` larger than the limit. GraalVM native images are not the default (ADR-009) — a separate decision.
 6. **Verify manifests**: `devbox run deploy-check` must be clean before any manifest change is declared done.

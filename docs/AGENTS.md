@@ -1,23 +1,23 @@
 # Claude Code Multi-Agent Setup
 
-This document describes the orchestration model used by the `svc`, `gitops`, and `shared` plugins. Read this first when adding or modifying agents.
+This document describes the orchestration model used by the `svc`, `web`, `svc-java`, `svc-go`, `gitops`, `app` and `shared` plugins. Read this first when adding or modifying agents.
 
 ---
 
 ## Golden rule: everything goes through `devbox run`
 
-Every agent — human, CI, or AI — runs shell commands via `devbox run <script>`. The canonical recipes (test, lint, typecheck, audit, secrets-scan, bandit, image-build, image-scan, migrate, deploy, …) are defined once in `devbox.json` and reused everywhere. The `service-python` Copier template ships the full canonical set; consumer repos start with that and add project-specific recipes as needed.
+Every agent — human, CI, or AI — runs shell commands via `devbox run <script>`. The canonical recipes (`test`, `test-fast`, `lint`, `lint-fix`, `typecheck`, `quality`, `security`, `image-build`, `image-scan`, `deploy-check`, … — the same names in every shape, wrapping that shape's tools) are defined once in `devbox.json` and reused everywhere. Each shape's Copier template ships the full canonical set; consumer repos start with that and add project-specific recipes as needed.
 
-If a recipe is missing, **add it to `devbox.json` and commit** — never run an ad-hoc `pip install`, `uv add`, `pytest …`, `ruff …`, or similar. This keeps the dev shell, CI pipeline, and agents producing identical results.
+If a recipe is missing, **add it to `devbox.json` and commit** — never run an ad-hoc `pip install`, `uv add`, `pnpm add`, `go get`, `mvn …`, `pytest …`, `ruff …`, or similar (one-off tool calls go through `devbox run -- <tool> …`). This keeps the dev shell, CI pipeline, and agents producing identical results.
 
 ### SessionStart hooks
 
-All three plugins (`svc`, `gitops`, `shared`) ship a `hooks/hooks.json` with a `SessionStart` hook that:
+The `svc`, `web`, `svc-java`, `svc-go`, `gitops` and `shared` plugins ship a `hooks/hooks.json` with a `SessionStart` hook that:
 
 - **Warns if `devbox` is missing from `PATH`** and prints the install command: `curl -fsSL https://get.jetify.com/devbox/install.sh | bash`. The hook exits 0 — it never blocks the session.
-- **Runs `devbox install` (idempotent)** if a `devbox.json` is present in the working directory, so the dev environment is ready before any agent touches it. The `svc` hook additionally runs `uv sync --all-extras` for Python service/library repos.
+- **Runs `devbox install` (idempotent)** if a `devbox.json` is present in the working directory, so the dev environment is ready before any agent touches it. The `svc` hook additionally runs `uv sync --all-extras` for Python repos (when `pyproject.toml` exists); `web` runs `devbox run install` when `node_modules/` is missing.
 
-A consumer repo that installs any one of the three plugins is therefore devbox-aware out of the box; a repo with no `devbox.json` sees the hook as a silent no-op.
+A consumer repo that installs any of these plugins is therefore devbox-aware out of the box; a repo with no `devbox.json` sees the hook as a silent no-op.
 
 ---
 
@@ -25,7 +25,7 @@ A consumer repo that installs any one of the three plugins is therefore devbox-a
 
 Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a committed allowlist that pre-approves the safe, frequent operations the pipeline needs — so `/svc:build-feature` and `/svc:quick-task` don't pause for permission prompts mid-flight.
 
-**Auto-allowed (in service-python template):**
+**Auto-allowed (in every template; the Python-only `uv`/`python` entries exist only in the Python templates, `pnpm add`/`pnpm remove` prompt in the web template):**
 - Every `devbox run <recipe>` (the canonical entry point)
 - Read-only git (`status`, `diff`, `log`, `show`, …)
 - Local-only git writes (`add`, `commit -m`, `merge --no-ff`, `worktree add/remove`, `branch -d`, `stash`, `tag -a`)
@@ -37,10 +37,16 @@ Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a 
 - Anything that touches a remote: `git push origin main`, `git pull`, `gh pr create`, `gh release *`, `docker push`
 - Anything destructive: `git reset`, `git clean`, `git rebase`, `git branch -D`, `git checkout --`, `git commit --amend`
 - Cluster writes: `kubectl delete`, `kubectl rollout restart/undo` (live `kubectl apply` also prompts — it's covered by default since only `--dry-run=*` is allowlisted)
-- Out-of-band installs: `pip install`, `uv add`, `uv remove`
+- Out-of-band installs: `pip install`, `uv add`, `uv remove` (Python) / `pnpm add`, `pnpm remove` (web)
 
 **Pre-approved by the `shared` plugin specifically:**
-- `gh repo create * --private *` and `gh repo edit * --add-topic *` so `/shared:new-service` can bootstrap a repo end-to-end.
+- `gh repo create * --private *`, `gh repo edit * --add-topic *`, `git clone --depth 1 *`, `uv run * shapes.py *` and `copier copy *` so `/shared:new-service` and `/shared:update-service` can run without mid-flight prompts.
+
+---
+
+## Shapes and agent dispatch
+
+Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:build-feature`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (see `plugins/svc/fragments/shape-dispatch.md`). The multi-repo flow: `/app:build-feature` writes a plan → run `/svc:build-feature --from-plan <plan> <repo-id>` in each repo → `/app:plans done` → `/gitops:promote`.
 
 ---
 
@@ -53,6 +59,7 @@ The flow only works when the architect's plan is machine-readable. Plans must st
 ```yaml
 ---
 plan_id: <slug>
+shape: <shape-id>      # service-python | web-nextjs | service-java | service-go | …
 tasks:
   - id: t1
     title: ...

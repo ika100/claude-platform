@@ -24,7 +24,7 @@ Your job is **write migrations and runbooks**, not init the framework.
 
 ### 1. Verify the scaffolding
 
-If `alembic.ini` or `migrations/env.py` is missing, the template was bootstrapped with `needs_migrations=false`. Ask the user to re-run `copier update --data needs_migrations=true` rather than running `alembic init` by hand — that drifts from the template.
+If `alembic.ini` or `migrations/env.py` is missing, the template was bootstrapped with `needs_migrations=false`. Ask the user to run `/shared:update-service --data needs_migrations=true` rather than running `alembic init` by hand — that drifts from the template.
 
 ### 2. Wire `target_metadata`
 

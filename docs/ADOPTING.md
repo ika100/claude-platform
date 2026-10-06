@@ -6,21 +6,44 @@ How to bring a repo onto the `ika100/claude-platform` marketplace, whether it's 
 
 ## New repo (happy path)
 
-From any directory:
+From any directory (needs `copier`, `git`, and — for the GitHub steps — `gh` logged in; missing `copier` is installed for you via `uv`, missing `gh` just means the GitHub steps are printed instead of run):
 
 ```
-/shared:new-service payments-api --description "Stripe webhooks → Postgres"
+/shared:new-service payments-api Stripe webhooks to Postgres
 ```
 
-That single command runs `copier copy` against the `service-python` template, creates a private GitHub repo, tags it for ArgoCD auto-discovery, and pushes the initial commit. You're done.
+One command: renders the template, commits, creates a **private** GitHub repo, and (for deployable shapes) adds the `deployable-service` topic so ArgoCD discovers it. The first word is the repo name (kebab-case), everything else is the description; flags can go anywhere.
 
-For a library (no Docker, no k8s, no GitOps):
+| You want | Flag | Shape | GitOps topic |
+|---|---|---|---|
+| Python service (default) | *(none)* | `service-python` | yes |
+| Python library | `--library` | `library-python` | no |
+| Next.js web app | `--web` | `web-nextjs` | yes |
+| Product GitOps repo | `--gitops` | `gitops-app` | no |
+| Spring Boot service | `--type service-java` | `service-java` | yes |
+| Go service | `--type service-go` | `service-go` | yes |
+
+Other options: `--org <org>` (default: your `gh` login), `--python 3.12|3.13` (Python shapes), `--ref <tag>` (pin the platform version), `--app <org>/<gitops-app-repo>` (service shapes: writes `.platform-app.yml` so `/gitops:promote` finds the application repo).
+
+Then, in the new repo: `cd <name> && devbox shell`, `devbox run quality && devbox run test`, `/svc:plan-feature <first feature>`. Later, pull skeleton improvements with `/shared:update-service`.
+
+## New product (end to end)
+
+A product = one `gitops-app` repo + its services/frontend (+ libraries):
 
 ```
-/shared:new-service shared-models Pydantic models reused across services --library
+/shared:new-service my-saas Application repo for my-saas --gitops         # GitOps repo → my-saas
+/shared:new-service my-saas-api Backend API --app ika100/my-saas          # service, linked to the app
+/shared:new-service my-saas-web Frontend --web --app ika100/my-saas
+# in each service repo:
+/svc:build-feature "ping endpoint"                                        # PM → architect → coders → QA → PR
+# in the my-saas repo:
+/gitops:compose add my-saas-api my-saas-web                               # declare services (one PR)
+/gitops:promote my-saas-api my-saas-web dev staging                       # pin staging (one PR), Argo reconciles
+/app:build-feature "add billing"                                          # cross-repo plan → run /svc:build-feature --from-plan per repo
 ```
 
-Other shapes (see `shapes.yml`): `--web` (`web-nextjs`), `--gitops` (`gitops-app`), `--type service-java`, `--type service-go`. A service that belongs to a product can record its application repo with `--app <org>/<gitops-app-repo>` (writes `.platform-app.yml`, used by `/gitops:promote`).
+`--app` takes the full `<org>/<repo>` of the GitOps repo, which is named after the project you passed with `--gitops` (here `my-saas`, so `ika100/my-saas`).
 
 ---
 
@@ -62,20 +85,19 @@ The `svc` plugin ships its own SessionStart hook (`devbox run -- uv sync --all-e
 ### Step 4 — Smoke test
 
 ```
-/svc:check-quality       # should run quality + security against your code
+/shared:check-quality    # runs quality + security against your code
 /svc:quick-task          # try a trivial change to confirm the full loop works
 ```
 
-Both commands should now route through the marketplace plugins.
+Both commands route through the marketplace plugins.
 
-### Step 5 (optional) — Adopt Copier for skeleton updates
+### Step 5 (optional) — Adopt the template for skeleton updates
 
-If you also want skeleton updates (CI workflow, devbox recipes) to flow from the template:
+If you also want skeleton updates (CI workflow, devbox recipes, Dockerfile, CLAUDE.md) to flow from the platform template via `/shared:update-service`:
 
-1. Create `.copier-answers.yml` at the repo root recording the answers your repo *would* have given to Copier:
+1. Pick your shape's template under `templates/` (`service-python`, `library-python`, `web-nextjs`, `gitops-app`, `service-java`, `service-go`) and create `.copier-answers.yml` at the repo root recording the answers your repo *would* have given — the questions are the top-level keys of that template's `copier.yml`. For `service-python`:
 
    ```yaml
-   _commit: <a recent platform tag like v0.1.0>
    _src_path: gh:ika100/claude-platform/templates/service-python
    project_name: <your-repo-name>
    module_name: <your_python_module>
@@ -91,11 +113,13 @@ If you also want skeleton updates (CI workflow, devbox recipes) to flow from the
    platform_marketplace_ref: main
    ```
 
-2. Run `copier update --skip-answered` — it will reconcile your repo against the template, opening conflicts for files you've customised.
+   Only `_src_path` (its `templates/<shape>` tail drives shape detection) and the answers matter; omitted answers take the template defaults.
 
-3. Review the diff carefully. For files the template considers "always re-templated" (`devbox.json`, CI workflow, `.claude/settings.json`) the template version wins. For project-owned files (`src/`, `tests/`, `pyproject.toml`) the template won't touch your version.
+2. Commit that file, then run `/shared:update-service`. It works on a review branch, re-applies the template, and **overwrites skeleton files** (`devbox.json`, CI workflow, Dockerfile, k8s base, `CLAUDE.md`, `.claude/settings.json`, lint config). Project-owned files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, `docs/adr/`, `pyproject.toml`/`pom.xml`/`go.mod`/`package.json`) are never touched.
 
-4. Commit the resulting tree.
+3. Review the diff. For each skeleton file where you had customisations, `git diff <file>` and either keep the template version or `git checkout -- <file>` to restore yours (then consider whether the customisation belongs in the template). Commit, push, PR.
+
+Later runs are the same: `/shared:update-service` (optionally `--ref <platform-tag>`).
 
 ---
 
@@ -105,7 +129,7 @@ If you also want skeleton updates (CI workflow, devbox recipes) to flow from the
 2. Make the repo conform to the recipe contract: add a `devbox.json` with `install`, `dev`, `test`, `test-fast`, `lint`, `lint-fix`, `typecheck`, `quality`, `audit`, `security`, `image-build`, `image-scan`, `deploy-check` wrapping your `pnpm` scripts (`templates/web-nextjs/devbox.json.jinja` is the reference). Agents never call `pnpm`/`npx` directly.
 3. App Router only: if the app still uses `pages/`, migrate or keep it out of agent-driven work (ADR-004). Pin Node and the `packageManager` field (ADR-003/005).
 4. Add `k8s/base` (Deployment with `/api/health` + `/api/ready`, Service) and tag the repo `deployable-service`.
-5. Write `.copier-answers.yml` (Step 5 below, template `templates/web-nextjs`) so shape detection does not rely on sniffing (`next.config.*` / `"next"` in `package.json`).
+5. Write `.copier-answers.yml` (Step 5 above, template `templates/web-nextjs`) so shape detection does not rely on sniffing (`next.config.*` / `"next"` in `package.json`).
 
 ## Migrating a gitops-app repo
 
@@ -116,11 +140,15 @@ For an existing product GitOps repo (Kustomize + Argo):
 3. Write `.copier-answers.yml` with `_src_path` ending in `templates/gitops-app` (or rely on the `applications/*/applicationset.yaml` sniff).
 4. In each service repo add `.platform-app.yml` (`gitops_apps: [<org>/<repo>]`) so `/gitops:promote` works from there.
 
-The same applies to Java (`service-java`) and Go (`service-go`) repos: provide the canonical devbox recipes, enable `svc-java`/`svc-go` + `svc` + `shared`, write `.copier-answers.yml`.
+## Migrating a Java or Go repo
+
+Provide the canonical devbox recipes (`lint`, `lint-fix`, `quality`, `test`, `test-fast`, `security`, `image-build`, `image-scan`, `deploy-check`; see `templates/service-java` / `templates/service-go`), enable `svc-java` or `svc-go` plus `svc` and `shared`, add `k8s/base`, tag the repo `deployable-service`, and write `.copier-answers.yml` (Step 5).
+
+---
 
 ## What you get after adoption
 
-- Slash commands: `/svc:plan-feature`, `/svc:build-feature`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`.
-- Agents available by name: `product-manager`, `architect`, `coder`, `tester`, `quality`, `security`, `migrations`, `observability`, `release`, `deployment`.
-- A SessionStart hook that runs `devbox run -- uv sync --all-extras` whenever you start a Claude Code session.
-- One source of truth: agent updates flow via `/plugin marketplace update`, skeleton updates flow via `copier update`. The two channels are independent.
+- Slash commands: `/svc:plan-feature`, `/svc:build-feature`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:build-feature`, `/app:plans`.
+- Shape-specific agents (`coder`, `tester`, `deployment`, `observability`, `release`) from the plugin that owns your shape, plus the shape-agnostic `product-manager`, `architect`, `quality`, `security`.
+- For Python repos, a SessionStart hook runs `devbox run -- uv sync --all-extras` (only when `pyproject.toml` exists); the web, Java and Go plugins run their own dependency check on session start.
+- One source of truth: agent updates flow via `/plugin marketplace update`, skeleton updates flow via `/shared:update-service`. The two channels are independent.

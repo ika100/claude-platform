@@ -12,7 +12,7 @@ _templates_suffix: .jinja
 
 _answers_file: .copier-answers.yml
 
-# Project-owned once generated: copier update must not overwrite these.
+# Project-owned once generated: /shared:update-service must not overwrite these.
 _skip_if_exists:
   - app/**
   - tests/**
@@ -65,7 +65,7 @@ owner_team:
 
 node_major:
   type: str
-  help: "Node.js major version (current Active LTS at template release; bumped via copier update — ADR-005)."
+  help: "Node.js major version (current Active LTS at template release; bumped via /shared:update-service — ADR-005)."
   default: "24"
 
 port:

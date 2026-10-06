@@ -23,7 +23,7 @@ Your job is **verify, extend, and troubleshoot** — not generate from scratch.
 
 ## Workflow
 
-1. **Verify the scaffolding exists.** Glob for each file above. Missing files usually mean the template was bootstrapped manually or `copier update` is needed.
+1. **Verify the scaffolding exists.** Glob for each file above. Missing files usually mean the template was bootstrapped manually or `/shared:update-service` is needed.
 2. **Verify CI integrity.** Read `.github/workflows/ci.yml` and confirm:
    - `on:` includes `tags: ['v*.*.*']` (otherwise semver Docker tags never publish)
    - The `docker` job is `needs: [quality, test]` so a broken build blocks merges

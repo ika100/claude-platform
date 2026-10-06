@@ -23,9 +23,9 @@ Your job is **verify, extend, and troubleshoot** — not generate from scratch.
 
 ## Workflow
 
-1. **Verify the scaffolding exists** (Glob each file above). Missing files usually mean a manual bootstrap or a pending `copier update`.
+1. **Verify the scaffolding exists** (Glob each file above). Missing files usually mean a manual bootstrap or a pending `/shared:update-service`.
 2. **Verify CI integrity** in `.github/workflows/ci.yml`: `on:` includes `tags: ['v*.*.*']`; the `docker` job is `needs: [quality, test]`.
-3. **Verify the Node pin is consistent** (ADR-005): the Node major must match in `package.json` `engines.node`, `devbox.json` (`nodejs@<major>`) and the Dockerfile base images. Never bump only one — Node bumps arrive via `copier update`.
+3. **Verify the Node pin is consistent** (ADR-005): the Node major must match in `package.json` `engines.node`, `devbox.json` (`nodejs@<major>`) and the Dockerfile base images. Never bump only one — Node bumps arrive via `/shared:update-service`.
 4. **Keep `output: "standalone"`** in `next.config.mjs`; the runtime stage copies `.next/standalone`, `.next/static` and `public/`. If the app needs new runtime files, extend the COPY lines — do not switch to copying all of `node_modules`.
 5. **Verify manifests**: `devbox run deploy-check` must be clean before any manifest change is declared done.
 6. **Extend, don't replace**: HPA, PDB, Ingress, ConfigMap/Secret refs, per-env overlays. Document new env vars in `docs/env-vars.md`. Build-time `NEXT_PUBLIC_*` variables are baked into the image — pass them as Docker build args in the CI `docker` job, never via the runtime Deployment.

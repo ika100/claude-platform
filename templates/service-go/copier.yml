@@ -12,7 +12,7 @@ _templates_suffix: .jinja
 
 _answers_file: .copier-answers.yml
 
-# Project-owned once generated: copier update must not overwrite these.
+# Project-owned once generated: /shared:update-service must not overwrite these.
 _skip_if_exists:
   - go.mod
   - go.sum
@@ -65,7 +65,7 @@ owner_team:
 
 go_version:
   type: str
-  help: "Go toolchain version (major.minor). Pinned in go.mod, devbox.json and the Dockerfile; bumped via copier update."
+  help: "Go toolchain version (major.minor). Pinned in go.mod, devbox.json and the Dockerfile; bumped via /shared:update-service."
   default: "1.25"
 
 port:

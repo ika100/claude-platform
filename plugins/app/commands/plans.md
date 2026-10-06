@@ -10,7 +10,7 @@ You manage the lifecycle of multi-repo plans written by `/app:build-feature`. Th
 
 ## Pre-flight
 
-Detect the shape per `plugins/shared/fragments/shape-detection.md`; it must be `gitops-app`, else stop. Confirm `scripts/plan.py` exists; if not, tell the user to run `copier update` (older skeleton) and stop.
+Detect the shape per `plugins/shared/fragments/shape-detection.md`; it must be `gitops-app`, else stop. Confirm `scripts/plan.py` exists; if not, tell the user to run `/shared:update-service` (older skeleton) and stop.
 
 ## Dispatch
 

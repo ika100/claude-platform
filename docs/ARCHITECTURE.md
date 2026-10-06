@@ -16,9 +16,9 @@ Two channels of distribution:
 
 1. **Claude Code marketplace** — seven plugins (`svc`, `web`, `svc-java`, `svc-go`, `gitops`, `app`, `shared`) published from this repo. Consumers reference the marketplace in their `.claude/settings.json`; updates flow via `/plugin marketplace update`.
 
-2. **Copier templates** — two templates (`service-python`, `library-python`) that ship the project skeleton: `devbox.json`, CI workflow, `CLAUDE.md`, Dockerfile, k8s manifests, `pyproject.toml`. Updates flow via `copier update`.
+2. **Copier templates** — one template per shape (see `shapes.yml`) that ships the project skeleton: `devbox.json`, CI workflow, `CLAUDE.md`, Dockerfile, k8s manifests, language manifests. Updates flow via `/shared:update-service`, which re-applies the template with the repo's recorded answers on a review branch.
 
-These two channels run at different speeds — agents evolve frequently, project skeletons evolve rarely — and `copier update` does the conflict resolution Copier is good at. Maintaining two artifacts is cheaper than maintaining one big one that conflates both.
+These two channels run at different speeds — agents evolve frequently, project skeletons evolve rarely — and `/shared:update-service` keeps the skeleton current without touching project-owned files. Maintaining two artifacts is cheaper than maintaining one big one that conflates both.
 
 ## Shapes
 
@@ -28,7 +28,7 @@ The platform is multi-shape: `service-python`, `library-python`, `web-nextjs`, `
 
 ## Why not GitHub Templates
 
-GitHub Templates fork once and then drift forever. Copier's `copier update` reconciles a generated repo with template changes, including conflict resolution for files the consumer customised. That's the killer feature: improvements to the CI workflow or devbox recipes can flow into existing repos without re-cloning.
+GitHub Templates fork once and then drift forever. Copier re-applies a template to an existing repo from recorded answers, skipping project-owned files (`_skip_if_exists`), so improvements to the CI workflow or devbox recipes flow into existing repos without re-cloning. (Copier's own 3-way `copier update` is not usable here: it needs the template's git history, and our templates live in subdirectories of this repo — hence `/shared:update-service`.)
 
 ## Why several plugins, not one
 

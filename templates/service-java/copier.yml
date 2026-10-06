@@ -13,7 +13,7 @@ _templates_suffix: .jinja
 
 _answers_file: .copier-answers.yml
 
-# Project-owned once generated: copier update must not overwrite these.
+# Project-owned once generated: /shared:update-service must not overwrite these.
 _skip_if_exists:
   - pom.xml
   - src/**
@@ -77,7 +77,7 @@ owner_team:
 
 java_version:
   type: str
-  help: "JDK major version (LTS; pinned in pom.xml, devbox.json and the Dockerfile; bumped via copier update)."
+  help: "JDK major version (LTS; pinned in pom.xml, devbox.json and the Dockerfile; bumped via /shared:update-service)."
   default: "21"
 
 port:

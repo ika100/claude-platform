@@ -23,9 +23,9 @@ Your job is **verify, extend, and troubleshoot** — not generate from scratch.
 
 ## Workflow
 
-1. **Verify the scaffolding exists** (Glob each file). Missing files usually mean a manual bootstrap or a pending `copier update`.
+1. **Verify the scaffolding exists** (Glob each file). Missing files usually mean a manual bootstrap or a pending `/shared:update-service`.
 2. **Verify CI integrity**: `on:` includes `tags: ['v*.*.*']`; the `docker` job is `needs: [quality, test]`; the build passes `VERSION` (ADR-012: the version lives in the git tag, never in a file).
-3. **Verify the Go pin is consistent**: the Go version in `go.mod`, `devbox.json` (`go@<version>`) and the Dockerfile builder tag must agree. Bumps arrive via `copier update`.
+3. **Verify the Go pin is consistent**: the Go version in `go.mod`, `devbox.json` (`go@<version>`) and the Dockerfile builder tag must agree. Bumps arrive via `/shared:update-service`.
 4. **Keep the image minimal.** Static binary only (`CGO_ENABLED=0`). If a dependency needs cgo, stop and raise it — switching away from distroless/static is a decision (new ADR), not a quiet edit. There is no `HEALTHCHECK` (no shell); liveness/readiness are Kubernetes probes.
 5. **Verify manifests**: `devbox run deploy-check` must be clean before any manifest change is declared done.
 6. **Extend, don't replace**: HPA, PDB, Ingress, ConfigMap/Secret refs, per-env overlays. Document new env vars in `docs/env-vars.md`.
