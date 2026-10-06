@@ -30,7 +30,7 @@ Canonical `devbox run` scripts (configured in `devbox.json`):
 | `lint-fix` | `mvn spotless:apply` |
 | `typecheck` | `mvn -DskipTests compile test-compile` |
 | `quality` | `lint` then `typecheck` — the gate CI runs |
-| `audit` | OWASP Dependency-Check (`NVD_API_KEY` env var strongly recommended — unauthenticated NVD downloads are very slow) |
+| `audit` | With `NVD_API_KEY` set: OWASP Dependency-Check (fails at CVSS ≥ 7). Without it: `trivy fs` for HIGH/CRITICAL (accepted risks go in `.trivyignore`, each with a reason) |
 | `secrets-scan` | detect-secrets against `.secrets.baseline.json` |
 | `security` | `audit` + `secrets-scan` |
 | `image-build` | `docker build` → `{{ project_name }}:scan` (multi-stage, distroless) |

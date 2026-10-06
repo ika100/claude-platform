@@ -18,6 +18,7 @@ _skip_if_exists:
   - pom.xml
   - src/**
   - config/**
+  - .trivyignore
   - docs/adr/**
   - docs/env-vars.md
   - k8s/monitoring/**
