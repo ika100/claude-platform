@@ -1,0 +1,84 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+**{{ project_name }}** — {{ description }}
+
+Owned by {{ owner_team }}. Java {{ java_version }} (LTS), Spring Boot 3.x, Maven. Group `{{ group_id }}`, package `{{ package_name }}`. Container image: `{{ docker_registry }}/{{ project_name }}`.
+
+## Development Environment
+
+This project uses [devbox](https://www.jetify.com/devbox) to manage the dev environment (JDK {{ java_version }} + Maven).
+
+```bash
+devbox shell        # enter the dev environment
+devbox run dev      # mvn spring-boot:run (port {{ port }})
+devbox run test     # mvn verify (JUnit 5 + JaCoCo 80% line gate)
+devbox run quality  # spotless + checkstyle + compile gate
+```
+
+Canonical `devbox run` scripts (configured in `devbox.json`):
+
+| Script | Purpose |
+|---|---|
+| `dev` | `mvn spring-boot:run` |
+| `test` | `mvn verify` — unit + Spring Boot tests, JaCoCo report and 80% line-coverage check |
+| `test-fast` | `mvn test` |
+| `lint` | `mvn spotless:check checkstyle:check` (google-java-format + `config/checkstyle.xml`) |
+| `lint-fix` | `mvn spotless:apply` |
+| `typecheck` | `mvn -DskipTests compile test-compile` |
+| `quality` | `lint` then `typecheck` — the gate CI runs |
+| `audit` | OWASP Dependency-Check (`NVD_API_KEY` env var strongly recommended — unauthenticated NVD downloads are very slow) |
+| `secrets-scan` | detect-secrets against `.secrets.baseline.json` |
+| `security` | `audit` + `secrets-scan` |
+| `image-build` | `docker build` → `{{ project_name }}:scan` (multi-stage, distroless) |
+| `image-scan` | trivy against `{{ project_name }}:scan` |
+| `deploy` | `kubectl apply -k k8s/overlays/local/` |
+| `deploy-check` | `kubectl apply --dry-run=client -k k8s/overlays/local/` |
+
+**Rule for every agent (human, CI, and AI): never call `mvn`, `java`, `javac`, `detect-secrets`, or `trivy` directly. Always go through `devbox run <script>`. For one-off Maven goals use `devbox run -- mvn -B <goal>`; add a recipe if it is used repeatedly.**
+
+## Claude Code agents
+
+Agents and slash commands come from the [`ika100/claude-platform`](https://github.com/ika100/claude-platform) marketplace, enabled in `.claude/settings.json`:
+
+- `svc-java@ika100-claude` — Java coder, tester, deployment, observability, release agents
+- `svc@ika100-claude` — orchestrators (`/svc:*`), product-manager, architect
+- `shared@ika100-claude` — quality, security, `/shared:check-quality`, `/shared:new-service`
+
+### Common workflows
+
+| Task | Command |
+|---|---|
+| Plan a feature, no code | `/svc:plan-feature <description>` |
+| Build a feature end-to-end | `/svc:build-feature <description>` |
+| Small change | `/svc:quick-task <description>` |
+| Fix a bug | `/svc:fix-bug <description or error>` |
+| Read-only quality + security audit | `/shared:check-quality` |
+| Release | `/svc:release` |
+
+## Feature Branch Workflow
+
+Branch prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `release/`. Slugs: lowercase, hyphens, ≤40 chars. Main is protected; all changes via PR. Required CI checks: `quality`, `test`, `security`, `pr-title`, `docker`. PR titles follow Conventional Commits (`type(scope): description ≤72 chars`).
+
+## Conventions
+
+- **Spring Boot 3.x idioms:** constructor injection, `@ConfigurationProperties` for structured config, `@RestController` + records for DTOs, `@ControllerAdvice` for error mapping. Source under `src/main/java/{{ package_path }}/`.
+- **Formatting:** google-java-format via Spotless — run `devbox run lint-fix`, never hand-format. Checkstyle enforces unused/star imports, naming, and Javadoc on public types and non-trivial public methods.
+- **Config:** `application.yml` with environment-variable placeholders (`${PORT:{{ port }}}`); see `docs/env-vars.md`. No secrets in the repo.
+- **Probes:** `/actuator/health/liveness` and `/actuator/health/readiness` must keep responding.
+{%- if needs_observability %}
+- **Observability:** Micrometer → `/actuator/prometheus` (every metric tagged `service`); the OpenTelemetry Java agent is baked into the image and **disabled** (`OTEL_SDK_DISABLED=true`) until you set it to `false` and provide `OTEL_EXPORTER_OTLP_ENDPOINT`.
+{%- endif %}
+- **Tests:** JUnit 5 + Spring Boot Test in `src/test/java`; Testcontainers when integration tests need real dependencies; JaCoCo gate 80% lines (`Application.class` excluded).
+- **Docs:** plans in `docs/plan/`, ADRs in `docs/adr/`, backlog in `docs/backlog.md`.
+
+## Docker image pipeline
+
+CI's `docker` job builds a multi-stage image (Maven builder → `gcr.io/distroless/java{{ java_version }}-debian12:nonroot`, no shell) and pushes on `main` (`latest`, `sha-<short>`) and on `v*.*.*` tags (semver tags). Registry: `{{ docker_registry }}/{{ project_name }}`.
+
+## GitOps deployment
+
+Registered for ArgoCD discovery through the GitHub topic `deployable-service`. In a product, a `gitops-app` repo lists it in `services.yaml` (`/gitops:compose add {{ project_name }}`) and pins versions with `/gitops:promote {{ project_name }} <from> <to>`. Local Kubernetes (k3d): `devbox run deploy`.

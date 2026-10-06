@@ -1,0 +1,23 @@
+package {{ package_name }};
+
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/** Minimal example endpoint; replace with the service's real API. */
+@RestController
+public class InfoController {
+
+  private final String name;
+
+  public InfoController(@Value("${spring.application.name}") String name) {
+    this.name = name;
+  }
+
+  /** Returns the service name. */
+  @GetMapping("/api/info")
+  public Map<String, String> info() {
+    return Map.of("service", name);
+  }
+}

@@ -74,3 +74,13 @@ The template ships `devbox.json` with at least:
 
 - [platform-vision.md §4, §11.8](../requirements/platform-vision.md)
 - [ADR-008](008-shape-detection.md) — sniffing fallback uses `pom.xml` to detect this shape
+
+## Amendment (implementation, phase 6)
+
+Verified against a rendered project with real Maven/JDK runs; differences from the text above:
+
+- **`image-build` uses `docker build`** (the template's multi-stage Dockerfile: Maven builder → distroless java21 with the `-javaagent`), not `spring-boot:build-image` — the "Consequences" section requires that Dockerfile, and it keeps every shape's `image-build` identical. Buildpacks are not used.
+- **`quality` = `lint` + `typecheck`** (`mvn -DskipTests compile test-compile`); the test run, including the **JaCoCo 80% line gate** (`Application.class` excluded), is `devbox run test` (`mvn verify`), matching the other shapes where `quality` does not run tests.
+- **Actuator probes** (`/actuator/health/liveness`, `/actuator/health/readiness`) replace `/health` + `/ready` for this shape; Kubernetes probes and the agents use them.
+- The **OpenTelemetry agent is baked in but disabled** (`OTEL_SDK_DISABLED=true`) until an environment sets it to `false` and provides `OTEL_EXPORTER_OTLP_ENDPOINT`.
+- `audit` (OWASP Dependency-Check) needs an `NVD_API_KEY` to be practical; CI reads it from a repository secret. This recipe was **not** executed during template verification (it downloads the full NVD database).

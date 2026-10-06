@@ -40,6 +40,14 @@
       "tags": ["go", "chi", "devbox", "k8s"]
     },
     {
+      "name": "svc-java",
+      "source": "./plugins/svc-java",
+      "version": "0.1.0",
+      "description": "Agents for Java service repos (Spring Boot 3, Maven, JDK 21, distroless): coder, tester, deployment, observability, release.",
+      "category": "agents",
+      "tags": ["java", "spring-boot", "maven", "devbox", "k8s"]
+    },
+    {
       "name": "gitops",
       "source": "./plugins/gitops",
       "version": "0.3.0",

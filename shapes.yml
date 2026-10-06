@@ -81,7 +81,7 @@ shapes:
       version: "21"
       build_tool: maven
       framework: spring-boot-3
-    status: planned
+    status: stable
     adr: [9]
 
   - id: service-go

@@ -1,0 +1,15 @@
+# {{ project_name }}
+
+{{ description }}
+
+Spring Boot service generated from the `service-java` template of [`ika100/claude-platform`](https://github.com/ika100/claude-platform).
+
+```bash
+devbox shell
+devbox run dev        # http://localhost:{{ port }}/actuator/health
+devbox run quality    # spotless + checkstyle + compile
+devbox run test       # JUnit 5 + JaCoCo
+devbox run image-build
+```
+
+See `CLAUDE.md` for conventions and the full recipe list. Skeleton updates: `copier update`.

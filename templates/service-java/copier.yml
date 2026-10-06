@@ -1,0 +1,101 @@
+# Copier template: service-java
+# Spring Boot 3.x service on JDK 21: Maven, Spotless (google-java-format) + Checkstyle, JaCoCo, Actuator +
+# Micrometer Prometheus + OpenTelemetry Java agent, distroless java21 image (ADR-009), canonical devbox
+# recipes, Docker + Kustomize, agentic setup.
+#
+# Usage:
+#   copier copy <platform-checkout>/templates/service-java ./<project> --data project_name=<name>
+
+_min_copier_version: "9.0.0"
+
+# Only *.jinja files are rendered: GitHub Actions (${{ }}) shares Jinja's delimiters.
+_templates_suffix: .jinja
+
+_answers_file: .copier-answers.yml
+
+# Project-owned once generated: copier update must not overwrite these.
+_skip_if_exists:
+  - pom.xml
+  - src/**
+  - config/**
+  - docs/adr/**
+  - docs/env-vars.md
+  - k8s/monitoring/**
+
+_exclude:
+  - "copier.yml"
+  - ".git"
+  - "{% if not needs_observability %}k8s/monitoring{% endif %}"
+
+_tasks:
+  - "git init -q"
+  - "devbox install"
+  - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from service-java template'"
+  - "echo 'Bootstrap complete. Repo committed at HEAD. Run: cd {{ project_name }} && devbox run quality'"
+
+project_name:
+  type: str
+  help: "Project name (kebab-case, e.g. 'payments-api'). Used as Maven artifactId, Docker tag, k8s labels."
+  validator: >-
+    {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
+    project_name must match ^[a-z][a-z0-9-]{1,39}$
+    {%- endif -%}
+
+description:
+  type: str
+  help: "One-line description of the service."
+  default: "A Spring Boot service"
+
+github_org:
+  type: str
+  help: "GitHub organization or user that will own the repo."
+  default: "ika100"
+
+group_id:
+  type: str
+  help: "Maven groupId / Java package prefix (lowercase, dot-separated)."
+  default: "io.github.{{ github_org | lower | replace('-', '') }}"
+  validator: >-
+    {%- if not (group_id | regex_search('^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$')) -%}
+    group_id must be a valid lowercase Java package prefix
+    {%- endif -%}
+
+package_name:
+  type: str
+  when: false
+  default: "{{ group_id }}.{{ project_name | replace('-', '') }}"
+
+package_path:
+  type: str
+  when: false
+  default: "{{ package_name | replace('.', '/') }}"
+
+owner_team:
+  type: str
+  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  default: "@{{ github_org }}"
+
+java_version:
+  type: str
+  help: "JDK major version (LTS; pinned in pom.xml, devbox.json and the Dockerfile; bumped via copier update)."
+  default: "21"
+
+port:
+  type: int
+  help: "HTTP port the service listens on."
+  default: 8080
+
+needs_observability:
+  type: bool
+  help: "Include Micrometer Prometheus (/actuator/prometheus), the OpenTelemetry Java agent, and a default PrometheusRule?"
+  default: true
+
+docker_registry:
+  type: str
+  help: "Container registry namespace."
+  default: "ghcr.io/{{ github_org }}"
+
+platform_marketplace_ref:
+  type: str
+  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  default: "main"

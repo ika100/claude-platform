@@ -95,3 +95,11 @@ The template scaffolds a standard Go service layout:
 
 - [platform-vision.md §4, §11.9](../requirements/platform-vision.md)
 - [ADR-008](008-shape-detection.md) — sniffing fallback uses `go.mod` to detect this shape
+
+## Amendment (implementation, phase 6)
+
+Verified against rendered projects with real Go/golangci-lint/govulncheck runs:
+
+- `.golangci.yml` uses the **golangci-lint v2 schema** (`version: "2"`, `linters.default: standard`, formatters `gofmt` + `goimports`), plus `gosec`, `gocritic`, `revive`, `misspell`, `noctx`, `bodyclose`.
+- `go.mod` / `go.sum` are **shipped pre-resolved** (chi, and client_golang when `needs_observability`) so a freshly rendered project builds without network resolution; `go mod tidy` produces no diff against them. Go is pinned as `go <major.minor>.0` in `go.mod` and as `go@<major.minor>` in `devbox.json` / the `golang:<major.minor>` Docker builder.
+- The runtime image is `distroless/static-debian12:nonroot` with **no `HEALTHCHECK`** (no shell); liveness/readiness are Kubernetes probes on `/health` and `/ready`.
