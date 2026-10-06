@@ -77,6 +77,12 @@ owner_team:
   help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
   default: "@{{ github_org }}"
 
+owner_label:
+  type: str
+  when: false
+  help: "owner_team as a valid Kubernetes label value (no '@', '/')."
+  default: "{{ owner_team | regex_replace('[^A-Za-z0-9_.-]+', '-') | trim('-') }}"
+
 java_version:
   type: str
   help: "JDK major version (LTS; pinned in pom.xml, devbox.json and the Dockerfile; bumped via /shared:update-service)."

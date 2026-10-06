@@ -64,6 +64,12 @@ owner_team:
   help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
   default: "@{{ github_org }}"
 
+owner_label:
+  type: str
+  when: false
+  help: "owner_team as a valid Kubernetes label value (no '@', '/')."
+  default: "{{ owner_team | regex_replace('[^A-Za-z0-9_.-]+', '-') | trim('-') }}"
+
 go_version:
   type: str
   help: "Go toolchain version (major.minor). Pinned in go.mod, devbox.json and the Dockerfile; bumped via /shared:update-service."

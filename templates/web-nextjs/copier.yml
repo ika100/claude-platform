@@ -64,6 +64,12 @@ owner_team:
   help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
   default: "@{{ github_org }}"
 
+owner_label:
+  type: str
+  when: false
+  help: "owner_team as a valid Kubernetes label value (no '@', '/')."
+  default: "{{ owner_team | regex_replace('[^A-Za-z0-9_.-]+', '-') | trim('-') }}"
+
 node_major:
   type: str
   help: "Node.js major version (current Active LTS at template release; bumped via /shared:update-service — ADR-005)."
