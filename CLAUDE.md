@@ -17,8 +17,8 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 | `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks. All three plugins ship a SessionStart hook that checks devbox is on PATH and runs `devbox install` if a `devbox.json` is present. |
 | `devbox.json` | Repo-root devbox env (jq, uv, python, copier) + smoke-test scripts (`validate`, `smoke-service`, `smoke-library`). |
 | `plugins/<name>/settings.json` | Plugin-scoped permission allowlists. |
-| `templates/service-python/{{ project_name }}/` | Copier-templated service repo skeleton. |
-| `templates/library-python/{{ project_name }}/` | Copier-templated library repo skeleton. |
+| `templates/service-python/` | Copier-templated service repo skeleton. |
+| `templates/library-python/` | Copier-templated library repo skeleton. |
 | `docs/AGENTS.md` | The orchestration model — read before changing agents or commands. |
 
 ## Conventions
@@ -46,7 +46,7 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 
 ### Change a Copier template
 
-1. Edit files under `templates/<template>/{{ project_name }}/`.
+1. Edit files under `templates/<template>/`.
 2. Test locally: `copier copy ./templates/service-python /tmp/test --defaults --data project_name=test-svc --data module_name=test_svc`.
 3. Add to `_skip_if_exists` in `copier.yml` if the file should NOT be re-templated on `copier update` (project-owned files).
 4. Tag a release in the platform repo.
