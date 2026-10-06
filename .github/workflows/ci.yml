@@ -129,6 +129,10 @@ jobs:
           uv run scripts/render.py --check
           test -f applications/test/overlays/prod/demo-api/kustomization.yaml
           grep -F 'demo-api' applications/test/applicationset.yaml
+      - name: local cluster script parses and the recipes exist
+        run: |
+          bash -n /tmp/test-gitops/scripts/local-cluster.sh
+          jq -e '.shell.scripts | has("cluster-up") and has("cluster-down") and has("bootstrap")' /tmp/test-gitops/devbox.json
       - name: plan.py tests (ADR-011 validation, topo order, lifecycle)
         run: bash scripts/test-plan.sh
       - name: kustomize + kubeconform on the ApplicationSet

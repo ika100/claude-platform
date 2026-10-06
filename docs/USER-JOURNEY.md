@@ -70,7 +70,9 @@ What happens (no questions asked beyond the name and a description):
 
 Open it: `cd taskboard && claude`. Its `CLAUDE.md` already explains the layout and pin policy to Claude.
 
-> **One-time cluster step (human, once per cluster).** Make sure Argo can read your GitHub repos (repo credentials), then run `devbox run bootstrap` in `taskboard` (it applies `bootstrap/taskboard-root.yaml`). That root Application watches `applications/taskboard/applicationset.yaml` in git — from then on every change reaches the cluster through merged pull requests, and agents never run `kubectl apply`.
+> **One-time cluster step (human, once per cluster).** Make sure Argo can read your GitHub repos (repo credentials), then run `KUBE_CONTEXT=<your-cluster> devbox run bootstrap` in `taskboard` (it applies `bootstrap/taskboard-root.yaml`). That root Application watches `applications/taskboard/applicationset.yaml` in git — from then on every change reaches the cluster through merged pull requests, and agents never run `kubectl apply`.
+
+> **Just want to try it on your laptop?** `devbox run cluster-up` creates a local k3d cluster (`taskboard-local`), installs ArgoCD, gives it your `gh` token for the private repos and GHCR images, and applies the root Application in one go; `devbox run cluster-down` removes it. Needs Docker running.
 
 ---
 

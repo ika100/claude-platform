@@ -23,7 +23,9 @@ docs/plan/                        multi-repo plans written by /app:build-feature
 
 ## One-time cluster bootstrap (human only)
 
-Argo must be able to read this repo and the service repos. Then, once per cluster, a human runs `devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`). That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git. From then on every change — new services, removals, promotions — reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
+Argo must be able to read this repo and the service repos. Then, once per cluster, a human runs `KUBE_CONTEXT=<context> devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`; the context must be named explicitly so it never hits whatever cluster happens to be current).
+
+**To try the product on your machine:** `devbox run cluster-up` creates a k3d cluster `{{ app_name }}-local`, installs ArgoCD, gives it your `gh` token for the private repos, pre-creates `{{ app_name }}-{dev,staging,prod}` with a GHCR pull secret, and applies the root Application. `devbox run cluster-down` removes it. (Needs Docker running; the `gh` token needs `repo` and `read:packages`.) That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git. From then on every change — new services, removals, promotions — reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
 
 ## CI access to private service repos
 
@@ -47,7 +49,8 @@ Argo must be able to read this repo and the service repos. Then, once per cluste
 | `validate` | `validate-static` + `kustomize build` every overlay + `kubeconform` the ApplicationSets |
 | `lint` / `quality` / `test` / `deploy-check` | aliases of `validate` |
 | `lint-fix` | alias of `render` |
-| `bootstrap` | **human, once per cluster**: apply the root Application |
+| `bootstrap` | **human, once per cluster**: `KUBE_CONTEXT=<ctx> devbox run bootstrap` applies the root Application |
+| `cluster-up` / `cluster-down` | local k3d cluster with ArgoCD and credentials, see above |
 | `security` | detect-secrets |
 
 **Rule for every agent: never call `kustomize`, `kubeconform`, `kubectl`, or `detect-secrets` directly. Always `devbox run <script>`. Never `kubectl apply` — Argo owns reconciliation.**
