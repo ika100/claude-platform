@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
-FROM maven:3.9-eclipse-temurin-{{ java_version }} AS builder
+# The jar is architecture-independent: build on the native platform, run on the target one (no QEMU for Maven).
+FROM --platform=$BUILDPLATFORM maven:3.9-eclipse-temurin-{{ java_version }} AS builder
 WORKDIR /build
 
 # Resolve dependencies first for layer caching.
@@ -14,7 +15,7 @@ RUN mvn -B -q -DskipTests package
 
 # OpenTelemetry Java agent (zero-code tracing). Pinned; disabled at runtime unless OTEL_SDK_DISABLED=false.
 ARG OTEL_AGENT_VERSION=2.32.0
-ADD https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/${OTEL_AGENT_VERSION}/opentelemetry-javaagent-${OTEL_AGENT_VERSION}.jar /otel/opentelemetry-javaagent.jar
+ADD --chmod=0644 https://repo1.maven.org/maven2/io/opentelemetry/javaagent/opentelemetry-javaagent/${OTEL_AGENT_VERSION}/opentelemetry-javaagent-${OTEL_AGENT_VERSION}.jar /otel/opentelemetry-javaagent.jar
 {%- endif %}
 
 

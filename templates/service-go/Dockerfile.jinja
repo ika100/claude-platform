@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 
-FROM golang:{{ go_version }} AS builder
+FROM --platform=$BUILDPLATFORM golang:{{ go_version }} AS builder
 WORKDIR /src
 
 COPY go.mod go.sum* ./
@@ -9,7 +9,9 @@ RUN go mod download
 COPY . .
 # VERSION is the git tag (v1.2.3) in CI, "dev" locally; injected via ldflags (ADR-012).
 ARG VERSION=dev
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
+ARG TARGETOS
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath \
     -ldflags "-s -w -X main.Version=${VERSION}" \
     -o /out/{{ project_name }} ./cmd/{{ project_name }}
 
