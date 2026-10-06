@@ -25,7 +25,8 @@ Reusable Claude Code agents, slash commands, and Copier templates for the **ika1
 │   └── service-go/                    Go (chi) service
 ├── scripts/                           detect-shape.sh, shapes.py, tests
 └── docs/
-    ├── AGENTS.md                      Orchestration model (read first)
+    ├── USER-JOURNEY.md                End-to-end walk-through (start here to explain the setup)
+    ├── AGENTS.md                      Orchestration model
     ├── ADOPTING.md                    How to bring an existing repo onto the platform
     ├── ARCHITECTURE.md                Why the platform looks the way it does
     ├── templates.md                   How to add a new shape
