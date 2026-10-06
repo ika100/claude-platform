@@ -24,6 +24,10 @@
     <checkstyle.plugin.version>3.6.0</checkstyle.plugin.version>
     <checkstyle.version>13.0.0</checkstyle.version>
     <jacoco.version>0.8.15</jacoco.version>
+    <!-- Newer than the Spring Boot 3.5.16 BOM to pick up HIGH/CRITICAL CVE fixes found by `devbox run audit`.
+         Remove an override once the parent manages a version at least this new. -->
+    <tomcat.version>10.1.60</tomcat.version>
+    <jackson-bom.version>2.21.7</jackson-bom.version>
   </properties>
 
   <dependencies>

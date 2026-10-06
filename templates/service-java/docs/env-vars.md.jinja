@@ -24,4 +24,4 @@ Configuration is read exclusively from environment variables. Defaults match `sr
 
 | Variable | Description |
 |---|---|
-| `NVD_API_KEY` | NVD API key for `devbox run audit` (OWASP Dependency-Check). Store as a CI secret. |
+| `NVD_API_KEY` | Optional NVD API key for `devbox run audit`. Set it (as a CI secret) to use OWASP Dependency-Check; unset, `audit` falls back to `trivy fs`. |

@@ -84,3 +84,8 @@ Verified against a rendered project with real Maven/JDK runs; differences from t
 - **Actuator probes** (`/actuator/health/liveness`, `/actuator/health/readiness`) replace `/health` + `/ready` for this shape; Kubernetes probes and the agents use them.
 - The **OpenTelemetry agent is baked in but disabled** (`OTEL_SDK_DISABLED=true`) until an environment sets it to `false` and provides `OTEL_EXPORTER_OTLP_ENDPOINT`.
 - `audit` (OWASP Dependency-Check) needs an `NVD_API_KEY` to be practical; CI reads it from a repository secret. This recipe was **not** executed during template verification (it downloads the full NVD database).
+
+## Amendment (found by the todo-app end-to-end test)
+
+- `devbox run audit` no longer fails when `NVD_API_KEY` is unset: an empty key made OWASP Dependency-Check abort with "Invalid API Key" in CI. With a key it runs Dependency-Check as before; without one it runs `trivy fs` (HIGH/CRITICAL, `--exit-code 1`). Accepted risks live in a project-owned `.trivyignore`.
+- A fresh Spring Boot 3.5.16 project failed that audit on day one: Tomcat 10.1.55 and Jackson 2.21.4 (BOM-managed) have fixed releases, so `pom.xml` overrides `tomcat.version` (10.1.60) and `jackson-bom.version` (2.21.7); the Spring Framework 6.2 XsltView CVE-2026-47884 is fixed only in Spring 7 / Boot 4 and is listed in `.trivyignore` with its rationale. Remove overrides as the parent catches up; revisit the ignore when moving to Boot 4.
