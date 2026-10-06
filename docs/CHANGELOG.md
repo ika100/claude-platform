@@ -8,6 +8,14 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 Fixes found by running the platform end to end on a real todo app (see `docs/USER-JOURNEY.md`).
 
+### Added
+
+- **gitops-app:** `devbox run cluster-up` / `cluster-down` (`scripts/local-cluster.sh`): a local k3d cluster with ArgoCD, repo credentials for private GitHub repos, pre-created `<app>-<env>` namespaces with a GHCR pull secret, and the root Application. Everything the e2e test had to do by hand.
+
+### Changed
+
+- **gitops-app:** `devbox run bootstrap` now requires `KUBE_CONTEXT=<context>` and prints it; before, it applied to whichever kube context was current.
+
 ### Fixed
 
 - **web-nextjs:** bootstrap failed (`devbox run -- pnpm install` → `SyntaxError`) because `packageManager: pnpm@12.9.1` was newer than the pnpm devbox provides (11.x). Both pins are now `pnpm@11.22.0` and `shapes.py check` enforces that they match (ADR-003 amendment).
