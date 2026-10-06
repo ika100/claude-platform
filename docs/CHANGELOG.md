@@ -4,13 +4,15 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
-## [Unreleased]
+## [1.1.0] — 2026-10-06
 
-Phase 1 of the multi-shape platform redesign ([platform-vision](requirements/platform-vision.md), ADR-008/013/015). Foundation only — no new shapes ship yet.
+**Multi-shape platform.** Implements the platform vision ([PRD](requirements/platform-vision.md), ADR-001…016): six repo shapes, shape-aware orchestration, a multi-repo planner, and a documented add-a-shape contract. Existing Python repos are unaffected (their templates are unchanged apart from doc comments); no breaking changes. See [USER-JOURNEY](USER-JOURNEY.md) for the end-to-end walk-through.
+
+Plugin versions: svc 1.1.0, shared 0.5.0, gitops 0.3.0, web 0.1.0, svc-java 0.1.0, svc-go 0.1.0, app 0.1.0.
 
 ### Added
 
-- **`shapes.yml`** — machine-readable shape registry (all six PRD shapes; the four new ones are `status: planned`).
+- **`shapes.yml`** — machine-readable shape registry (all six shapes, all `status: stable`).
 - **`scripts/detect-shape.sh`** — shape detection from `.copier-answers.yml` with sniffing fallback (ADR-008), plus `scripts/test-detect-shape.sh` fixtures.
 - **`scripts/shapes.py`** — validates `shapes.yml` and checks it against templates, plugins and the PRD §4 table.
 - **`plugins/shared/fragments/shape-detection.md`** — canonical detection procedure for commands and agents.
