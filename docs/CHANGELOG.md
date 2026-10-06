@@ -4,7 +4,30 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
-## [Unreleased]
+## [2.0.0] — 2026-10-07
+
+**v2: the GitOps repo owns every Kubernetes manifest; services ship an image.** Driven by the end-to-end todo-app test (see [ADR-017](adr/017-gitops-owns-manifests.md) and [BASELINES](BASELINES.md)). Plugin versions: svc 2.0.0, shared 0.6.0, gitops 1.0.0, web 0.2.0, svc-java 0.2.0, svc-go 0.2.0, app 0.1.1, shapes unchanged.
+
+### Breaking changes — migration: [ADOPTING → Migrating from v1 to v2](ADOPTING.md#migrating-from-platform-v1-to-v2-services-no-longer-ship-kubernetes-manifests)
+
+- **Service templates ship no `k8s/`**, no `k3d`/`kubectl`/`k9s`, no `deploy`/`deploy-check`, no `owner_label`. `shapes.py check` forbids `k8s/` in them.
+- **gitops-app generates manifests** (`deployment.yaml`, `service.yaml`, `httproute.yaml`, `kustomization.yaml`) from a richer `services.yaml` entry (port, probes, user, volumes, env, secretRefs, replicas, resources, expose, environments) — no remote Kustomize bases. v1 entries (`path:`) are rejected with a pointer to the migration.
+- **New services start in `dev` only**; `/gitops:promote` adds `staging`, then `prod`. Promotion pins an **image tag only** (staging `sha-<7>`, prod `X.Y.Z`), verified in GHCR.
+- `/gitops:compose` / `/gitops:promote` are thin wrappers over tested scripts; their agents are removed. The v1 platform-wide promote mode is gone (it needed service-owned overlays).
+- The per-shape `deployment` agents own the **image** only; `/svc:build-feature` Phase 5 is "Container image".
+
+### Added
+
+- **Gateway API exposure**: `expose:` → `HTTPRoute`; `app.yaml` holds gateway and per-env hostname templates (dev default `{service}.{app}-dev.localhost`). `cluster-up` installs Gateway API v1.2.1 and enables Traefik's Gateway provider on k3s, and prints the URLs. Spike-verified on k3s v1.32.5/Traefik 3.3.6; `*.localhost` resolves everywhere (localtest.me / nip.io / lvh.me do not behind rebind-protecting DNS).
+- **`cplat compose` / `cplat promote`** with 21 more tests (fake `gh`, real renders); `compose add --from-k8s` seeds an entry from a v1 service; `update-service --migrate` removes `k8s/`.
+- `shapes.yml` `runtime:` defaults per deployable shape (validated by `shapes.py check`).
+- `docs/adr/017-gitops-owns-manifests.md`; CI renders a fixture product and runs the label check, `kubectl kustomize` and kubeconform on the generated manifests; offline `validate` in generated gitops repos.
+
+### Removed
+
+`SERVICE_REPOS_TOKEN` and Argo credentials for service repos (Argo reads only the gitops repo), `?ref=` handling, service-side `overlays/` and PrometheusRule files (alerting is a gitops-side follow-up).
+
+### Added in the 2.0.0 cycle (phase A)
 
 ### Added (v2 work, phase A)
 

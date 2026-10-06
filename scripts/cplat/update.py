@@ -15,6 +15,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ref", default=None, help="platform ref being applied (informational; the running checkout is the source)")
     p.add_argument("--data", action="append", default=[], metavar="KEY=VALUE", help="change a template answer (repeatable)")
     p.add_argument("--repo", default=".", help="repo to update (default: current directory)")
+    p.add_argument("--migrate", action="store_true", help="v1 → v2: also delete the service's k8s/ directory (the gitops-app repo owns manifests now; import them first with `compose add <service> --from-k8s`)")
     p.add_argument("--skip-tasks", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--json", action="store_true")
@@ -44,7 +45,7 @@ def resolve(argv: list[str]) -> dict:
     entry = next(s for s in core.registry.load() if s["id"] == shape)
     stamp = core.read_stamp(repo)
     return {"repo": repo, "shape": shape, "template": entry["template"], "data": ns.data, "old": stamp.get("platform"),
-            "new": core.platform_version(), "ref": ns.ref or stamp.get("ref") or "main", "skip_tasks": ns.skip_tasks,
+            "new": core.platform_version(), "ref": ns.ref or stamp.get("ref") or "main", "skip_tasks": ns.skip_tasks, "migrate": ns.migrate,
             "dry_run": ns.dry_run, "json": ns.json}
 
 
@@ -59,6 +60,8 @@ def plan(req: dict) -> Report:
         r.will_do.append(f"create review branch {branch_name()}")
     r.will_do.append(f"re-apply templates/{req['template']} with the repo's recorded answers" + (f" plus {', '.join(req['data'])}" if req["data"] else ""))
     r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, devbox.json, CLAUDE.md, …); project-owned files are never touched")
+    if req["migrate"]:
+        r.will_do.append("DELETE k8s/ (v1 → v2 migration: manifests are generated in the product's gitops-app repo; recoverable from git history)")
     r.will_do.append("restore the stable template source in .copier-answers.yml and stamp .platform-version")
     r.will_do.append("commit once (nothing is pushed)")
     return r
@@ -81,6 +84,10 @@ def execute(req: dict) -> Report:
     answers = repo / ".copier-answers.yml"
     answers.write_text(re.sub(r"^_src_path:.*$", f"_src_path: gh:ika100/claude-platform/templates/{req['template']}", answers.read_text(), flags=re.M))
     core.write_stamp(repo, req["shape"], req["ref"])
+    if req["migrate"] and (repo / "k8s").is_dir():
+        import shutil
+        shutil.rmtree(repo / "k8s")
+        r.did.append("removed k8s/ (v1 manifests; import them with `compose add <service> --from-k8s` if you have not yet)")
 
     new_keys = sorted(set(re.findall(r"^([a-z_]+):", answers.read_text(), re.M)) - set(re.findall(r"^([a-z_]+):", before, re.M)))
     changed = [ln[3:] for ln in run(["git", "status", "--porcelain"], cwd=repo).stdout.splitlines()]

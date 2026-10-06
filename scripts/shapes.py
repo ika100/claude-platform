@@ -48,6 +48,18 @@ def validate(shapes: list[dict]) -> list[str]:
             errs.append(f"{sid}: detection.copier_src must be templates/{s.get('template')}")
         if not det.get("sniff"):
             errs.append(f"{sid}: detection.sniff must list at least one marker")
+        rt = s.get("runtime")
+        if s.get("deployable") and s.get("status") != "planned":
+            if not rt:
+                errs.append(f"{sid}: deployable shapes need a runtime block (port, probes, user, volumes, env, resources)")
+            else:
+                for k in ("port", "probes", "user", "resources"):
+                    if k not in rt:
+                        errs.append(f"{sid}: runtime.{k} missing")
+                if rt.get("probes", {}).keys() != {"liveness", "readiness"}:
+                    errs.append(f"{sid}: runtime.probes needs liveness and readiness")
+                if not isinstance(rt.get("user"), int) or rt.get("user", 0) < 1:
+                    errs.append(f"{sid}: runtime.user must be a numeric non-root UID")
         if s.get("library") and s.get("deployable"):
             errs.append(f"{sid}: a library cannot be deployable")
     return errs
@@ -67,7 +79,7 @@ def check_files(shapes: list[dict]) -> list[str]:
 
 
 CORE_RECIPES = ["lint", "lint-fix", "quality", "test", "test-fast", "security"]
-DEPLOY_RECIPES = ["image-build", "image-scan", "deploy-check"]
+DEPLOY_RECIPES = ["image-build", "image-scan"]
 CONTRACT_AGENTS = ["coder", "tester"]
 DEPLOY_AGENTS = ["deployment", "observability", "release"]
 
@@ -122,15 +134,19 @@ def check_contract(shapes: list[dict]) -> list[str]:
             for line in df.read_text().splitlines():
                 if line.startswith("USER ") and not __import__("re").match(r"USER \d+(:\d+)?\s*$", line):
                     errs.append(f"{sid}: Dockerfile '{line}' must use a numeric UID (e.g. USER 65532:65532)")
+        # 2a000. Dockerfile USER must be numeric, otherwise `runAsNonRoot: true` pods fail with CreateContainerConfigError
+        df = _template_file(tdir, "Dockerfile")
+        if df is not None:
+            for line in df.read_text().splitlines():
+                if line.startswith("USER ") and not __import__("re").match(r"USER \d+(:\d+)?\s*$", line):
+                    errs.append(f"{sid}: Dockerfile '{line}' must use a numeric UID (e.g. USER 65532:65532)")
         # 2a00. k8s label values cannot contain '@' or '/': owner_team ("@org") must go through owner_label
         for kf in (tdir / "k8s").rglob("*") if (tdir / "k8s").is_dir() else []:
             if kf.is_file() and 'team: "{{ owner_team }}"' in kf.read_text():
                 errs.append(f"{sid}: {kf.relative_to(tdir)} uses owner_team as a label value; use owner_label")
-        # 2a0. the Deployment is edited per app (env vars, resources); re-templating it wipes those edits on update
-        if s["deployable"]:
-            cy = (tdir / "copier.yml").read_text()
-            if "k8s/base/deployment.yaml" not in cy.split("_skip_if_exists:", 1)[-1].split("\n\n", 1)[0]:
-                errs.append(f"{sid}: copier.yml must list k8s/base/deployment.yaml in _skip_if_exists (project-owned)")
+        # 2a0. the GitOps repo owns every manifest (ADR-017): service templates ship an image, never Kubernetes YAML
+        if s["id"] != "gitops-app" and (tdir / "k8s").exists():
+            errs.append(f"{sid}: templates/{s['template']}/k8s must not exist; manifests are generated in the gitops-app repo (ADR-017)")
         # 2a. CI must run on pushes to main, otherwise merged code is never built/pushed (found by the e2e test)
         ci = _template_file(tdir / ".github" / "workflows", "ci.yml")
         if ci is None:

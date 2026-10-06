@@ -113,7 +113,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 /svc:build-feature ──►  [above] ──►  coders ║parallel║  ──►  merge+quality  ──►  tester  ──►  security  ──►  deployment
                                        │   (1 worktree per task)   │              │             │               │
                                        ▼                           ▼              ▼             ▼               ▼
-                                  Python code               ruff+mypy/test    pytest+cov   CVE+secrets    Dockerfile+k8s
+                                  Python code               ruff+mypy/test    pytest+cov   CVE+secrets    Dockerfile image
 
 /svc:fix-bug       ──►  coder (diagnose) ──►  coder (fix) ──►  tester (verify)
                                   └──────────── loop (max 3) ──────────────┘
@@ -145,7 +145,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 | `migrations` | sonnet | Alembic migrations |
 | `observability` | sonnet | structlog + Prometheus + OTel scaffolding |
 | `release` | sonnet | Semver, CHANGELOG, release branch + PR |
-| `deployment` | sonnet | Dockerfile, base k8s, CI/CD |
+| `deployment` | sonnet | Dockerfile and GHCR CI (image only — manifests live in the gitops-app repo, ADR-017) |
 
 Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`<plugin>:<role>`; `cplat shape` prints the routing); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `quality` and `security` are shape-agnostic.
 
@@ -155,7 +155,7 @@ Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `rel
 |---|---|---|
 | `coder` | sonnet | App Router + strict TypeScript; sonnet is enough for pattern-driven UI/route work |
 | `tester` | sonnet | Vitest + Testing Library, Playwright when enabled |
-| `deployment` | sonnet | Standalone-output Dockerfile, k8s base, CI |
+| `deployment` | sonnet | Standalone-output Dockerfile and CI (image only) |
 | `observability` | sonnet | `/api/metrics`, OpenTelemetry instrumentation, alerts |
 | `release` | sonnet | `package.json` version, CHANGELOG, release PR |
 
@@ -213,9 +213,7 @@ Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `rel
 | `docs/env-vars.md` | Required environment variables |
 | `docs/security/scan-<date>.md` | Security scan reports |
 | `docs/migrations/runbook.md` | Migration runbook |
-| `k8s/base/` | Base Kubernetes manifests |
-| `k8s/overlays/<env>/` | Environment-specific Kustomize overlays |
-| `k8s/monitoring/alerts.yaml` | Prometheus alerting rules |
+| `applications/<app>/services.yaml` (gitops-app repo) | How each service runs; the manifests under `overlays/` are generated from it |
 | `migrations/` | Alembic migration scripts |
 | `tests/` | pytest test suite |
 | `.github/workflows/` | CI/CD pipelines |

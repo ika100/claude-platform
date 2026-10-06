@@ -13,7 +13,7 @@ Orchestrators (`/svc:*`) and the shape-agnostic product-manager and architect ag
 | `migrations` | sonnet | Alembic migrations and seed scripts |
 | `observability` | sonnet | structlog + Prometheus + OTel scaffolding, alerting rules |
 | `release` | sonnet | Semver bump, CHANGELOG, release branch + PR |
-| `deployment` | sonnet | Dockerfile, base k8s manifests, GHCR CI pipeline |
+| `deployment` | sonnet | Dockerfile and GHCR CI pipeline (image only) |
 
 ## Commands
 
@@ -34,7 +34,7 @@ Orchestrators (`/svc:*`) and the shape-agnostic product-manager and architect ag
 This plugin assumes:
 
 1. **`shared` plugin is also enabled** (provides `quality` + `security` agents that several commands invoke).
-2. **Project has a `devbox.json` with the canonical recipes** (`test`, `lint`, `quality`, `security`, `image-build`, `deploy-check`, …). Use the `service-python` Copier template to bootstrap a project with the right shape.
+2. **Project has a `devbox.json` with the canonical recipes** (`test`, `lint`, `quality`, `security`, `image-build`, …). Use the `service-python` Copier template to bootstrap a project with the right shape.
 3. For the Python agents: a Python repo using `uv` and `pyproject.toml`. Other shapes use their own plugin's agents (this plugin must still be enabled for the orchestrators).
 
 Enable both plugins via `.claude/settings.json`:

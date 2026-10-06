@@ -1,6 +1,6 @@
 # Environment variables
 
-Configuration is read exclusively from environment variables. Defaults match `k8s/base/deployment.yaml`. Override per environment via the Kustomize overlays in `k8s/overlays/`.
+Configuration is read exclusively from environment variables. Defaults below are the application defaults. The deployed values are set per environment in the product's gitops-app repo (`services.yaml` → `env`, `replicas`, `resources`).
 
 ## Core
 

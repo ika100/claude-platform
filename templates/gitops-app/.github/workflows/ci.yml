@@ -9,29 +9,14 @@ on:
 
 jobs:
   quality:
-    name: quality (render-check + kustomize build + kubeconform)
+    name: quality (render-check + kustomize build + kubeconform + labels)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
       - uses: jetify-com/devbox-install-action@v0.15.0
         with:
           enable-cache: true
-      # Overlays reference the service repos as remote Kustomize bases. When those repos are private, the job's
-      # GITHUB_TOKEN cannot read them: set a repository secret SERVICE_REPOS_TOKEN (fine-grained PAT, Contents: read
-      # on the service repos). Without it only the static checks run, with a warning.
-      - name: Let kustomize read the service repos
-        id: access
-        env:
-          TOKEN: ${{ secrets.SERVICE_REPOS_TOKEN }}
-        run: |
-          if [ -n "$TOKEN" ]; then
-            git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
-            echo "recipe=quality" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::SERVICE_REPOS_TOKEN is not set - skipping 'kustomize build' of the remote service bases (static checks only)"
-            echo "recipe=validate-static" >> "$GITHUB_OUTPUT"
-          fi
-      - run: devbox run ${{ steps.access.outputs.recipe }}
+      - run: devbox run quality
 
   security:
     name: security (detect-secrets)
@@ -52,7 +37,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .{1,72}$'
+          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .{1,72}$'
           if ! echo "$PR_TITLE" | grep -qE "$pattern"; then
             echo "ERROR: PR title does not follow Conventional Commits."
             echo "  Got: $PR_TITLE"

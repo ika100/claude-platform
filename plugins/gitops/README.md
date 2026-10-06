@@ -7,15 +7,17 @@ Agents and commands for the GitOps repository — the single repo that wires ser
 | Agent | Model | Purpose |
 |---|---|---|
 | `deployment` | sonnet | Maintains the ApplicationSet, cluster-wide add-ons, and per-service overrides |
-| `promote` | sonnet | Pins image tags + kustomize refs when promoting services across environments (platform repo or gitops-app repo) |
-| `compose` | sonnet | Adds/removes services in a gitops-app repo (`services.yaml` + generated ApplicationSets/overlays) |
 
 ## Commands
 
 | Command | Purpose |
 |---|---|
-| `/gitops:promote <service...> <from> <to> [version]` | Opens one PR pinning the services to `<version>` in the `<to>` overlay (also `--all`; works from a service repo via `.platform-app.yml`) |
-| `/gitops:compose add\|remove <service...>` | gitops-app repos: declare which services make up the application; one PR |
+| `/gitops:promote <service...\|--all> <from> <to> [--version vX.Y.Z]` | gitops-app repos: pin the next environment's image tag (verified in GHCR) in one PR |
+| `/gitops:compose add\|remove <service...> [--expose] [--env K=V] [--from-k8s]` | gitops-app repos: declare services (complete manifests are generated from the entry); one PR |
+
+## v2: the GitOps repo owns the manifests
+
+`/gitops:compose` and `/gitops:promote` are thin wrappers over `scripts/cplat` (tested in `tests/cplat`). Services ship only an image; the gitops-app repo generates Deployment, Service and Gateway HTTPRoute from `services.yaml` (ADR-017). The v1 "platform-mode" promote (`overrides/<service>/<env>`) and the `deployment` agent below target repos that consume service-owned `k8s/overlays`; they only apply to v1 services and are not part of the v2 flow.
 
 ## Two kinds of GitOps repo
 

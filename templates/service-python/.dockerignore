@@ -12,7 +12,6 @@ __pycache__/
 htmlcov/
 tests/
 docs/
-k8s/
 .copier-answers.yml
 .pre-commit-config.yaml
 .secrets.baseline.json

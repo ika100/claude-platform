@@ -110,3 +110,22 @@ def test_python_service_routes_to_svc_with_migrations(tmp_path):
     newsvc.main(["py-svc", "d", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"])
     r = shapecmd.route(tmp_path / "py-svc")
     assert r["agents"]["coder"] == "svc:coder" and r["agents"]["migrations"] == "svc:migrations"
+
+
+def test_migrate_removes_k8s_dir_and_stamp_is_current(repo):
+    (repo / "k8s" / "base").mkdir(parents=True)
+    (repo / "k8s" / "base" / "deployment.yaml").write_text("kind: Deployment\n")
+    git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "v1 k8s")
+    update.main(["--repo", str(repo), "--skip-tasks", "--migrate"])
+    assert not (repo / "k8s").exists()
+    assert git(repo, "log", "-1", "--format=%s").startswith("chore: update skeleton")
+
+
+def test_without_migrate_k8s_dir_is_left_alone(repo):
+    (repo / "k8s").mkdir()
+    (repo / "k8s" / "x.yaml").write_text("a: b\n")
+    git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "k8s")
+    (repo / ".platform-version").write_text("platform: 1.0.0\nshape: service-go\nref: main\n")
+    git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "old stamp")
+    update.main(["--repo", str(repo), "--skip-tasks"])
+    assert (repo / "k8s" / "x.yaml").exists()

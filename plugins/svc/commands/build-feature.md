@@ -194,12 +194,13 @@ Print `## Phase 4 complete — QA fan-out passed (tests: N, coverage X%, sec: PA
 
 ---
 
-## Phase 5 — Deployment
+## Phase 5 — Container image
 
 Skip with `## Phase 5 skipped — $SHAPE is not deployable` when `$DEPLOYABLE` is false. Otherwise use the **deployment** agent (`$SHAPE_PLUGIN:deployment`). Prompt prelude: `<project-map>` + `<touched-files>` (refreshed). Then:
 - The list of changed/new modules (from `$TOUCHED_FILES`)
-- Instruction to update or create: Dockerfile, k8s manifests in `k8s/`, and any needed `devbox run` script
-- Instruction to verify manifests with `devbox run deploy-check`
+- Instruction to verify or update the container image only: Dockerfile (numeric `USER`, read-only-filesystem friendly), the CI docker job, and any needed `devbox run` recipe — **never Kubernetes manifests** (the product's gitops-app repo owns them, ADR-017)
+- Instruction to run `devbox run image-build` and smoke-start the image
+- If the feature changes the port, probe paths or user, the report must say the gitops entry needs the matching `services.yaml` update
 
 ---
 
@@ -278,7 +279,7 @@ Print `## Phase 7 complete — PR opened: <URL>`.
 | Architecture | docs/plan/<slug>.md, N tasks (P parallel, S sequential) |
 | Implementation | N files changed across M commits |
 | QA fan-out | quality PASS, tests N (X% cov), security PASS/WARN |
-| Deployment | Dockerfile, k8s/<manifest>.yaml — deploy-check clean |
+| Container image | Dockerfile/CI verified, image smoke-started |
 | PR | <URL> — CI running |
 
 ### Acceptance criteria

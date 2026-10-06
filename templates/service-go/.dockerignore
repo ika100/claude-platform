@@ -3,7 +3,6 @@
 .devbox/
 bin/
 docs/
-k8s/
 *.test
 coverage.*
 .copier-answers.yml

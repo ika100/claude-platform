@@ -35,8 +35,6 @@ Canonical `devbox run` scripts (configured in `devbox.json`):
 | `security` | `audit` + `secrets-scan` |
 | `image-build` | `docker build` → `{{ project_name }}:scan` (multi-stage, distroless) |
 | `image-scan` | trivy against `{{ project_name }}:scan` |
-| `deploy` | `kubectl apply -k k8s/overlays/local/` |
-| `deploy-check` | `kubectl apply --dry-run=client -k k8s/overlays/local/` |
 
 **Rule for every agent (human, CI, and AI): never call `mvn`, `java`, `javac`, `detect-secrets`, or `trivy` directly. Always go through `devbox run <script>`. For one-off Maven goals use `devbox run -- mvn -B <goal>`; add a recipe if it is used repeatedly.**
 
@@ -79,6 +77,6 @@ Branch prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `release/`.
 
 CI's `docker` job builds a multi-stage image (Maven builder → `gcr.io/distroless/java{{ java_version }}-debian12:nonroot`, no shell) and pushes on `main` (`latest`, `sha-<short>`) and on `v*.*.*` tags (semver tags). Registry: `{{ docker_registry }}/{{ project_name }}`.
 
-## GitOps deployment
+## Deployment
 
-Registered for ArgoCD discovery through the GitHub topic `deployable-service`. In a product, a `gitops-app` repo lists it in `services.yaml` (`/gitops:compose add {{ project_name }}`) and pins versions with `/gitops:promote {{ project_name }} <from> <to>`. Local Kubernetes (k3d): `devbox run deploy`.
+This repo ships **only a container image**. Kubernetes manifests, environment wiring (e.g. `API_URL`), replicas, resources and exposure belong to the product's `gitops-app` repo (platform ADR-017): register the service with `/gitops:compose add {{ project_name }}` (needs the GitHub topic `deployable-service`, set by `/shared:new-service`), then `/gitops:promote {{ project_name }} <from> <to>`. Change how the service runs by editing its entry in that repo's `services.yaml`; change the port, probe paths or user in the Dockerfile/app and update the entry to match.

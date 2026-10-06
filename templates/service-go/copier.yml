@@ -1,6 +1,6 @@
 # Copier template: service-go
 # Go HTTP service: chi router, log/slog JSON logging, golangci-lint, distroless static image (ADR-010),
-# canonical devbox recipes, Docker + Kustomize, agentic setup.
+# canonical devbox recipes, Docker, agentic setup.
 #
 # Usage:
 #   copier copy <platform-checkout>/templates/service-go ./<project> --data project_name=<name>
@@ -20,13 +20,10 @@ _skip_if_exists:
   - internal/**
   - docs/adr/**
   - docs/env-vars.md
-  - k8s/monitoring/**
-  - k8s/base/deployment.yaml
 
 _exclude:
   - "copier.yml"
   - ".git"
-  - "{% if not needs_observability %}k8s/monitoring{% endif %}"
   - "{% if not needs_observability %}internal/server/metrics.go{% endif %}"
 
 _tasks:
@@ -38,7 +35,7 @@ _tasks:
 
 project_name:
   type: str
-  help: "Project name (kebab-case, e.g. 'payments-api'). Used in directory, binary, Docker tag, k8s labels."
+  help: "Project name (kebab-case, e.g. 'payments-api'). Used in directory, binary, Docker tag labels."
   validator: >-
     {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
     project_name must match ^[a-z][a-z0-9-]{1,39}$
@@ -61,14 +58,9 @@ module_name:
 
 owner_team:
   type: str
-  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  help: "Owning team or individual (used in CODEOWNERS)."
   default: "@{{ github_org }}"
 
-owner_label:
-  type: str
-  when: false
-  help: "owner_team as a valid Kubernetes label value (no '@', '/')."
-  default: "{{ owner_team | regex_replace('[^A-Za-z0-9_.-]+', '-') | trim('-') }}"
 
 go_version:
   type: str

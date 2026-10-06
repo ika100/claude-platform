@@ -47,17 +47,16 @@ jobs:
         run: uv run scripts/shapes.py check
       - name: shape detection fixtures
         run: bash scripts/test-detect-shape.sh
-      - name: rendered k8s manifests have valid label values
+      - name: generated Kubernetes manifests are valid (labels, kustomize build, kubeconform)
         run: |
           uv tool install copier
-          for t in service-python service-java service-go web-nextjs; do
-            copier copy ./templates/$t /tmp/labels-$t --defaults --trust --skip-tasks --data project_name=labels-test
-            uv run scripts/check-k8s-labels.py /tmp/labels-$t
-          done
-          # an org-style owner must be sanitised too
-          copier copy ./templates/service-go /tmp/labels-org --defaults --trust --skip-tasks \
-            --data project_name=labels-test --data owner_team="@my-org/platform team"
-          uv run scripts/check-k8s-labels.py /tmp/labels-org
+          copier copy ./templates/gitops-app /tmp/v2 --defaults --trust --skip-tasks --data project_name=fx-gitops --data app_name=fx
+          cp tests/fixtures/gitops/services.yaml /tmp/v2/applications/fx/services.yaml
+          cp tests/fixtures/gitops/app.yaml /tmp/v2/applications/fx/app.yaml
+          (cd /tmp/v2 && uv run scripts/render.py && uv run scripts/render.py --check)
+          uv run scripts/check-k8s-labels.py /tmp/v2
+          for d in /tmp/v2/applications/fx/overlays/*/*/; do kubectl kustomize "$d" > /dev/null; done
+
 
   platform-tests:
     name: cplat unit + integration tests
@@ -68,7 +67,7 @@ jobs:
       - name: Install copier
         run: uv tool install copier
       - name: pytest
-        run: uv run --with pytest --with pyyaml pytest tests/cplat -q
+        run: uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q
 
   smoke-test-templates:
     name: smoke-test Copier templates
@@ -131,15 +130,19 @@ jobs:
           test -f /tmp/test-gitops/bootstrap/test-root.yaml
       - name: Shape is detected as gitops-app
         run: test "$(bash scripts/detect-shape.sh /tmp/test-gitops)" = "gitops-app"
-      - name: Rendered files are in sync and survive adding a service
+      - name: Rendered files are in sync and a v2 fixture renders manifests only for its environments
         run: |
           cd /tmp/test-gitops
           uv run scripts/render.py --check
-          printf 'services:\n  - name: demo-api\n    repo: ika100/demo-api\n    shape: service-python\n    path: k8s/base\n' > applications/test/services.yaml
+          cp "$GITHUB_WORKSPACE/tests/fixtures/gitops/services.yaml" applications/test/services.yaml
+          cp "$GITHUB_WORKSPACE/tests/fixtures/gitops/app.yaml" applications/test/app.yaml
           uv run scripts/render.py
           uv run scripts/render.py --check
-          test -f applications/test/overlays/prod/demo-api/kustomization.yaml
-          grep -F 'demo-api' applications/test/applicationset.yaml
+          test -f applications/test/overlays/dev/fx-api/deployment.yaml
+          test -f applications/test/overlays/staging/fx-api/deployment.yaml
+          test ! -e applications/test/overlays/prod/fx-api      # not promoted to prod
+          test -f applications/test/overlays/dev/fx-web/httproute.yaml
+          grep -F 'fx-api' applications/test/applicationset.yaml
       - name: local cluster script parses and the recipes exist
         run: |
           bash -n /tmp/test-gitops/scripts/local-cluster.sh
@@ -149,7 +152,7 @@ jobs:
       - name: kustomize + kubeconform on the ApplicationSet
         run: |
           curl -sSL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz -C /tmp kubeconform
-          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml /tmp/test-gitops/bootstrap/test-root.yaml
+          /tmp/kubeconform -strict -ignore-missing-schemas -schema-location default -schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json' -summary /tmp/test-gitops/applications/test/applicationset.yaml /tmp/test-gitops/bootstrap/test-root.yaml /tmp/test-gitops/applications/test/overlays/*/*/[dsh]*.yaml
 
   smoke-test-web-nextjs:
     name: smoke-test web-nextjs template
@@ -170,9 +173,10 @@ jobs:
         run: |
           for f in devbox.json package.json Dockerfile .claude/settings.json .github/workflows/ci.yml \
                    app/layout.tsx app/page.tsx app/api/health/route.ts app/api/ready/route.ts \
-                   app/api/metrics/route.ts instrumentation.ts k8s/base/kustomization.yaml pnpm-workspace.yaml; do
+                   app/api/metrics/route.ts instrumentation.ts pnpm-workspace.yaml; do
             test -f /tmp/test-web/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-web/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
           test ! -e /tmp/test-web/e2e
       - name: Shape is detected as web-nextjs
         run: test "$(bash scripts/detect-shape.sh /tmp/test-web)" = "web-nextjs"
@@ -224,9 +228,10 @@ jobs:
       - name: Confirm key files exist
         run: |
           for f in devbox.json go.mod go.sum Dockerfile .golangci.yml .claude/settings.json .github/workflows/ci.yml \
-                   cmd/test-go/main.go internal/server/server.go internal/config/config.go k8s/base/kustomization.yaml; do
+                   cmd/test-go/main.go internal/server/server.go internal/config/config.go; do
             test -f /tmp/test-go/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-go/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
       - name: Shape is detected as service-go
         run: test "$(bash scripts/detect-shape.sh /tmp/test-go)" = "service-go"
       - name: go.mod / go.sum are tidy
@@ -277,9 +282,10 @@ jobs:
       - name: Confirm key files exist
         run: |
           for f in devbox.json pom.xml Dockerfile config/checkstyle.xml .claude/settings.json .github/workflows/ci.yml \
-                   src/main/resources/application.yml k8s/base/kustomization.yaml; do
+                   src/main/resources/application.yml; do
             test -f /tmp/test-java/$f || { echo "missing $f"; exit 1; }
           done
+          test ! -e /tmp/test-java/k8s || { echo "service templates must not ship k8s/ (ADR-017)"; exit 1; }
           test -f /tmp/test-java/src/main/java/io/github/ika100/testjava/Application.java
       - name: Shape is detected as service-java
         run: test "$(bash scripts/detect-shape.sh /tmp/test-java)" = "service-java"
@@ -306,7 +312,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?: .{1,72}$'
+          pattern='^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\(.+\))?!?: .{1,72}$'
           if ! echo "$PR_TITLE" | grep -qE "$pattern"; then
             echo "ERROR: PR title does not follow Conventional Commits."
             echo "  Got:     $PR_TITLE"

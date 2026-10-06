@@ -5,9 +5,6 @@
     "golangci-lint@latest",
     "gotools@latest",
     "govulncheck@latest",
-    "k3d@latest",
-    "kubectl@latest",
-    "k9s@latest",
     "detect-secrets@latest",
     "trivy@latest",
     "git@latest",
@@ -26,9 +23,7 @@
       "secrets-scan": "git ls-files -z ':!go.sum' | xargs -0 detect-secrets-hook --baseline .secrets.baseline.json",
       "security":     "devbox run audit && devbox run secrets-scan",
       "image-build":  "docker build --build-arg VERSION=scan -t {{ project_name }}:scan .",
-      "image-scan":   "trivy image --severity CRITICAL,HIGH --format table {{ project_name }}:scan",
-      "deploy":       "kubectl apply -k k8s/overlays/local/",
-      "deploy-check": "kubectl apply --dry-run=client -k k8s/overlays/local/"
+      "image-scan":   "trivy image --severity CRITICAL,HIGH --format table {{ project_name }}:scan"
     }
   }
 }
