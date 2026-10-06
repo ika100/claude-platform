@@ -20,6 +20,8 @@ Phase 1 of the multi-shape platform redesign ([platform-vision](requirements/pla
 
 - **shared 0.4.0**: `/shared:new-service` gains `--type <shape>` (aliases `--library`, `--web`, `--gitops`); template, topic and `--python` handling are read from `shapes.yml`. With no flag it still produces a `service-python` repo. Requesting a `planned` shape fails with a clear message.
 
+- **svc 1.1.0** (phase 2): every orchestration command resolves `$SHAPE` and routes coder/tester/deployment/observability/release to `$SHAPE_PLUGIN:<role>` via the new `plugins/svc/fragments/shape-dispatch.md`. The architect plan metadata gains a required `shape:` field (missing → `service-python` with a deprecation notice). `/svc:build-feature` gains `--from-plan <path> [<repo-id>]` (ADR-011) and skips deployment for non-deployable shapes. `/svc:release` dispatches to the shape's release agent. `/shared:check-quality` and the quality/security agents are shape-neutral.
+
 ### Migration
 
 - Run `/plugin marketplace update`. No `copier update` needed — templates are unchanged.

@@ -116,3 +116,7 @@ FAIL — N lint errors, N format issues, N type errors. Fix required before proc
 - **Do not** modify application logic — only update `pyproject.toml` and `.pre-commit-config.yaml` configuration.
 - If a tool errors with "not found", the fix is to add it to `devbox.json` (packages or dev dependencies) — never run a global `pip install` or `uv add` out-of-band.
 - Always reference violations by `file:line` so the coder agent can locate them immediately.
+
+## Non-Python shapes
+
+For `web-nextjs`, `service-java`, `service-go` and other registered shapes the tooling differs (ESLint + `tsc`, Spotless + Checkstyle, golangci-lint, …) but the contract does not: run `devbox run quality`, report violations grouped by file with line numbers, and name the tools by what the recipe's output shows. Do not add Python config (`pyproject.toml`, ruff, mypy) to a non-Python repo.

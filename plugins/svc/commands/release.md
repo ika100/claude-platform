@@ -6,6 +6,12 @@ You are the **release orchestrator**. Drive a release through quality gating, te
 
 ---
 
+## Phase 0 — Shape dispatch
+
+Detect `$SHAPE` and resolve `$SHAPE_PLUGIN` per `plugins/svc/fragments/shape-dispatch.md` ([ADR-012](../../../docs/adr/012-per-plugin-release-agent.md)). The tester agent is `$SHAPE_PLUGIN:tester` and the release agent in Phase 4 is `$SHAPE_PLUGIN:release` (`svc:release` for Python shapes). The gates below call only shape-neutral `devbox run` recipes. Skip the image scan in Phase 3 when the shape is not deployable.
+
+---
+
 ## Phase 1 — Quality gate
 
 Use the **quality agent** with instruction:
@@ -70,7 +76,7 @@ If security passes, print `## Phase 3 complete — security gate passed` and con
 ## Phase 4 — Release preparation
 
 Use the **release agent** with instruction:
-> Determine the next semantic version from git log. Generate the CHANGELOG.md entry, update pyproject.toml, create the release/vX.Y.Z branch, commit to it, push it, and open a GitHub PR targeting main. Do NOT create a local git tag — the orchestrator will do that after the PR is merged.
+> Determine the next semantic version from git log. Generate the CHANGELOG.md entry, update the version file for the shape (`pyproject.toml` for Python, `package.json` for web, `pom.xml` for Java; Go has none), create the release/vX.Y.Z branch, commit to it, push it, and open a GitHub PR targeting main. Do NOT create a local git tag — the orchestrator will do that after the PR is merged.
 
 Wait for the release agent to complete. Extract the version string (e.g. `v0.3.0`) and the PR URL from the agent's output.
 
