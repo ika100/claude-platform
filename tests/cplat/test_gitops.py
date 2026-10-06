@@ -222,3 +222,31 @@ def test_promote_all_moves_every_service_in_the_source_env(gitops_repo, gh):
     composed(gitops_repo, "todo-web")
     promote.main(["--all", "dev", "staging", "--repo-dir", str(gitops_repo)])
     assert pin(gitops_repo, "staging", "todo-api").startswith("sha-") and pin(gitops_repo, "staging", "todo-web").startswith("sha-")
+
+
+V1_SERVICES = """services:
+  - name: todo-web
+    repo: acme/todo-web
+    shape: web-nextjs
+    path: k8s/base
+"""
+
+
+def test_v1_entry_is_migrated_in_place_keeping_environments_and_pins(gitops_repo, gh):
+    app = gitops_repo / "applications/todo"
+    (app / "services.yaml").write_text(V1_SERVICES)
+    for env, tag in (("dev", "latest"), ("staging", "sha-1234567")):          # what a running v1 product looks like
+        d = app / "overlays" / env / "todo-web"
+        d.mkdir(parents=True)
+        (d / "kustomization.yaml").write_text(
+            "apiVersion: kustomize.config.k8s.io/v1beta1\nkind: Kustomization\nresources:\n- https://github.com/acme/todo-web//k8s/base?ref=main\n"
+            f"images:\n- name: ghcr.io/acme/todo-web\n  newTag: {tag}\n")
+    commit(gitops_repo, "v1 product")
+    r = subprocess.run(["uv", "run", "scripts/render.py"], cwd=gitops_repo, capture_output=True, text=True)
+    assert r.returncode == 1 and "--from-k8s" in r.stderr and "v1 format" in r.stderr     # v1 is rejected with a pointer
+    run_compose(gitops_repo, "add", "todo-web", "--from-k8s")
+    [s] = services(gitops_repo)
+    assert s["environments"] == ["dev", "staging"] and s["env"]["API_URL"] == "http://todo-api" and "path" not in s
+    assert pin(gitops_repo, "staging", "todo-web") == "sha-1234567"             # pins survive the migration
+    assert not (app / "overlays/prod/todo-web").exists()
+    assert (app / "overlays/dev/todo-web/deployment.yaml").is_file()

@@ -143,23 +143,32 @@ def main(argv: list[str]) -> int:
     existing = {s["name"]: s for s in services}
     r = Report(title=f"compose {ns.action}: {', '.join(ns.services)} ({app_dir.name})")
     names: list[str] = []
+    replaced: list[str] = []
 
     if ns.action == "add":
         new = []
         for arg in ns.services:
             name, slug = resolve_slug(arg, org)
-            if name in existing:
+            old = existing.get(name)
+            v1 = old is not None and "port" not in old and "probes" not in old     # platform-v1 entry (remote base, `path:`)
+            if old is not None and not v1:
                 raise PlatformError(f"{name} is already in services.yaml", hint="edit its entry by hand, or remove it first")
             answers_text = check_remote(slug)
             shape = shape_of(answers_text, ns.shape)
             port = (yaml.safe_load(answers_text) or {}).get("port") if answers_text else None
             seed = seed_from_k8s(slug) if ns.from_k8s else {}
             entry = build_entry(name, slug, shapes[shape], port, registry_ns, ns, seed)
+            if v1:  # migrate in place: keep the environments that already run (their overlays exist) and, via render, their image pins
+                entry["environments"] = [e for e in gitops.ENVS if (app_dir / "overlays" / e / name).is_dir()] or ["dev"]
+                replaced.append(name)
             new.append(entry)
             names.append(name)
-            r.will_do.append(f"add {name} ({shape}): port {entry['port']}, image {entry['image']}, environments [dev]" + (", exposed" if "expose" in entry else ""))
+            r.will_do.append(("migrate v1 entry of " if v1 else "add ") + f"{name} ({shape}): port {entry['port']}, image {entry['image']}, environments {entry['environments']}" + (", exposed" if "expose" in entry else "")
+                             + (" — existing image pins are kept" if v1 else ""))
         if not ns.dry_run:
             for e in new:
+                if e["name"] in replaced:
+                    del services[[x["name"] for x in services].index(e["name"])]
                 services.append(e)
             gitops.save(app_dir, y, data)
     else:
