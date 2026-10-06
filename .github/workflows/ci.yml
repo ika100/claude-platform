@@ -59,6 +59,17 @@ jobs:
             --data project_name=labels-test --data owner_team="@my-org/platform team"
           uv run scripts/check-k8s-labels.py /tmp/labels-org
 
+  platform-tests:
+    name: cplat unit + integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v3
+      - name: Install copier
+        run: uv tool install copier
+      - name: pytest
+        run: uv run --with pytest --with pyyaml pytest tests/cplat -q
+
   smoke-test-templates:
     name: smoke-test Copier templates
     runs-on: ubuntu-latest

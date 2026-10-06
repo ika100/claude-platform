@@ -1,6 +1,6 @@
 # web plugin
 
-Agents for **Next.js (App Router) web repos** — the `web-nextjs` shape. Used by the `/svc:*` orchestrators (which route to `web:<role>` when the detected shape is `web-nextjs`; see `plugins/svc/fragments/shape-dispatch.md`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `web-nextjs` Copier template.
+Agents for **Next.js (App Router) web repos** — the `web-nextjs` shape. Used by the `/svc:*` orchestrators (which route to `web:<role>` when the detected shape is `web-nextjs`). Pair with `svc` (orchestrators, product-manager, architect), `shared` (quality/security) and the `web-nextjs` Copier template.
 
 ## Agents
 

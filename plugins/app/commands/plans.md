@@ -10,7 +10,7 @@ You manage the lifecycle of multi-repo plans written by `/app:build-feature`. Th
 
 ## Pre-flight
 
-Detect the shape per `plugins/shared/fragments/shape-detection.md`; it must be `gitops-app`, else stop. Confirm `scripts/plan.py` exists; if not, tell the user to run `/shared:update-service` (older skeleton) and stop.
+Resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It must report `shape: gitops-app`, else stop. Confirm `scripts/plan.py` exists; if not, tell the user to run `/shared:update-service` (older skeleton) and stop.
 
 ## Dispatch
 

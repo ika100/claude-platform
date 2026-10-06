@@ -12,7 +12,7 @@ If `$ARGUMENTS` is empty, print usage and stop.
 
 ## Phase 1 — Pre-flight
 
-1. Detect the shape per `plugins/shared/fragments/shape-detection.md`. It must be `gitops-app`; otherwise stop: "`/app:build-feature` runs inside a gitops-app repo (`/shared:new-service <name> --gitops`)."
+1. Resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It must report `shape: gitops-app`; otherwise stop: "`/app:build-feature` runs inside a gitops-app repo (`/shared:new-service <name> --gitops`)."
 2. `git status --porcelain` must be empty; otherwise stop.
 3. Read `applications/*/services.yaml`. If it lists no services, stop and recommend `/gitops:compose add <service>` first (a plan needs components to plan against). Exception: if the feature is "create the first service", say so and stop with the bootstrap commands instead.
 4. Derive `SLUG` from the request (lowercase, hyphens, ≤40 chars). If `docs/plan/<SLUG>.md` exists, append `-2`, `-3`, … Resolve `GITOPS_APP` = `github_org`/`project_name` from `.copier-answers.yml`.

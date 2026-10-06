@@ -4,6 +4,20 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [Unreleased]
+
+### Added (v2 work, phase A)
+
+- **`scripts/cplat/cplat.py`** — deterministic, tested implementation of the commands: `new-service`, `update-service`, `doctor`, `shape`; each prints *what I will do* (`--dry-run`) and *what happened / next / how to undo*. 29 tests in `tests/cplat` (CI job `platform-tests`), including regression tests for defects found in the e2e run (module_name for non-Python shapes, stable `_src_path`, update keeps project files).
+- **`/shared:doctor`** — preflight: tools, `gh` scopes, Docker, kube context (warns on non-local), plugin versions (with the "restart Claude Code" hint), repo platform version.
+- **`.platform-version`** stamp in generated repos; `update-service` reports the changelog range and lists overwritten skeleton files.
+- `docs/BASELINES.md`: the numbers v2 is measured against.
+
+### Changed
+
+- `/shared:new-service` (11 KB → 1.8 KB) and `/shared:update-service` (4.8 KB → 1.4 KB) are thin wrappers: preview with `--dry-run`, run, relay the report.
+- **Fixed a latent defect:** eleven commands/agents referenced repo-relative fragment files (`plugins/svc/fragments/shape-dispatch.md`, …) that do not exist in a consumer repo (and cross-plugin paths are not reachable), so the model could not read them. They now call `cplat shape`, which prints the shape and the agent routing as JSON; the two fragment files are removed.
+
 ## [1.1.1] — 2026-10-06
 
 Fixes found by running the platform end to end on a real todo app (Java API + Next.js UI + gitops-app on a local k3d/ArgoCD cluster): 12 defects, several of which made every generated deployable service undeployable. Plugin versions: shared 0.5.1, gitops 0.3.1. **Existing repos:** run `/shared:update-service` (skeleton fixes: CI, Dockerfiles, devbox), and see the migration notes in the entries below for project-owned files (`k8s/base/deployment.yaml` label value, `pom.xml` patched Tomcat/Jackson for Java).

@@ -1,0 +1,137 @@
+"""`doctor`: preflight checks with a concrete fix for every problem."""
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+from pathlib import Path
+
+import core
+from core import PLATFORM_ROOT, run
+
+OK, WARN, FAIL = "ok", "warn", "fail"
+ICON = {OK: "✓", WARN: "!", FAIL: "✗"}
+LOCAL_CONTEXT_PREFIXES = ("k3d-", "kind-", "docker-desktop", "minikube", "rancher-desktop", "orbstack")
+
+
+def check(status: str, name: str, detail: str, fix: str | None = None) -> dict:
+    return {"status": status, "name": name, "detail": detail, "fix": fix}
+
+
+def check_tools() -> list[dict]:
+    out = []
+    for tool, required in (("git", True), ("uv", True), ("gh", True), ("devbox", False), ("docker", False)):
+        if shutil.which(tool):
+            out.append(check(OK, tool, shutil.which(tool)))
+        else:
+            out.append(check(FAIL if required else WARN, tool, "not found", core.install_hint(tool)))
+    copier = shutil.which("copier") or (str(Path.home() / ".local/bin/copier") if (Path.home() / ".local/bin/copier").is_file() else None)
+    out.append(check(OK, "copier", copier) if copier else check(WARN, "copier", "not installed (uv will run it ephemerally)", "uv tool install copier"))
+    return out
+
+
+def check_gh() -> list[dict]:
+    if not shutil.which("gh"):
+        return []
+    p = run(["gh", "auth", "status"], check=False)
+    text = (p.stdout or "") + (p.stderr or "")
+    if p.returncode != 0:
+        return [check(FAIL, "gh login", "not logged in", "gh auth login")]
+    out = [check(OK, "gh login", "logged in")]
+    scopes = text.split("Token scopes:")[-1].splitlines()[0] if "Token scopes:" in text else ""
+    for needed, why in (("repo", "create repos / PRs"), ("workflow", "push CI workflows")):
+        out.append(check(OK if needed in scopes else FAIL, f"gh scope {needed}", why, None if needed in scopes else f"gh auth refresh -s {needed}"))
+    pk = "packages" in scopes
+    out.append(check(OK if pk else WARN, "gh scope read/write:packages", "pull private images locally (cluster-up)", None if pk else "gh auth refresh -s read:packages"))
+    return out
+
+
+def check_docker() -> list[dict]:
+    if not shutil.which("docker"):
+        return []
+    p = run(["docker", "info", "--format", "{{.ServerVersion}}"], check=False, timeout=15)
+    if p.returncode == 0:
+        return [check(OK, "docker daemon", f"running (server {p.stdout.strip()})")]
+    return [check(WARN, "docker daemon", "not running", "open -a Docker   (needed for image builds and cluster-up)")]
+
+
+def check_kube() -> list[dict]:
+    if not shutil.which("kubectl"):
+        return []
+    cur = run(["kubectl", "config", "current-context"], check=False).stdout.strip()
+    if not cur:
+        return [check(OK, "kube context", "none set")]
+    if cur.startswith(LOCAL_CONTEXT_PREFIXES):
+        return [check(OK, "kube context", f"{cur} (local)")]
+    return [check(WARN, "kube context", f"{cur} looks like a NON-local cluster", "scripts always pass an explicit --context; never run kubectl apply by hand here")]
+
+
+def installed_plugins() -> dict[str, str]:
+    f = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
+    if not f.is_file():
+        return {}
+    data = json.loads(f.read_text())
+    data = data.get("plugins", data)
+    return {k.split("@")[0]: v[0].get("version", "?") for k, v in data.items() if k.endswith("@ika100-claude") and v}
+
+
+def check_plugins() -> list[dict]:
+    market = json.loads((PLATFORM_ROOT / ".claude-plugin" / "marketplace.json").read_text())
+    avail = {p["name"]: p["version"] for p in market["plugins"]}
+    have = installed_plugins()
+    if not have:
+        return [check(WARN, "plugins", "none installed from ika100-claude", "/plugin marketplace add ika100/claude-platform && /plugin install shared@ika100-claude")]
+    stale = {n: (have[n], avail[n]) for n in have if n in avail and core.vtuple(have[n]) < core.vtuple(avail[n])}
+    out = []
+    if stale:
+        names = ", ".join(f"{n} {a}→{b}" for n, (a, b) in stale.items())
+        out.append(check(WARN, "plugins", f"outdated: {names}", "claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude, then RESTART Claude Code (a running session keeps the old prompts)"))
+    else:
+        out.append(check(OK, "plugins", ", ".join(f"{n} {v}" for n, v in sorted(have.items()))))
+    missing = sorted(set(avail) - set(have))
+    if missing:
+        out.append(check(OK, "plugins not installed", ", ".join(missing) + " (install the ones your shapes need)"))
+    return out
+
+
+def check_repo(repo: Path) -> list[dict]:
+    if not (repo / ".git").exists():
+        return []
+    out = []
+    det = run(["bash", str(PLATFORM_ROOT / "scripts" / "detect-shape.sh"), str(repo)], check=False)
+    shape = det.stdout.strip()
+    out.append(check(OK, "repo shape", shape) if shape else check(WARN, "repo shape", "not a platform repo (no .copier-answers.yml / known markers)"))
+    stamp = core.read_stamp(repo)
+    if shape:
+        cur = core.platform_version()
+        if not stamp:
+            out.append(check(WARN, "repo platform version", "no .platform-version stamp", "/shared:update-service"))
+        elif core.vtuple(stamp.get("platform", "0.0.0")) < core.vtuple(cur):
+            out.append(check(WARN, "repo platform version", f"{stamp['platform']} (platform is {cur})", "/shared:update-service"))
+        else:
+            out.append(check(OK, "repo platform version", stamp.get("platform", "?")))
+    return out
+
+
+def run_checks(repo: Path) -> list[dict]:
+    return [*check_tools(), *check_gh(), *check_docker(), *check_kube(), *check_plugins(), *check_repo(repo)]
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="cplat doctor", description=__doc__)
+    ap.add_argument("--repo", default=".")
+    ap.add_argument("--json", action="store_true")
+    ns = ap.parse_args(argv)
+    results = run_checks(Path(ns.repo).resolve())
+    if ns.json:
+        print(json.dumps(results, indent=2))
+    else:
+        print("## Platform doctor\n")
+        for c in results:
+            print(f"  {ICON[c['status']]} {c['name']}: {c['detail']}")
+            if c["fix"] and c["status"] != OK:
+                print(f"      fix: {c['fix']}")
+        bad = sum(c["status"] == FAIL for c in results)
+        warn = sum(c["status"] == WARN for c in results)
+        print(f"\n{'All good.' if not bad and not warn else f'{bad} problem(s), {warn} warning(s).'}")
+    return 1 if any(c["status"] == FAIL for c in results) else 0

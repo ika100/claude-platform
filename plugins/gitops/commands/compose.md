@@ -12,7 +12,7 @@ Expected format: `add|remove <service> [<service>...]`. If malformed, print usag
 
 ## Phase 1 — Pre-flight
 
-1. Detect the shape per `plugins/shared/fragments/shape-detection.md`. It must be `gitops-app`; otherwise stop: "`/gitops:compose` only works inside a gitops-app repo (created with `/shared:new-service <name> --gitops`)."
+1. Resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It must report `shape: gitops-app`; otherwise stop: "`/gitops:compose` only works inside a gitops-app repo (created with `/shared:new-service <name> --gitops`)."
 2. `git status --porcelain` must be empty; otherwise stop.
 3. Back on a clean main: `git checkout main && git fetch origin && git merge --ff-only origin/main` (skip `fetch`/`merge` if there is no `origin` yet).
 4. Resolve the application: `applications/*/services.yaml`. If exactly one, use it. If several, ask the user which app (free-form text, once).

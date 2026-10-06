@@ -46,7 +46,7 @@ Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a 
 
 ## Shapes and agent dispatch
 
-Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:build-feature`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (see `plugins/svc/fragments/shape-dispatch.md`). The multi-repo flow: `/app:build-feature` writes a plan → run `/svc:build-feature --from-plan <plan> <repo-id>` in each repo → `/app:plans done` → `/gitops:promote`.
+Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:build-feature`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (`cplat shape` prints the routing). The multi-repo flow: `/app:build-feature` writes a plan → run `/svc:build-feature --from-plan <plan> <repo-id>` in each repo → `/app:plans done` → `/gitops:promote`.
 
 ---
 
@@ -147,7 +147,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 | `release` | sonnet | Semver, CHANGELOG, release branch + PR |
 | `deployment` | sonnet | Dockerfile, base k8s, CI/CD |
 
-Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`$SHAPE_PLUGIN:<role>`, see `plugins/svc/fragments/shape-dispatch.md`); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `quality` and `security` are shape-agnostic.
+Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`<plugin>:<role>`; `cplat shape` prints the routing); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `quality` and `security` are shape-agnostic.
 
 ### `web` plugin (`web-nextjs`)
 

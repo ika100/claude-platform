@@ -16,7 +16,7 @@ If `$ARGUMENTS` is empty or malformed, print usage and stop.
 
 ## Phase 0 — Resolve the target repo and mode
 
-Detect the shape of the current directory per `plugins/shared/fragments/shape-detection.md`:
+Resolve the shape of the current directory: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` and read `shape` from the JSON:
 
 - **`gitops-app`** → **app mode**, operate here.
 - **Not `gitops-app` but `.platform-app.yml` exists** (a service repo that belongs to an app, [ADR-014](../../../docs/adr/014-gitops-app-composition-spec.md)) → read `gitops_apps`. If it lists several, ask the user which one (free-form text, once). Clone it next to the work: `gh repo clone <org>/<repo> "$(mktemp -d)/gitops-app"`, `cd` into the clone, and run every later phase there. Tell the user the clone path in the final report.
