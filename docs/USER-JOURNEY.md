@@ -65,14 +65,14 @@ You can already create repos with just `shared`. Every generated repo enables th
 What happens (no questions asked beyond the name and a description):
 
 1. The `gitops-app` template is rendered, committed, and pushed to a new **private** repo `<you>/taskboard`.
-2. You get `applications/taskboard/` with an empty `services.yaml`, generated ApplicationSets (dev/staging/prod) and `overlays/`, a `bootstrap/` root Argo Application, plus CI that validates everything (`kustomize build`, `kubeconform` incl. the Argo CRDs, secret scan).
+2. You get `applications/taskboard/` with an empty `services.yaml` and an `app.yaml` (gateway + hostnames), generated ApplicationSets (dev/staging/prod), a `bootstrap/` root Argo Application, plus CI that validates everything offline (`kustomize build`, `kubeconform` incl. the Argo and Gateway CRDs, label check, secret scan). **This repo will own every Kubernetes manifest of the product** — the services only ship images.
 3. It is *not* tagged `deployable-service` (it is the GitOps source, not a service).
 
 Open it: `cd taskboard && claude`. Its `CLAUDE.md` already explains the layout and pin policy to Claude.
 
 > **One-time cluster step (human, once per cluster).** Make sure Argo can read your GitHub repos (repo credentials), then run `KUBE_CONTEXT=<your-cluster> devbox run bootstrap` in `taskboard` (it applies `bootstrap/taskboard-root.yaml`). That root Application watches `applications/taskboard/applicationset.yaml` in git — from then on every change reaches the cluster through merged pull requests, and agents never run `kubectl apply`.
 
-> **Just want to try it on your laptop?** `devbox run cluster-up` creates a local k3d cluster (`taskboard-local`), installs ArgoCD, gives it your `gh` token for the private repos and GHCR images, and applies the root Application in one go; `devbox run cluster-down` removes it. Needs Docker running.
+> **Just want to try it on your laptop?** `devbox run cluster-up` creates a local k3d cluster (`taskboard-local`), installs ArgoCD and the Gateway API (Traefik), gives Argo your `gh` token for this private repo and the cluster a GHCR pull secret, applies the root Application and prints the URLs of exposed services; `devbox run cluster-down` removes it. Needs Docker running.
 
 ---
 
@@ -87,8 +87,8 @@ Each command: renders the template → commits → creates a private repo → ad
 
 | Repo | Shape | What you get on day one |
 |---|---|---|
-| `taskboard-api` | `service-python` | FastAPI app with `/health` + `/ready`, pytest + coverage gate, ruff/mypy, Dockerfile, k8s manifests, CI incl. image push |
-| `taskboard-web` | `web-nextjs` | Next.js App Router, Vitest, `/api/health` `/api/ready` `/api/metrics`, Dockerfile, k8s manifests, CI |
+| `taskboard-api` | `service-python` | FastAPI app with `/health` + `/ready`, pytest + coverage gate, ruff/mypy, Dockerfile (numeric non-root user), CI incl. multi-arch image push. **No Kubernetes files.** |
+| `taskboard-web` | `web-nextjs` | Next.js App Router, Vitest, `/api/health` `/api/ready` `/api/metrics`, Dockerfile, CI incl. multi-arch image push. **No Kubernetes files.** |
 
 Want Java or Go instead? `--type service-java` / `--type service-go`. A shared library? `--library`.
 
@@ -117,10 +117,10 @@ What `/svc:build-feature` does (you watch phase headers, you are only asked befo
 | 2 | architect | `docs/plan/<slug>.md` with tasks, files, dependencies (and `shape:`) |
 | 3 | shape's **coder** agents, in parallel git worktrees | implementation, merged with a quality gate between merges |
 | 4 | quality ‖ tester ‖ security, in parallel | lint/types, tests + coverage, CVE + secrets scan |
-| 5 | deployment | Dockerfile/k8s verified (`devbox run deploy-check`) |
+| 5 | deployment | container image verified (`devbox run image-build`, smoke start) — never Kubernetes manifests |
 | 7 | orchestrator | asks to push, opens a PR with a summary, linked issues, checklist |
 
-You review and merge the PR. CI re-runs the same recipes and **pushes the image** on merge to `main` (`latest`, `sha-<short>`).
+You review and merge the PR. CI re-runs the same recipes and, on merge to `main`, **pushes a multi-arch image** (`latest`, `sha-<7>`).
 
 Smaller jobs: `/svc:quick-task "…"` (coder → quality → tester) and `/svc:fix-bug "stack trace or description"`. Any time: `/shared:check-quality` (read-only audit).
 
@@ -136,7 +136,16 @@ Both services have merged to `main` and their images exist. In `taskboard`:
 /gitops:compose add taskboard-api taskboard-web
 ```
 
-The compose agent verifies each repo exists, has the `deployable-service` topic and a `k8s/base`, detects its shape, edits `services.yaml`, regenerates ApplicationSets and overlays (`devbox run render`), validates (`devbox run validate`) and opens **one PR**. Merge it; Argo creates the Applications. **dev** now tracks each service's `main` automatically.
+The script verifies each repo exists and has the `deployable-service` topic, reads its shape and port from the service's `.copier-answers.yml`, and writes a **complete, explicit** entry per service into `services.yaml` (port, probes, numeric user, writable volumes, env, replicas, resources — the shape's defaults), regenerates ApplicationSets and manifests (`devbox run render`) and opens **one PR**. New services start in **dev only**.
+
+Wiring and exposure are decided here, in the product repo — not in the services:
+
+```
+/gitops:compose add taskboard-api
+/gitops:compose add taskboard-web --expose --env API_URL=http://taskboard-api
+```
+
+`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
 
 ---
 
@@ -146,18 +155,16 @@ The compose agent verifies each repo exists, has the `deployable-service` topic 
 /gitops:promote taskboard-api taskboard-web dev staging
 ```
 
-One PR pinning both services in **staging** to the `sha-<short>` of the image currently built from their `main`. Merge → Argo rolls staging.
+One PR that adds **staging** to both services and pins each to the `sha-<7>` image built from its `main` — the script checks that the image exists in GHCR first, so a promotion can never point at a build that CI has not finished. Merge → Argo creates and rolls staging.
 
 For **prod** you pin a release: in each service repo run `/svc:release` (quality gate → test gate → security gate → version bump → changelog PR → tag `vX.Y.Z` → CI pushes semver images). Then:
 
 ```
-/gitops:promote taskboard-api staging prod            # newest released semver
+/gitops:promote taskboard-api staging prod            # newest release that has a published image
 /gitops:promote taskboard-web staging prod v1.2.0     # or an explicit version
 ```
 
-The agent prints **ABOUT TO PROMOTE TO PRODUCTION** before opening the PR. Nothing auto-merges; rolling back is reverting the promote PR.
-
-Run it from inside a service repo and it finds the GitOps repo through `.platform-app.yml`.
+Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exactly what CI publishes). The command prints **ABOUT TO PROMOTE TO PRODUCTION** and waits for a yes before opening the PR. Nothing auto-merges; rolling back is reverting the promote PR.
 
 ---
 

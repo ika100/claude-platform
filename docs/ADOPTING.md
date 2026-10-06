@@ -128,12 +128,12 @@ Later runs are the same: `/shared:update-service` (optionally `--ref <platform-t
 1. Enable `web`, `svc` and `shared` in `.claude/settings.json` (marketplace reference as in Step 1).
 2. Make the repo conform to the recipe contract: add a `devbox.json` with `install`, `dev`, `test`, `test-fast`, `lint`, `lint-fix`, `typecheck`, `quality`, `audit`, `security`, `image-build`, `image-scan`, `deploy-check` wrapping your `pnpm` scripts (`templates/web-nextjs/devbox.json.jinja` is the reference). Agents never call `pnpm`/`npx` directly.
 3. App Router only: if the app still uses `pages/`, migrate or keep it out of agent-driven work (ADR-004). Pin Node and the `packageManager` field (ADR-003/005).
-4. Add `k8s/base` (Deployment with `/api/health` + `/api/ready`, Service) and tag the repo `deployable-service`.
+4. Tag the repo `deployable-service`. It needs **no** Kubernetes files (v2): register it in the product's gitops-app repo with `/gitops:compose add <repo>` (use `--from-k8s` if it still has a `k8s/base`).
 5. Write `.copier-answers.yml` (Step 5 above, template `templates/web-nextjs`) so shape detection does not rely on sniffing (`next.config.*` / `"next"` in `package.json`).
 
 ## Migrating a gitops-app repo
 
-For an existing product GitOps repo (Kustomize + Argo):
+For an existing product GitOps repo (Kustomize + Argo), see *Migrating from platform v1 to v2* below; for a repo that is not on the platform yet:
 
 1. Enable `gitops`, `app`, `svc` and `shared`.
 2. Restructure to `applications/<app>/{services.yaml,applicationset.yaml,overlays/<env>/<service>/}` (ADR-014): put every component service in `services.yaml`, copy `scripts/render.py` and `scripts/plan.py` plus the `devbox.json` recipes from `templates/gitops-app`, run `devbox run render`, and review that the generated overlays reproduce your current pins (render preserves existing `newTag`/`?ref=` values).
@@ -143,9 +143,21 @@ For an existing product GitOps repo (Kustomize + Argo):
 
 ## Migrating a Java or Go repo
 
-Provide the canonical devbox recipes (`lint`, `lint-fix`, `quality`, `test`, `test-fast`, `security`, `image-build`, `image-scan`, `deploy-check`; see `templates/service-java` / `templates/service-go`), enable `svc-java` or `svc-go` plus `svc` and `shared`, add `k8s/base`, tag the repo `deployable-service`, and write `.copier-answers.yml` (Step 5).
+Provide the canonical devbox recipes (`lint`, `lint-fix`, `quality`, `test`, `test-fast`, `security`, `image-build`, `image-scan`; see `templates/service-java` / `templates/service-go`), enable `svc-java` or `svc-go` plus `svc` and `shared`, tag the repo `deployable-service`, and write `.copier-answers.yml` (Step 5).
 
 ---
+
+## Migrating from platform v1 to v2 (services no longer ship Kubernetes manifests)
+
+v2 moves every Kubernetes manifest into the product's gitops-app repo (ADR-017). Per product, in this order:
+
+1. **Update the gitops repo's skeleton**: in the gitops-app repo run `/shared:update-service` (new `render.py`, CI, `app.yaml`, `cluster-up` with the Gateway API) and merge the PR.
+2. **Import each service**: `/gitops:compose add <service> --from-k8s --pr` reads the service's `k8s/base/deployment.yaml` (port, probes, env such as `API_URL`, replicas, resources) and writes a complete v2 entry. Remove the old v1 entry (it has a `path:` and no `port:`; `render.py` rejects it with a pointer here). Entries start in `dev`; for environments that already run, add `staging`/`prod` to `environments` and keep the current tags (the old `kustomization.yaml` pins are not carried over — set them with `/gitops:promote` or by hand).
+3. **Expose** what should be reachable: `expose: {host: …}` on the entry; the dev hostname template is in `app.yaml`.
+4. **Strip the service repos**: `/shared:update-service --migrate` in each service repo (updates the skeleton, **deletes `k8s/`**; it stays in git history). Project-owned files you customised (`pom.xml`, `src/`, …) are untouched.
+5. Merge, let Argo sync. The Deployment selector (`app: <name>`) is unchanged, so running workloads update in place.
+
+What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo credentials for service repos, `deploy`/`deploy-check` recipes and the `k3d`/`kubectl`/`k9s` packages in service repos, per-service `overlays/` and PrometheusRule files (alerting is a gitops-side follow-up).
 
 ## What you get after adoption
 

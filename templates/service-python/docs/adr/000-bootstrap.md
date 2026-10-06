@@ -14,7 +14,7 @@ Accepted on bootstrap.
 - ruff + mypy for quality
 - pip-audit + detect-secrets + bandit + trivy for security
 - Multi-stage Docker build → `{{ docker_registry }}/{{ project_name }}`
-- Kustomize manifests in `k8s/base/` + `k8s/overlays/{local,staging,prod}/`
+- No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD auto-discovery
 - Claude Code agents from the `ika100-claude` marketplace (`svc` + `shared`)
 {%- if needs_observability %}

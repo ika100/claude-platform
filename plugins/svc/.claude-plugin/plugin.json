@@ -1,6 +1,6 @@
 {
   "name": "svc",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Multi-agent pipeline for Python service repos. Provides product-manager, architect, coder, tester, migrations, observability, release, and deployment agents plus the build-feature/plan-feature/quick-task/fix-bug/release commands. Requires `devbox run` recipes from the service-python Copier template.",
   "author": {
     "name": "Eike Hensler",

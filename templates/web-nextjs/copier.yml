@@ -1,6 +1,6 @@
 # Copier template: web-nextjs
 # Next.js (App Router only, ADR-004) web frontend: pnpm (ADR-003), Vitest + optional Playwright (ADR-002),
-# pinned Node LTS (ADR-005), canonical devbox recipes, Docker + Kustomize, agentic setup.
+# pinned Node LTS (ADR-005), canonical devbox recipes, Docker, agentic setup.
 #
 # Usage:
 #   copier copy <platform-checkout>/templates/web-nextjs ./<project> --data project_name=<name>
@@ -19,10 +19,8 @@ _skip_if_exists:
   - e2e/**
   - docs/adr/**
   - docs/env-vars.md
-  - k8s/monitoring/**
   - public/**
   - pnpm-workspace.yaml
-  - k8s/base/deployment.yaml
 
 _exclude:
   - "copier.yml"
@@ -32,7 +30,6 @@ _exclude:
   - "{% if not needs_observability %}app/api/metrics{% endif %}"
   - "{% if not needs_observability %}tests/metrics.test.ts{% endif %}"
   - "{% if not needs_observability %}instrumentation.ts{% endif %}"
-  - "{% if not needs_observability %}k8s/monitoring{% endif %}"
 
 _tasks:
   - "git init -q"
@@ -43,7 +40,7 @@ _tasks:
 
 project_name:
   type: str
-  help: "Project name (kebab-case, e.g. 'my-saas-web'). Used in directory, Docker tag, k8s labels."
+  help: "Project name (kebab-case, e.g. 'my-saas-web'). Used in directory, Docker tag labels."
   validator: >-
     {%- if not (project_name | regex_search('^[a-z][a-z0-9-]{1,39}$')) -%}
     project_name must match ^[a-z][a-z0-9-]{1,39}$
@@ -61,14 +58,9 @@ github_org:
 
 owner_team:
   type: str
-  help: "Owning team or individual (used in CODEOWNERS and k8s labels)."
+  help: "Owning team or individual (used in CODEOWNERS)."
   default: "@{{ github_org }}"
 
-owner_label:
-  type: str
-  when: false
-  help: "owner_team as a valid Kubernetes label value (no '@', '/')."
-  default: "{{ owner_team | regex_replace('[^A-Za-z0-9_.-]+', '-') | trim('-') }}"
 
 node_major:
   type: str

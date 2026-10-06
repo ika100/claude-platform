@@ -1,0 +1,14 @@
+# Per-application settings for the {{ app_name }} product (read by scripts/render.py).
+#
+# gateway: the Gateway API gateway that exposed services attach to. `devbox run cluster-up` installs Traefik's gateway
+#          (traefik-gateway in kube-system). Real clusters: point this at your gateway.
+# hosts:   hostname template per environment for services with `expose:`. No entry = not exposed in that environment.
+#          Placeholders: {service} (expose.host or the service name), {app}, {env}.
+#          *.localhost resolves to 127.0.0.1 in browsers and curl without any DNS or /etc/hosts setup.
+gateway:
+  name: traefik-gateway
+  namespace: kube-system
+hosts:
+  dev: "{service}.{app}-dev.localhost"
+  # staging: "{service}.staging.example.com"
+  # prod: "{service}.example.com"

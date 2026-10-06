@@ -17,6 +17,13 @@ shapes:
       language: python
       version: "3.12"
       framework: fastapi
+    runtime:
+      port: 8080
+      probes: {liveness: /health, readiness: /ready}
+      user: 10001
+      volumes: {tmp: /tmp}
+      env: {LOG_LEVEL: INFO}
+      resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
     status: stable
     adr: null
 
@@ -49,6 +56,13 @@ shapes:
       language: typescript
       runtime: node-lts
       framework: nextjs-app-router
+    runtime:
+      port: 3000
+      probes: {liveness: /api/health, readiness: /api/ready}
+      user: 1000
+      volumes: {tmp: /tmp, next-cache: /app/.next/cache}
+      env: {NODE_ENV: production}
+      resources: {requests: {cpu: 100m, memory: 192Mi}, limits: {cpu: 1000m, memory: 512Mi}}
     status: stable
     adr: [2, 3, 4, 5]
 
@@ -81,6 +95,13 @@ shapes:
       version: "21"
       build_tool: maven
       framework: spring-boot-3
+    runtime:
+      port: 8080
+      probes: {liveness: /actuator/health/liveness, readiness: /actuator/health/readiness}
+      user: 65532
+      volumes: {tmp: /tmp}
+      env: {LOG_LEVEL: INFO, JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Djava.io.tmpdir=/tmp"}
+      resources: {requests: {cpu: 200m, memory: 384Mi}, limits: {cpu: 1000m, memory: 768Mi}}
     status: stable
     adr: [9]
 
@@ -97,5 +118,12 @@ shapes:
       language: go
       version: "1.22"
       router: chi
+    runtime:
+      port: 8080
+      probes: {liveness: /health, readiness: /ready}
+      user: 65532
+      volumes: {}
+      env: {LOG_LEVEL: INFO}
+      resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 500m, memory: 256Mi}}
     status: stable
     adr: [10]

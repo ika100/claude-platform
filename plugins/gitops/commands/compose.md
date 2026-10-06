@@ -1,51 +1,19 @@
 ---
-description: Adds or removes component services in a gitops-app repo (services.yaml + generated ApplicationSets/overlays) and opens one PR. Usage: /gitops:compose add|remove <service> [<service>...]
+description: Add or remove services in a gitops-app repo. The GitOps repo owns the Kubernetes manifests, so this writes a complete services.yaml entry (shape defaults for port/probes/user/resources, env wiring, optional Gateway exposure) and regenerates ApplicationSets and manifests. Usage: /gitops:compose add|remove <service...> [--expose [host]] [--env KEY=VALUE] [--replicas N] [--from-k8s] [--pr]
 ---
 
-You are the **compose orchestrator** for a `gitops-app` repository. Drive an add/remove operation through pre-flight, the compose agent, and PR creation.
+Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS
 
-**Arguments:** $ARGUMENTS
+Prefix for every call (one Bash call each; run it from the repo root):
 
-Expected format: `add|remove <service> [<service>...]`. If malformed, print usage and stop.
-
----
-
-## Phase 1 — Pre-flight
-
-1. Resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It must report `shape: gitops-app`; otherwise stop: "`/gitops:compose` only works inside a gitops-app repo (created with `/shared:new-service <name> --gitops`)."
-2. `git status --porcelain` must be empty; otherwise stop.
-3. Back on a clean main: `git checkout main && git fetch origin && git merge --ff-only origin/main` (skip `fetch`/`merge` if there is no `origin` yet).
-4. Resolve the application: `applications/*/services.yaml`. If exactly one, use it. If several, ask the user which app (free-form text, once).
-
-Print `## Phase 1 complete — app: <app>, op: <add|remove>, services: <list>`.
-
----
-
-## Phase 2 — Compose
-
-Spawn the **compose** agent (`gitops:compose`) with `OP`, `SERVICES`, `APP_FILE`. Wait for it. If it stops (missing topic, missing repo, validate failure), relay its message verbatim and stop — do not retry with workarounds.
-
----
-
-## Phase 3 — Report
-
-```
-## Compose PR opened
-
-| Field | Value |
-|---|---|
-| Operation | add|remove |
-| Services | <list> |
-| PR | <URL> |
-
-Next: review and merge. For `add`: dev tracks `main`; run `/gitops:promote <services> dev staging` to pin staging.
-For `remove`: Argo prunes the Applications after merge.
+```bash
+P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" compose <ARGS>
 ```
 
----
+1. **Preview** with `--dry-run`; show it verbatim. Errors carry a `fix:` line (typical: repo missing the `deployable-service` topic, service not found, dirty tree) — show them and stop.
+2. **Run** with `--pr` (one PR per invocation, however many services). Creating the branch and PR is what the user asked for; do not ask again.
+3. **Report** the script's output. Remind the user of the two follow-ups in it: adapt the new entry if the service needs wiring (`env`, `replicas`, `--expose`), and that new services start in `dev` only — `/gitops:promote` moves them on.
 
-## Rules
+Migrating a service that still has `k8s/base` (platform v1)? Add `--from-k8s` to seed port, probes, env, replicas and resources from it; afterwards `/shared:update-service --migrate` removes the service's `k8s/` directory.
 
-- One PR per invocation, regardless of how many services are listed (batch operations, ADR-014).
-- Never auto-merge. Never `kubectl apply`.
-- Never add GitHub topics — report the missing topic and let the user fix it.
+Rules: only `applications/` and `bootstrap/` change; never `kubectl apply`; never add GitHub topics (report the missing one instead).

@@ -14,7 +14,7 @@ Accepted on bootstrap.
 - Vitest + Testing Library with an 80% coverage gate{% if needs_e2e %}; Playwright e2e{% endif %} (platform ADR-002)
 - eslint + `tsc --noEmit` as the quality gate
 - Multi-stage, non-root Docker build (standalone output) → `{{ docker_registry }}/{{ project_name }}`
-- Kustomize manifests in `k8s/base/` + `k8s/overlays/{local,staging,prod}/`
+- No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD discovery
 - Claude Code agents from the `ika100-claude` marketplace (`web` + `svc` + `shared`)
 

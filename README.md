@@ -18,9 +18,9 @@ Reusable Claude Code agents, slash commands, and Copier templates for the **ika1
 ├── shapes.yml                         Shape registry (single source of truth)
 ├── templates/
 │   ├── service-python/                Python service
-│   ├── library-python/                Python library (no k8s/Docker)
+│   ├── library-python/                Python library (no Docker)
 │   ├── web-nextjs/                    Next.js App Router web app
-│   ├── gitops-app/                    Product-scoped GitOps repo (Kustomize + ArgoCD)
+│   ├── gitops-app/                    Product-scoped GitOps repo: owns all manifests (ADR-017)
 │   ├── service-java/                  Spring Boot 3 / JDK 21 service
 │   └── service-go/                    Go (chi) service
 ├── scripts/                           detect-shape.sh, shapes.py, tests

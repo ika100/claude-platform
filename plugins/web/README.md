@@ -8,7 +8,7 @@ Agents for **Next.js (App Router) web repos** — the `web-nextjs` shape. Used b
 |---|---|---|
 | `coder` | sonnet | TypeScript / App Router implementation following the architect's plan |
 | `tester` | sonnet | Vitest + Testing Library, Playwright when enabled, coverage gate |
-| `deployment` | sonnet | Standalone-output Dockerfile, k8s base manifests, GHCR CI pipeline |
+| `deployment` | sonnet | Standalone-output Dockerfile, GHCR CI pipeline (image only) |
 | `observability` | sonnet | `/api/metrics`, OpenTelemetry (`instrumentation.ts`), alerts |
 | `release` | sonnet | Semver bump of `package.json`, CHANGELOG, release branch + PR |
 
@@ -19,6 +19,6 @@ Agents for **Next.js (App Router) web repos** — the `web-nextjs` shape. Used b
 ## Dependencies
 
 1. `svc` and `shared` plugins enabled (the web template's `.claude/settings.json` enables all three).
-2. Project has a `devbox.json` with the canonical recipes (`install`, `dev`, `test`, `test-fast`, `lint`, `lint-fix`, `typecheck`, `quality`, `audit`, `security`, `image-build`, `image-scan`, `deploy-check`). Bootstrap with `/shared:new-service <name> --web`.
+2. Project has a `devbox.json` with the canonical recipes (`install`, `dev`, `test`, `test-fast`, `lint`, `lint-fix`, `typecheck`, `quality`, `audit`, `security`, `image-build`, `image-scan`). Bootstrap with `/shared:new-service <name> --web`.
 
 All agents invoke `devbox run <recipe>` — never `pnpm`/`npx`/`node` directly.

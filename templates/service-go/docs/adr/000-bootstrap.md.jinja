@@ -13,7 +13,7 @@ Accepted on bootstrap.
 - `golangci-lint` (curated `.golangci.yml`) + `go build` as the quality gate; `govulncheck` for dependency audit
 - `go test -race -cover` (stdlib `testing`)
 - Static binary in `gcr.io/distroless/static-debian12:nonroot` → `{{ docker_registry }}/{{ project_name }}`; version injected via ldflags from the git tag
-- Kustomize manifests in `k8s/base/` + `k8s/overlays/{local,staging,prod}/`
+- No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD discovery
 - Claude Code agents from the `ika100-claude` marketplace (`svc-go` + `svc` + `shared`)
 

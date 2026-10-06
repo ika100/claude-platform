@@ -6,6 +6,7 @@ Deliver all of it in one PR.
 
 ## 1. Registry entry — `shapes.yml` [checked]
 
+Deployable shapes also need a `runtime:` block (port, probes, numeric `user`, `volumes`, `env`, `resources`): `/gitops:compose` copies it into the service's `services.yaml` entry (ADR-017). 
 Add the shape (see [ADR-015](adr/015-shape-registry-as-code.md) for every field). Start with `status: planned` while the template is incomplete; switch to `stable` in the same PR that makes the check pass. `deployable: true` means `/shared:new-service` adds the `deployable-service` topic. Add a row to the PRD §4 table (the check compares shape id, plugin and template).
 
 ## 2. Copier template — `templates/<id>/`
@@ -20,10 +21,10 @@ Required files [checked unless noted]:
 | `CLAUDE.md[.jinja]` | Shape-specific: recipe table, the "never call X directly" rule, conventions, branch workflow |
 | `.claude/settings.json[.jinja]` | Enables the shape's plugin **and `shared`** and, for shapes driven by `/svc:*`, **`svc`** ([ADR-013 amendment](adr/013-plugin-auto-enable.md)); pins the marketplace ref |
 | `.github/workflows/ci.yml` | `quality`, `test`, `security`, `pr-title`, `branch-name`, and `docker` for deployable shapes |
-| `Dockerfile`, `k8s/base`, `k8s/overlays/{local,staging,prod}` | Deployable shapes. `k8s/base` must be a valid standalone Kustomize base (gitops-app repos consume `path: k8s/base`) and the image must be named `<registry>/<project_name>` |
+| `Dockerfile` | Deployable shapes: multi-stage, non-root with a **numeric** `USER`, runs with a read-only root filesystem. **No `k8s/` directory** — the gitops-app repo generates manifests (ADR-017); `shapes.py check` fails if one appears |
 | `docs/adr/000-bootstrap.md`, `docs/env-vars.md`, `README.md` | Project-owned after generation |
 
-**Always re-templated vs project-owned.** Skeleton files (CI, devbox, Dockerfile, k8s base, CLAUDE.md, lint config) are overwritten by `/shared:update-service`. `k8s/base/deployment.yaml` is **project-owned** (every app edits its env vars, resources and ports; re-templating it would wipe those edits — found by the todo-app e2e test). Application files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, manifests of the dependency tree like `go.mod`/`pom.xml`/`package.json` once created, `docs/adr/**`) go in `_skip_if_exists`.
+**Always re-templated vs project-owned.** Skeleton files (CI, devbox, Dockerfile, CLAUDE.md, lint config) are overwritten by `/shared:update-service`. Application files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, language manifests such as `go.mod`/`pom.xml`/`package.json` once created, `docs/adr/**`) go in `_skip_if_exists`.
 
 ### Pitfalls found while building the Go, Java and web shapes
 
@@ -40,7 +41,7 @@ Required files [checked unless noted]:
 [checked for non-gitops plugins: agents exist] Agents: at minimum `coder` and `tester`; deployable shapes also `deployment`, `observability`, `release`. A new plugin needs `.claude-plugin/plugin.json`, an entry in `.claude-plugin/marketplace.json` with the **same version** (CI compares), a `README.md`, and `hooks/hooks.json` if the repo needs a SessionStart step. Rules every agent follows:
 
 - Everything goes through `devbox run <recipe>`; one-off tool calls use `devbox run -- <tool> …`.
-- `coder` writes the shape's idioms and never edits lock/format config by hand; `tester` never fixes bugs; `deployment` verifies manifests with `deploy-check`; `observability` verifies-then-extends the scaffolding the template ships.
+- `coder` writes the shape's idioms and never edits lock/format config by hand; `tester` never fixes bugs; `deployment` owns the image (Dockerfile, CI docker job, smoke start) and never writes manifests; `observability` verifies-then-extends the scaffolding the template ships.
 - The `release` agent differs only in how the version is bumped ([ADR-012](adr/012-per-plugin-release-agent.md)).
 
 The `/svc:*` orchestrators route to `<plugin>:<role>` through `cplat shape` (`scripts/cplat/shapecmd.py`, driven by `shapes.yml`); nothing in `svc` needs editing for a new backend shape.

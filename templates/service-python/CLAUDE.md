@@ -40,8 +40,6 @@ Canonical `devbox run` scripts (configured in `devbox.json`):
 | `migrate-down` | `alembic downgrade -1` |
 | `migrate-status` | `alembic current` + `alembic history --verbose` |
 {%- endif %}
-| `deploy` | `kubectl apply -k k8s/overlays/local/` |
-| `deploy-check` | `kubectl apply --dry-run=client -k k8s/overlays/local/` |
 
 **Rule for every agent (human, CI, and AI): never call `ruff`, `mypy`, `pytest`, `pip-audit`, `detect-secrets`, `trivy`,{% if needs_migrations %} `alembic`,{% endif %} `bandit`, `pip`, or `uv add` directly. Always go through `devbox run <script>`.**
 
@@ -79,7 +77,6 @@ PR title format: `<type>(<optional-scope>): <description ≤72 chars>`. Valid ty
 - **HTTP services:** expose `/health` and `/ready` endpoints
 - **Logging:** structured JSON{% if needs_observability %} via structlog{% endif %}
 - **Tests:** pytest, in `tests/`, fixtures in `conftest.py`
-- **Manifests:** Kubernetes YAML in `k8s/`
 - **Docs:** plans in `docs/plan/`, ADRs in `docs/adr/`, backlog in `docs/backlog.md`
 
 ## Docker image pipeline
@@ -94,8 +91,6 @@ Whenever a `Dockerfile` exists, the CI workflow includes a `docker (build + push
 
 Registry: `{{ docker_registry }}/{{ project_name }}`. Authentication via `GITHUB_TOKEN`.
 
-## GitOps deployment
+## Deployment
 
-This service is registered for ArgoCD auto-discovery via the GitHub topic `deployable-service`. Manifests in `k8s/overlays/prod/` are picked up by the platform GitOps repo's ApplicationSet.
-
-Local Kubernetes (k3d): `devbox run deploy`. Cross-environment promotion happens via the platform gitops repo using `/gitops:promote {{ project_name }} <from> <to>`.
+This repo ships **only a container image**. Kubernetes manifests, environment wiring (e.g. `API_URL`), replicas, resources and exposure belong to the product's `gitops-app` repo (platform ADR-017): register the service with `/gitops:compose add {{ project_name }}` (needs the GitHub topic `deployable-service`, set by `/shared:new-service`), then `/gitops:promote {{ project_name }} <from> <to>`. Change how the service runs by editing its entry in that repo's `services.yaml`; change the port, probe paths or user in the Dockerfile/app and update the entry to match.

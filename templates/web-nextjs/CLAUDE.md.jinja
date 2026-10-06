@@ -40,8 +40,6 @@ Canonical `devbox run` scripts (configured in `devbox.json`):
 | `security` | `audit` + `secrets-scan` |
 | `image-build` | Build local image `{{ project_name }}:scan` |
 | `image-scan` | trivy against `{{ project_name }}:scan` |
-| `deploy` | `kubectl apply -k k8s/overlays/local/` |
-| `deploy-check` | `kubectl apply --dry-run=client -k k8s/overlays/local/` |
 
 **Rule for every agent (human, CI, and AI): never call `pnpm`, `npm`, `npx`, `node`, `next`, `eslint`, `tsc`, `vitest`, `playwright`, `detect-secrets`, or `trivy` directly. Always go through `devbox run <script>` (add a missing recipe to `devbox.json` rather than bypassing it).**
 
@@ -78,13 +76,12 @@ Branch prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `release/`.
 - **Observability:** `/api/metrics` (Prometheus), OpenTelemetry via `instrumentation.ts` when `OTEL_EXPORTER_OTLP_ENDPOINT` is set.
 {%- endif %}
 - **Tests:** Vitest + Testing Library in `tests/` (`*.test.ts[x]`){% if needs_e2e %}; Playwright specs in `e2e/`{% endif %}.
-- **Manifests:** Kubernetes YAML in `k8s/` (`k8s/base` is what GitOps application repos consume).
 - **Docs:** plans in `docs/plan/`, ADRs in `docs/adr/`, backlog in `docs/backlog.md`.
 
 ## Docker image pipeline
 
 CI's `docker` job builds the multi-stage, non-root image on every run and pushes on `main` (`latest`, `sha-<short>`) and on `v*.*.*` tags (semver tags). Registry: `{{ docker_registry }}/{{ project_name }}`, authenticated with `GITHUB_TOKEN`.
 
-## GitOps deployment
+## Deployment
 
-Registered for ArgoCD discovery through the GitHub topic `deployable-service`. In a product, a `gitops-app` repo lists this repo in its `services.yaml` (`/gitops:compose add {{ project_name }}`) and pins versions with `/gitops:promote {{ project_name }} <from> <to>`. Local Kubernetes (k3d): `devbox run deploy`.
+This repo ships **only a container image**. Kubernetes manifests, environment wiring (e.g. `API_URL`), replicas, resources and exposure belong to the product's `gitops-app` repo (platform ADR-017): register the service with `/gitops:compose add {{ project_name }}` (needs the GitHub topic `deployable-service`, set by `/shared:new-service`), then `/gitops:promote {{ project_name }} <from> <to>`. Change how the service runs by editing its entry in that repo's `services.yaml`; change the port, probe paths or user in the Dockerfile/app and update the entry to match.
