@@ -121,6 +121,13 @@ These two channels are independent — you can ship new agents without forcing a
 
 The marketplace is published as `ika100/claude-platform` and installs as `ika100-claude`. Generated repositories use the `github_org` you are asked for (it defaults to the account `gh` is logged in as), so nothing in the output is tied to this repository's owner. To run your own variant, fork the repository, change the owner in `.claude-plugin/marketplace.json`, and add your fork with `/plugin marketplace add <you>/claude-platform`. Code generated from the templates is yours; this repository's license does not apply to it.
 
+## Disclaimer, privacy, AI-assisted development
+
+- **Not affiliated.** claude-platform is an independent open-source project, not affiliated with, sponsored by or endorsed by Anthropic or the owners of the other product names it mentions (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). *Claude* and *Claude Code* are trademarks of Anthropic, PBC.
+- **No warranty.** The software is provided "as is" under the [Apache License 2.0](LICENSE) (sections 7 and 8). Review what it generates (manifests, workflows, policies) before it touches a production cluster; the platform never runs `kubectl apply` on its own, and humans bootstrap real clusters.
+- **No telemetry.** The plugins and the `cplat` CLI send nothing anywhere on their own. Network access is what you would expect: `git`/`gh` against GitHub, package registries, GHCR. Generated applications export telemetry only to the endpoint you configure. `/shared:report-issue` shows you the full text first and files it only after your OK; **issues on this repository are public**, and the draft already has tokens, e-mail addresses and home-directory names removed.
+- **AI-assisted.** Much of this repository was written with Claude Code and reviewed, tested and committed by the maintainer (commits carry a `Co-Authored-By` trailer). Licensing is the maintainer's: AI-generated parts may be subject to limited copyright protection depending on jurisdiction.
+
 ## Contributing, security, support
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to set up, which checks to run, PR rules. [Code of Conduct](CODE_OF_CONDUCT.md).
