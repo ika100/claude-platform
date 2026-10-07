@@ -1,0 +1,69 @@
+// Copies the user-facing Markdown of the repository into the site (src/content/docs), adding Starlight front matter and
+// rewriting relative links. The repository stays the single source of truth; the copies are git-ignored.
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { convertWikiLinks, firstHeading, rewriteLinks, stripFirstHeading, withFrontMatter } from './lib.mjs';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const OUT = path.join(ROOT, 'site', 'src', 'content', 'docs');
+const BASE = '/claude-platform';
+
+/** repo file -> site page. `slug` is relative to the docs collection. */
+const PAGES = [
+  { src: 'docs/USER-JOURNEY.md', slug: 'guides/user-journey', title: 'User journey: from empty folder to a running product', order: 1 },
+  { src: 'docs/HOW-IT-WORKS.md', slug: 'guides/how-it-works', title: 'How it works', order: 2 },
+  { src: 'docs/ADOPTING.md', slug: 'guides/adopting', title: 'Adopting the platform and troubleshooting', order: 3 },
+  { src: 'docs/AGENTS.md', slug: 'guides/agents', title: 'The agent orchestration model', order: 4 },
+  { src: 'docs/ARCHITECTURE.md', slug: 'guides/architecture', title: 'Architecture', order: 5 },
+  { src: 'docs/templates.md', slug: 'guides/add-a-shape', title: 'Adding a new shape', order: 6 },
+  { src: 'docs/requirements/platform-vision.md', slug: 'vision/design-history', title: 'Design history: the original vision PRD', order: 9 },
+  { src: 'docs/requirements/end-to-end-scenario.md', slug: 'vision/end-to-end-scenario', title: 'Design history: the end-to-end scenario', order: 10 },
+  { src: 'docs/BASELINES.md', slug: 'reference/baselines', title: 'Measured baselines', order: 20 },
+  { src: 'docs/CHANGELOG.md', slug: 'reference/changelog', title: 'Changelog', order: 30 },
+  { src: 'docs/adr/README.md', slug: 'reference/adr', title: 'Architecture decision records', order: 25 },
+  { src: 'CONTRIBUTING.md', slug: 'community/contributing', title: 'Contributing', order: 1 },
+  { src: 'CODE_OF_CONDUCT.md', slug: 'community/code-of-conduct', title: 'Code of conduct', order: 2 },
+  { src: 'SECURITY.md', slug: 'community/security', title: 'Security policy', order: 3 },
+  { src: 'SUPPORT.md', slug: 'community/support', title: 'Getting help', order: 4 },
+  { src: 'THIRD_PARTY_NOTICES.md', slug: 'community/third-party-notices', title: 'Third-party notices', order: 5 },
+];
+
+for (const f of fs.readdirSync(path.join(ROOT, 'docs', 'adr')).sort()) {
+  const m = f.match(/^(\d+)-.*\.md$/);
+  if (!m) continue;
+  const first = fs.readFileSync(path.join(ROOT, 'docs', 'adr', f), 'utf8').split('\n')[0].replace(/^#\s*/, '');
+  PAGES.push({ src: `docs/adr/${f}`, slug: `reference/adr/${m[1]}`, title: first, order: Number(m[1]) });
+}
+
+const bySrc = new Map(PAGES.map((p) => [p.src, p.slug]));
+const exists = (repoPath) => {
+  const full = path.join(ROOT, repoPath);
+  return fs.existsSync(full) ? (fs.statSync(full).isDirectory() ? 'dir' : 'file') : null;
+};
+const names = new Map(PAGES.map((p) => [path.basename(p.src, '.md').toLowerCase(), `${BASE}/${p.slug}/`]));
+
+function description(markdown) {
+  const para = markdown.replace(/^#.*\n+/, '').split(/\n\s*\n/).find((p) => p.trim() && !/^(\||```|>|-|\*|\d+\.|\*\*Status)/.test(p.trim()));
+  return para ? para.replace(/\s+/g, ' ').replace(/[`*_[\]]|\([^)]*\)/g, '').trim().slice(0, 160) : undefined;
+}
+
+let problems = [];
+for (const page of PAGES) {
+  const src = fs.readFileSync(path.join(ROOT, page.src), 'utf8');
+  let body = convertWikiLinks(stripFirstHeading(src), (n) => names.get(n.toLowerCase()));
+  const { text, unresolved } = rewriteLinks(body, page.src, { pageFor: (p) => bySrc.get(p), exists, base: BASE });
+  problems = problems.concat(unresolved);
+  const out = path.join(OUT, `${page.slug}.md`);
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, withFrontMatter(text, { title: page.title, description: description(src), order: page.order, editUrl: false }));
+}
+// the ADR index is the landing page of its folder
+fs.mkdirSync(path.join(OUT, 'reference', 'adr'), { recursive: true });
+fs.renameSync(path.join(OUT, 'reference', 'adr.md'), path.join(OUT, 'reference', 'adr', 'index.md'));
+
+if (problems.length) {
+  console.error('ERROR: links that resolve to nothing:\n  ' + problems.join('\n  '));
+  process.exit(1);
+}
+console.log(`synced ${PAGES.length} pages from the repository`);

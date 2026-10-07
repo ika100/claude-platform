@@ -49,6 +49,17 @@ bash tests/e2e/run.sh                                                       # wh
 
 CI runs the same checks plus a smoke test per template (generated repos must pass their own `quality` and `test` recipes). Pull requests that only touch documentation run a reduced set of jobs.
 
+## Documentation site
+
+The site at <https://ika100.github.io/claude-platform/> is built from `site/` (Astro Starlight). Narrative pages (vision, problem, value, scenarios, concepts, get started) live in `site/src/content/docs`; the guides, ADRs, changelog and community pages are **synced from the repository's Markdown** at build time, and the command, shape, configuration and CLI reference pages are **generated from the code**, so edit the source (`docs/`, `plugins/`, `shapes.yml`, `render.py`), not the copies. Preview locally:
+
+```bash
+cd site && npm ci --ignore-scripts && npm run dev      # http://localhost:4321/claude-platform/
+npm test && npm run build                              # unit tests, then a full build that fails on a broken internal link
+```
+
+CI builds the site on pull requests that touch its inputs; merging to `main` publishes it.
+
 ## Legal and privacy
 
 - **Your license grant.** Submitting a contribution licenses it under Apache-2.0 (section 5 of the license); you keep your copyright. Only contribute work you have the right to contribute: no code copied from sources with an incompatible or unknown license, and nothing your employer owns without their permission.

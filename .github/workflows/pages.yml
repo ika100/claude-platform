@@ -1,0 +1,72 @@
+name: pages
+
+# Builds the documentation site (site/, Astro Starlight) and publishes it to GitHub Pages:
+# https://ika100.github.io/claude-platform/
+# The user-facing Markdown in docs/ and the generated reference pages are synced into the site at build time.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'docs/**'
+      - 'plugins/**'
+      - 'shapes.yml'
+      - 'scripts/cplat/**'
+      - 'templates/gitops-app/scripts/render.py'
+      - 'templates/gitops-app/scripts/local-cluster.sh'
+      - 'CONTRIBUTING.md'
+      - 'SECURITY.md'
+      - 'SUPPORT.md'
+      - 'CODE_OF_CONDUCT.md'
+      - 'THIRD_PARTY_NOTICES.md'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# Least privilege by default; only the deploy job may publish.
+permissions:
+  contents: read
+
+# One deployment at a time; a running deployment is never cancelled half way.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: build the site
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install dependencies (no install scripts)
+        working-directory: site
+        run: npm ci --ignore-scripts
+      - name: Unit tests of the docs sync
+        working-directory: site
+        run: npm test
+      - name: Build (syncs docs, generates the reference, validates every internal link)
+        working-directory: site
+        run: npm run build
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site/dist
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

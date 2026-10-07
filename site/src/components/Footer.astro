@@ -1,0 +1,38 @@
+---
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<script>
+  // Diagrams: ```mermaid code blocks (rendered by Starlight as <pre data-language="mermaid">) are drawn here. mermaid is
+  // bundled with the site (no CDN) and only loaded on pages that contain a diagram.
+  const blocks = Array.from(document.querySelectorAll<HTMLElement>('.expressive-code:has(pre[data-language="mermaid"])'));
+  if (blocks.length > 0) {
+    const diagrams = blocks.map((block) => {
+      const source = Array.from(block.querySelectorAll('pre .ec-line')).map((line) => line.textContent ?? '').join('\n');
+      const holder = document.createElement('div');
+      holder.className = 'mermaid-diagram';
+      holder.setAttribute('role', 'img');
+      holder.setAttribute('aria-label', 'Diagram');
+      block.replaceWith(holder);
+      return { holder, source };
+    });
+    const { default: mermaid } = await import('mermaid');
+    const draw = async () => {
+      const dark = document.documentElement.dataset.theme !== 'light';
+      mermaid.initialize({ startOnLoad: false, theme: dark ? 'dark' : 'neutral', securityLevel: 'strict', fontFamily: 'inherit' });
+      for (const [i, { holder, source }] of diagrams.entries()) {
+        try {
+          const { svg } = await mermaid.render(`mmd-${i}-${Date.now()}`, source);
+          holder.innerHTML = svg;
+        } catch (error) {
+          holder.textContent = source;
+          console.warn('mermaid: could not render a diagram', error);
+        }
+      }
+    };
+    await draw();
+    new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+</script>

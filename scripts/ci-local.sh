@@ -2,6 +2,7 @@
 # The cheap CI checks, locally: for contributors without CI minutes and for a quick check before pushing.
 #   scripts/ci-local.sh          fast checks (about a minute)
 #   scripts/ci-local.sh --render also render every template (needs copier: uv tool install copier)
+#   scripts/ci-local.sh --site   also build the documentation site (needs node 24: cd site && npm ci first time)
 # The cluster test (tests/e2e/run.sh) and the per-template smoke jobs (devbox, Docker, Maven, pnpm) stay in CI.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -32,6 +33,11 @@ uvx --quiet --from "reuse[charset-normalizer]" reuse lint | tail -3
 
 step "cplat tests (Kyverno CLI tests skip without the kyverno binary)"
 uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q
+
+if [ "${1:-}" = "--site" ]; then
+  step "documentation site (unit tests + build with link validation)"
+  (cd site && { [ -d node_modules ] || npm ci --ignore-scripts; } && npm test && npm run build)
+fi
 
 if [ "${1:-}" = "--render" ]; then
   step "render every template"

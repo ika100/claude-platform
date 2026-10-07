@@ -27,6 +27,7 @@ jobs:
       web: ${{ steps.diff.outputs.web }}
       go: ${{ steps.diff.outputs.go }}
       java: ${{ steps.diff.outputs.java }}
+      site: ${{ steps.diff.outputs.site }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,6 +56,7 @@ jobs:
             echo "web=$(t '^templates/web-nextjs/')"
             echo "go=$(t '^templates/service-go/')"
             echo "java=$(t '^templates/service-java/')"
+            echo "site=$(has '^(site/|docs/|plugins/|shapes\.yml$|scripts/cplat/|templates/gitops-app/scripts/(render\.py|local-cluster\.sh)$|[A-Z_]+\.md$|\.github/workflows/(ci|pages)\.yml$)')"
           } | tee -a "$GITHUB_OUTPUT"
 
   validate-manifests:
@@ -395,6 +397,29 @@ jobs:
           for _ in $(seq 1 40); do curl -sf localhost:8080/actuator/health/readiness && exit 0; sleep 3; done
           docker logs smoke; exit 1
 
+  site:
+    name: documentation site builds
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install dependencies (no install scripts)
+        working-directory: site
+        run: npm ci --ignore-scripts
+      - name: Unit tests of the docs sync
+        working-directory: site
+        run: npm test
+      - name: Build the site (fails on a broken internal link)
+        working-directory: site
+        run: npm run build
+
   pr-title:
     name: pr-title (conventional commits)
     runs-on: ubuntu-latest
@@ -417,7 +442,7 @@ jobs:
   ci-success:
     name: ci-success
     if: always()
-    needs: [changes, validate-manifests, validate-shapes, platform-tests, smoke-test-templates, smoke-test-gitops-app, smoke-test-web-nextjs, smoke-test-service-go, smoke-test-service-java, pr-title]
+    needs: [changes, validate-manifests, validate-shapes, platform-tests, smoke-test-templates, smoke-test-gitops-app, smoke-test-web-nextjs, smoke-test-service-go, smoke-test-service-java, site, pr-title]
     runs-on: ubuntu-latest
     steps:
       - name: every needed job passed or was skipped
