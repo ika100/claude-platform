@@ -129,3 +129,11 @@ def test_without_migrate_k8s_dir_is_left_alone(repo):
     git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "old stamp")
     update.main(["--repo", str(repo), "--skip-tasks"])
     assert (repo / "k8s" / "x.yaml").exists()
+
+
+def test_second_update_the_same_day_gets_a_unique_branch(repo):
+    base = update.branch_name()
+    git(repo, "branch", base)                      # e.g. yesterday's merged update branch with today's name
+    assert update.branch_name(repo) == base + "-2"
+    git(repo, "branch", base + "-2")
+    assert update.branch_name(repo) == base + "-3"

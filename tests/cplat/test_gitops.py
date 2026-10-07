@@ -261,3 +261,30 @@ def test_compose_refuses_a_half_migrated_file_before_touching_anything(gitops_re
         run_compose(gitops_repo, "add", "todo-web", "--from-k8s")
     assert "todo-web todo-api --from-k8s" in e.value.hint
     assert (app / "services.yaml").read_text() == before
+
+
+def test_status_table_reads_pins_ci_and_argo(gitops_repo, gh, monkeypatch):
+    import status
+    composed(gitops_repo, "todo-api")
+    promote.main(["todo-api", "dev", "staging", "--repo-dir", str(gitops_repo)])
+    answers = {
+        ("gh", "run"): "completed success",
+        ("kubectl", "--context"): json.dumps({"items": [{"metadata": {"name": "todo-api-dev"}, "status": {"sync": {"status": "Synced"}, "health": {"status": "Healthy"}}}]}),
+    }
+    monkeypatch.setattr(status, "sh", lambda cmd: answers.get((cmd[0], cmd[1])))
+    app, rows = status.collect(gitops_repo, None, "k3d-x")
+    by = {(r["service"], r["env"]): r for r in rows}
+    assert by[("todo-api", "dev")]["tag"] == "latest" and by[("todo-api", "dev")]["argo"] == "Synced/Healthy"
+    assert by[("todo-api", "staging")]["tag"].startswith("sha-") and by[("todo-api", "staging")]["argo"] == "missing"
+    assert by[("todo-api", "dev")]["ci"] == "ok"
+    assert ("todo-api", "prod") not in by
+    table = status.render_table(app, rows, {"platform": "2.0.0"}, "k3d-x")
+    assert "todo-api" in table and "Synced/Healthy" in table
+
+
+def test_status_degrades_when_tools_are_missing(gitops_repo, gh, monkeypatch):
+    import status
+    composed(gitops_repo, "todo-api")
+    monkeypatch.setattr(status, "sh", lambda cmd: None)
+    _, rows = status.collect(gitops_repo, None, None)
+    assert rows[0]["ci"] == "?" and rows[0]["argo"] == "-"

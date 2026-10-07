@@ -35,7 +35,7 @@ Everything marked GENERATED is derived from `services.yaml` + `app.yaml` by `dev
 
 Argo must be able to read this repo. Then, once per cluster, a human runs `KUBE_CONTEXT=<context> devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`; the context must be named explicitly so it never hits whatever cluster happens to be current). That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git; from then on every change reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
 
-**To try the product on your machine:** `devbox run cluster-up` creates a k3d cluster `{{ app_name }}-local` (port 8088 → the Gateway), installs ArgoCD and the Gateway API, gives Argo your `gh` token for this private repo, pre-creates `{{ app_name }}-{dev,staging,prod}` with a GHCR pull secret, applies the root Application and prints the URLs of exposed services. `devbox run cluster-down` removes it. Needs Docker running; the `gh` token needs `repo` and `read:packages`.
+**To try the product on your machine:** `devbox run cluster-up` creates a k3d cluster `{{ app_name }}-local` (port 8088 → the Gateway), installs ArgoCD and enables the Gateway API, gives Argo your `gh` token for this private repo, pre-creates `{{ app_name }}-{dev,staging,prod}` with a GHCR pull secret, applies the root Application and prints the URLs of exposed services. `devbox run cluster-down` removes it. Needs Docker running; the `gh` token needs `repo` and `read:packages`.
 
 ## Pin policy
 
