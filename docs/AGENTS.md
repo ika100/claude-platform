@@ -139,7 +139,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 
 | Agent | Model | Job |
 |---|---|---|
-| `product-manager` | opus | User stories, acceptance criteria, issue triage |
+| `product-manager` | sonnet | User stories, acceptance criteria, backlog folding for issues handed over by `/shared:triage` |
 | `architect` | opus | ADRs, implementation plans with parallel-safe metadata |
 | `coder` | sonnet | Python implementation |
 | `tester` | sonnet | pytest, coverage, bandit |

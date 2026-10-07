@@ -6,7 +6,7 @@ Orchestrators (`/svc:*`) and the shape-agnostic product-manager and architect ag
 
 | Agent | Model | Purpose |
 |---|---|---|
-| `product-manager` | opus | User stories, acceptance criteria, backlog grooming, GitHub issue triage |
+| `product-manager` | sonnet | User stories, acceptance criteria, backlog grooming, folding triaged issues into the backlog |
 | `architect` | opus | ADRs, implementation plans with parallel-safe YAML metadata |
 | `coder` | sonnet | Python implementation following the architect's plan |
 | `tester` | sonnet | pytest suite, coverage gate (≥80%), bandit |

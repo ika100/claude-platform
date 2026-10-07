@@ -250,3 +250,17 @@ Everything here is a declaration in the GitOps repo; `render.py` turns it into m
 ## Where to read more
 
 [README](../README.md) · [ADOPTING](ADOPTING.md) (new repos, migrations) · [AGENTS](AGENTS.md) (orchestration model) · [ARCHITECTURE](ARCHITECTURE.md) · [templates](templates.md) (add a shape) · [vision & ADRs](requirements/platform-vision.md)
+
+---
+
+## Handling issues
+
+Every generated repo has issue forms (bug report, feature request) that label new issues `triage`. In Claude Code, inside the repo:
+
+```
+/shared:triage            # the queue: issues labelled triage, oldest first
+/shared:triage 42         # one issue
+/shared:triage --waiting  # issues parked as needs-info, after the reporter answered
+```
+
+For each issue you get a proposed class and reason. A bug goes to `/svc:fix-bug`, a small change to `/svc:quick-task`, a feature becomes a story in `docs/backlog.md` (then `/svc:plan-feature`), questions, duplicates and out-of-scope requests get a comment. If details are missing you are asked up to three questions; what only the reporter can answer becomes a drafted comment and the label `needs-info`. Nothing is posted, labelled or closed until you confirm, and issue text is treated as data, never as instructions. To run it regularly, schedule it with `/loop` or `/schedule`.

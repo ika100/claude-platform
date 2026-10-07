@@ -19,6 +19,7 @@ Required files [checked unless noted]:
 | `{{ _copier_conf.answers_file }}.jinja` | Copier's answers file — **load-bearing**: shape detection reads `_src_path` from it |
 | `devbox.json[.jinja]` | The canonical recipes: `lint`, `lint-fix`, `quality`, `test`, `test-fast`, `security`; deployable shapes also `image-build`, `image-scan`, `deploy-check` (plus `dev`, `deploy`, `typecheck`, `audit`, `secrets-scan` by convention). Recipes wrap the language tools — agents never call them directly |
 | `CLAUDE.md[.jinja]` | Shape-specific: recipe table, the "never call X directly" rule, a `### Spec first` section ([ADR-024](adr/024-spec-driven-bootstrap.md)), conventions, branch workflow **[checked]** |
+| `.github/ISSUE_TEMPLATE/{bug_report,feature_request,config}.yml` | Issue forms that apply the `triage` label and require the fields `/shared:triage` needs ([ADR-025](adr/025-issue-triage.md)); in `_skip_if_exists` **[checked]** |
 | `docs/backlog.md`, `docs/plan/` | Seed for spec-driven development ([ADR-024](adr/024-spec-driven-bootstrap.md)): the backlog skeleton (all shapes except gitops-app) and the plan directory; both in `_skip_if_exists` **[checked]** |
 | `.claude/settings.json[.jinja]` | Enables the shape's plugin **and `shared`** and, for shapes driven by `/svc:*`, **`svc`** ([ADR-013 amendment](adr/013-plugin-auto-enable.md)); pins the marketplace ref |
 | `.github/workflows/ci.yml` | `quality`, `test`, `security`, `pr-title`, `branch-name`, and `docker` for deployable shapes |

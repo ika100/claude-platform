@@ -16,6 +16,7 @@ Common agents and commands used by every shape's plugin. Pre-approves `gh repo c
 | `/shared:check-quality` | Runs `quality` + `security` agents in parallel (read-only). |
 | `/shared:new-service <name> [description words…] [--type <shape>] [--library\|--web\|--gitops] [--app <org>/<repo>]` | Bootstraps a new repo of any shape from its Copier template, creates the GitHub repo, tags deployable shapes for GitOps discovery. |
 | `/shared:new-app <app.yml> [--resume] [--public] [--no-github]` | Creates a whole product: the gitops-app repo plus every component repo from a manifest, then opens one pull request that composes the deployable ones. A failure midway reports what exists; `--resume` continues. |
+| `/shared:triage [<issue-number> \| --new \| --waiting]` | Reads new GitHub issues, discusses gaps with you (and, with your OK, the reporter), and routes each to a backlog story, `/svc:quick-task`, `/svc:fix-bug` or a reply. Labels and comments only after you confirm; never closes issues. |
 | `/shared:update-service [--ref <tag>] [--data k=v]` | Re-applies the template skeleton to an existing repo on a review branch (project-owned files untouched). |
 
 ## Pre-approved operations (settings.json)
