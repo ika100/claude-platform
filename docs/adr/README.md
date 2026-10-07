@@ -1,0 +1,30 @@
+# Architecture decision records
+
+Decisions that shape how the platform works, with the context and the alternatives that were rejected. Every ADR has a status line; superseded decisions keep their file and say which ADR replaced them.
+
+**Adding one:** copy the structure of a recent ADR (context, decision, consequences, what is not included), use the next free number, and list it in the table below (`scripts/shapes.py check` fails when an ADR file is missing here).
+
+| ADR | Decision |
+|---|---|
+| [001](001-marketplace-plus-copier.md) | Two-channel distribution — Claude Code marketplace + Copier templates |
+| [002](002-web-testing-stack.md) | Web testing stack — Vitest + Playwright opt-in |
+| [003](003-web-package-manager.md) | Web package manager — pnpm |
+| [004](004-nextjs-app-router.md) | Next.js router — App Router only |
+| [005](005-node-version-policy.md) | Node version policy — pin current LTS, bump via `copier update` |
+| [006](006-gitops-app-overlay-structure.md) | gitops-app overlay structure — env-only |
+| [007](007-cross-repo-orchestration-scope.md) | Cross-repo orchestration — plan-only in v1, execution in v2 |
+| [008](008-shape-detection.md) | Shape detection — `.copier-answers.yml` with sniffing fallback |
+| [009](009-service-java-stack.md) | `service-java` stack defaults |
+| [010](010-service-go-stack.md) | `service-go` stack defaults |
+| [011](011-multi-repo-plan-format.md) | Multi-repo plan format for `/app:build-feature` |
+| [012](012-per-plugin-release-agent.md) | Per-plugin release agent |
+| [013](013-plugin-auto-enable.md) | Plugin auto-enable on `/shared:new-service` |
+| [014](014-gitops-app-composition-spec.md) | gitops-app composition spec |
+| [015](015-shape-registry-as-code.md) | Shape registry as code (`shapes.yml`) |
+| [016](016-library-python-distribution.md) | `library-python` distribution — git+https via `uv` |
+| [017](017-gitops-owns-manifests.md) | The GitOps repo owns every Kubernetes manifest; services ship an image |
+| [018](018-secrets-with-external-secrets-operator.md) | Secrets come from External Secrets Operator; git holds references, never values |
+| [019](019-supply-chain-hardening.md) | Supply-chain hardening for generated repos |
+| [020](020-addons-contract.md) | Addons: a stable contract for backing services |
+| [021](021-observability-otel.md) | Observability: an OpenTelemetry base, a UI stack as an option |
+| [022](022-kyverno-policies.md) | Kyverno guard rails, checked before merge and enforced in the cluster |
