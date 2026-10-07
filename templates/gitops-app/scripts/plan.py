@@ -10,6 +10,7 @@ Usage:
   plan.py validate [<slug>...]     schema + dependency checks (all plans if none given)
   plan.py list [--all]             draft + in_progress plans (--all adds completed/abandoned)
   plan.py show <slug>              topo-ordered checklist
+  plan.py ready <slug> [--json]    repos that can start now (not done, every dependency done): one parallel wave
   plan.py start <slug>             draft -> in_progress
   plan.py done <slug> <repo-id>    mark a repo done; all done -> completed
   plan.py abandon <slug>           -> abandoned
@@ -174,6 +175,22 @@ def main(argv: list[str]) -> int:
                 print(f"  [{'x' if r['done'] else ' '}] {rid} ({r['shape']}) — {r['summary']}{dep}")
         for p in meta.get("gitops_pin") or []:
             print(f"\n  pin {p['service']} in {p['overlay']} after {p['apply_after']}: {p.get('note', '')}")
+        return 0
+
+    if cmd == "ready" and rest:
+        meta, _ = load(plan_path(rest[0]))
+        if meta["status"] in {"completed", "abandoned"}:
+            sys.exit(f"ERROR: plan is {meta['status']}")
+        finished = {r["id"] for r in meta["repos"] if r["done"]}
+        wave = [r for r in meta["repos"] if not r["done"] and set(r.get("depends_on") or []) <= finished]
+        wave.sort(key=lambda r: r["id"])
+        if "--json" in rest:
+            import json
+            print(json.dumps([{"id": r["id"], "shape": r["shape"], "summary": r["summary"], "arguments": r["arguments"]} for r in wave]))
+        else:
+            print(f"{len(wave)} repo(s) can start now (in parallel):" if wave else "nothing can start now")
+            for r in wave:
+                print(f"  {r['id']} ({r['shape']}) — {r['summary']}")
         return 0
 
     if cmd in {"start", "done", "abandon"} and rest:

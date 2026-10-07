@@ -28,3 +28,4 @@ Decisions that shape how the platform works, with the context and the alternativ
 | [020](020-addons-contract.md) | Addons: a stable contract for backing services |
 | [021](021-observability-otel.md) | Observability: an OpenTelemetry base, a UI stack as an option |
 | [022](022-kyverno-policies.md) | Kyverno guard rails, checked before merge and enforced in the cluster |
+| [023](023-parallel-plan-execution.md) | Multi-repo plans run in parallel waves; merging and pinning stay human |

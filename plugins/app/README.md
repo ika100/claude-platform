@@ -1,6 +1,6 @@
 # app plugin
 
-Multi-repo planning for **`gitops-app`** repos (one per SaaS product). v1 is **plan-only** ([ADR-007](../../docs/adr/007-cross-repo-orchestration-scope.md)): it decides which component repos a feature touches and in what order, then hands you paste-ready `/svc:build-feature --from-plan` commands.
+Multi-repo planning for **`gitops-app`** repos (one per SaaS product). `/app:build-feature` plans ([ADR-007](../../docs/adr/007-cross-repo-orchestration-scope.md)): which component repos a feature touches and in what order, with paste-ready `/svc:build-feature --from-plan` commands; `/app:run-plan` executes the plan with independent repos in parallel ([ADR-023](../../docs/adr/023-parallel-plan-execution.md)).
 
 ## Agents
 
@@ -14,12 +14,13 @@ Multi-repo planning for **`gitops-app`** repos (one per SaaS product). v1 is **p
 |---|---|
 | `/app:build-feature <desc>` | PM stories (per repo) → planner → validated, topo-sorted plan → hand-off commands |
 | `/app:plans [list\|show\|start\|done\|abandon]` | Plan lifecycle: `draft → in_progress → completed \| abandoned` |
+| `/app:run-plan <slug> [--max N]` | Executes a plan wave by wave: one agent per ready repo **in parallel**, PRs opened, merges only on your word ([ADR-023](../../docs/adr/023-parallel-plan-execution.md)) |
 
 ## Dependencies
 
 - `svc` (product-manager agent, `/svc:build-feature --from-plan`), `shared`, `gitops` — all enabled in the `gitops-app` template's `.claude/settings.json`.
 - The repo's `scripts/plan.py` and `devbox run plan-check` (shipped by the `gitops-app` template) do validation and lifecycle edits.
 
-## Not in v1
+## Not yet
 
-Automatic fan-out into component repos and cross-repo PR creation (v2, future ADR); `/app:release` (PRD C4, P2).
+Automatic merging and image pinning (always a human step); `/app:release` (PRD C4, P2).
