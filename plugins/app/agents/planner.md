@@ -68,6 +68,7 @@ gitops_pin:
 - Status is always `draft` when you write a plan; `done` is always `false`.
 - `shape` values must be valid registry shapes (`plan-check` enforces this).
 - If the feature is small enough for a single repo, say so in your reply and still write a one-repo plan — the orchestrator decides whether to proceed.
+- **Make repos independent when you can, with a contract.** Two repos need no `depends_on` if they agree on an interface first (a backend and the UI that calls it). Write that interface into a `## Contract` section of the plan body (endpoints, request/response fields, status codes and error format, events) so `/app:run-plan` can build both sides in parallel. Add `depends_on` only for what truly needs the other's code (a library before its consumers).
 - Be opinionated: pick one decomposition, justify it in the body, don't list alternatives.
 
 > If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

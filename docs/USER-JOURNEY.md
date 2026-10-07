@@ -176,7 +176,7 @@ Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exact
 /app:build-feature "add billing with Stripe checkout"
 ```
 
-`/app:build-feature` is **plan-only**: it reads every registered service, asks the product-manager for stories tagged per repo, and the planner writes `docs/plan/add-billing….md` — repos in dependency order (library → API → web) with a paste-ready prompt for each and when to pin versions. It validates the plan and prints the hand-off:
+`/app:build-feature` plans (and `/app:run-plan` executes in parallel): it reads every registered service, asks the product-manager for stories tagged per repo, and the planner writes `docs/plan/add-billing….md` — repos in dependency order (library → API → web) with a paste-ready prompt for each and when to pin versions. It validates the plan and prints the hand-off:
 
 ```
 Level 1:  cd ../taskboard-api && /svc:build-feature --from-plan <plan> taskboard-api
@@ -184,7 +184,7 @@ Level 2:  cd ../taskboard-web && /svc:build-feature --from-plan <plan> taskboard
 Then:     /gitops:promote taskboard-api taskboard-web dev staging
 ```
 
-Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`, `abandon`). Each repo still goes through the normal PR flow of Chapter 3.
+Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`, `abandon`). Each repo still goes through the normal PR flow of Chapter 3. To let the agents do the per-repo work, `/app:run-plan <slug>` builds every repo whose dependencies are done **in parallel** (one agent per repo, each ending at an open PR); you merge, it moves on to the next level. Repos that agree on an API contract up front (the plan's `## Contract` section) start together instead of one after the other.
 
 ---
 

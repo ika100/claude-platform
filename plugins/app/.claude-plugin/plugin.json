@@ -1,7 +1,7 @@
 {
   "name": "app",
-  "version": "0.1.4",
-  "description": "Multi-repo planning for product-scoped gitops-app repos: /app:build-feature writes a topo-sorted plan across component repos (plan-only in v1, ADR-007) and /app:plans tracks its lifecycle.",
+  "version": "0.2.0",
+  "description": "Multi-repo planning for product-scoped gitops-app repos: /app:build-feature writes a topo-sorted plan across component repos (ADR-007), /app:run-plan builds independent repos in parallel (ADR-023) and /app:plans tracks the lifecycle.",
   "author": {
     "name": "Eike Hensler",
     "email": "eike.hensler@gmail.com"
