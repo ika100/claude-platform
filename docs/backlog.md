@@ -367,10 +367,10 @@ As a founder, I want guides that match the product.
 
 ---
 
-## Epic G. Planned
+## Epic G. Whole-product bootstrap
 
 #### STORY-033: Bootstrap a whole product from a manifest
-**Status:** planned · **Priority:** P0 · **Source:** end-to-end scenario Phase 1, UX-2, UX-3 · **Plan:** [plan/new-app.md](plan/new-app.md)
+**Status:** done · **Priority:** P0 · **Source:** end-to-end scenario Phase 1, UX-2, UX-3 · **Plan:** [plan/new-app.md](plan/new-app.md) · **Code:** `scripts/cplat/newapp.py`
 
 As a founder, I want `/shared:new-app <manifest>` to create the gitops-app repo and every component repo and wire them together, so that standing up a product is one command instead of one `new-service` per repo plus a `compose`.
 
@@ -404,7 +404,6 @@ components:
 
 | Item | PRD ref | State | Evidence |
 |---|---|---|---|
-| `/shared:new-app taskboard --from app.yml` (bootstrap a whole product in one command) | end-to-end scenario Phase 1, UX-2 | planned: [STORY-033](#story-033-bootstrap-a-whole-product-from-a-manifest) | no `new-app` command in `plugins/shared/commands`; a product is created with one `/shared:new-service` per repo plus `/gitops:compose` |
 | `/shared:shapes` (list valid shapes) | UX-4 | dropped 2026-10-07 | no such command, by decision; an unknown `--type` lists the valid shapes instead (STORY-001) |
 | `/app:release` (coordinated release across an app) | C4, P2 | not built | PRD marks it deferred |
 | Web security agent extensions | E3, P2 | not built | PRD marks it deferred; `shared:security` covers web via `devbox run security` (STORY-018) |
@@ -412,5 +411,5 @@ components:
 
 ## Decisions and open questions
 
-1. Decided 2026-10-07: `new-app` is planned (needs its own story and plan); `shapes` is dropped; `/app:release` and the web security extensions stay deferred.
+1. Decided 2026-10-07: `new-app` is built (STORY-033); `shapes` is dropped; `/app:release` and the web security extensions stay deferred.
 2. Open: this repo has no shape (it is the platform source), so `/svc:plan-feature` cannot run here; `cplat shape` fails with "cannot determine the repo's shape". Proposal: keep ADR + PR for platform changes and add a `STORY-0NN` with acceptance criteria to this file before any non-trivial change.

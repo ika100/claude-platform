@@ -2,7 +2,7 @@
 
 **Purpose:** harden [platform-vision.md](platform-vision.md) by walking a realistic SaaS build from zero. As of 2026-05-22 this doc shows the canonical post-UX flow; the original pre-UX friction that motivated each improvement is preserved in the Resolution log and UX improvements proposed sections below, and called out per phase in "Pre-UX baseline" notes.
 
-**Status (2026-10-07):** `/shared:new-app` (Phase 1, UX-2) is **planned, not built**; `/shared:shapes` (UX-4) was **dropped**. Everything else in this walkthrough exists; see the shipped stories in [../backlog.md](../backlog.md). Where Phase 1 says "one command", today it is one `/shared:new-service` per repo (gitops-app first) followed by `/gitops:compose add <service...>`.
+**Status (2026-10-07):** `/shared:new-app` (Phase 1, UX-2) is **built** ([STORY-033](../backlog.md)); `/shared:shapes` (UX-4) was **dropped**. Everything in this walkthrough exists except interactive mode and the per-component compose options (`--expose`, env wiring), which stay with `/gitops:compose`. The gitops-app repo is named after `app` (`taskboard`, not `taskboard-app`).
 
 **Persona:** Eike (solo founder). Goal: ship a distributed-team task-board SaaS in one afternoon.
 
@@ -48,9 +48,9 @@ Then runs one command:
 
 (Or `/shared:new-app taskboard --interactive` for the TUI route. Valid `shape:` values are the ids in `shapes.yml`; an unknown `--type` on `/shared:new-service` lists them.)
 
-> **Planned, not built.** Today: `/shared:new-service taskboard-app --gitops`, then one `/shared:new-service <name> --type <shape> --app <org>/taskboard-app` per component, then `/gitops:compose add <services...>`.
+> **Built.** The same result step by step: `/shared:new-service taskboard --gitops`, one `/shared:new-service <name> --type <shape> --app <org>/taskboard` per component, then `/gitops:compose add <services...>`.
 
-**Expected behavior (target for `new-app`; the per-component parts, A1 and A2, exist today):**
+**Expected behavior:**
 - `taskboard-app` (the `gitops-app` shape) created first.
 - Five component repos created next, each tagged according to `shapes.yml.deployable`.
 - One composition PR opened against `taskboard-app` adding all five into `services.yaml` via [batch compose-add](../adr/014-gitops-app-composition-spec.md).
@@ -251,7 +251,7 @@ None of the above blocks the first-run scenario.
 
 | Phase | Pre-UX | Post-UX | Saving |
 |---|---|---|---|
-| 1 — Bootstrap | 10 (6× new-service + 4× compose add) | 1 (`/shared:new-app`, planned); today 6× new-service + 1× batch `compose add` = 7 | 9 target, 3 today |
+| 1 — Bootstrap | 10 (6× new-service + 4× compose add) | 1 (`/shared:new-app`) | 9 |
 | 2 — First feature | 1 | 1 | 0 |
 | 3 — Multi-repo (4 repos) | 5 (1× build-feature + 4× paste-and-run) | 5 (1× app build-feature + 4× `--from-plan`) | 0 commands, but 4 multi-line copy-pastes eliminated |
 | 4 — Deployment per env step | 8 (4× compose add already counted above + 4× promote) | 1 (`/gitops:promote --all`) + 1 verify (`/gitops:status`) | 6+ |
@@ -293,7 +293,7 @@ None of the above blocks the first-run scenario.
 | Question | Note |
 |---|---|
 | Q1 — component ordering at bootstrap | Behavior unspecified; default to "any order works" — `new-app` topo-sorts internally. Add a clarifying note in [ADR-014](../adr/014-gitops-app-composition-spec.md) or `templates.md` |
-| Q3 — naming collisions / `/shared:new-service` resume flag | Pre-flight `gh repo view` check spec'd in A1; resume flag on `/shared:new-app` to be specified when it is built |
+| Q3 — naming collisions / `/shared:new-service` resume flag | Pre-flight `gh repo view` check spec'd in A1; `/shared:new-app --resume` |
 | Q6 — architect cross-shape dependency awareness | Agent-prompt-quality concern, not a spec gap |
 | Q12 — `compose remove` | Spec'd in [ADR-014](../adr/014-gitops-app-composition-spec.md) and PRD B5 |
 | Q16 — rollback | Out of scope for v1; revert PR is the supported path |
@@ -409,7 +409,7 @@ Collapses Phase 4 from 8 commands to 2.
 
 | Improvement | Reduces command count by | Cost | Priority | Spec'd? |
 |---|---|---|---|---|
-| UX-2 `/shared:new-app` | 6 → 1 (Phase 1) | moderate | **P0, planned (not built)** | this document; no PRD story |
+| UX-2 `/shared:new-app` | 6 → 1 (Phase 1) | moderate | **P0, built** | [STORY-033](../backlog.md) |
 | UX-7 batch compose/promote | 8 → 2 (Phase 4) | moderate | **P0** | PRD B5/B6 + [ADR-014](../adr/014-gitops-app-composition-spec.md) batch ops |
 | UX-5 `--from-plan` | eliminates copy-paste (Phase 3) | small | **P0** | PRD C1 + [ADR-011](../adr/011-multi-repo-plan-format.md) consumption pattern |
 | UX-8 `/gitops:status` | new capability | small-moderate | **P1** | PRD C6 |
@@ -420,7 +420,7 @@ Collapses Phase 4 from 8 commands to 2.
 | UX-9 `/shared:new-shape` | shape-author leverage | moderate | **P2** | not yet spec'd |
 | UX-10 verb convention | style only | zero | **P2** (docs change) | PRD §8 constraint |
 
-**2026-05-22 update:** UX-1 through UX-8 and UX-10 were promoted into PRD stories and ADR updates. **2026-10-07 correction:** the current PRD has no A4/A5 stories; UX-2 is planned and UX-4 is dropped (see the status line at the top). UX-9 (`/shared:new-shape`) remains unspec'd — a P2 contributor-productivity feature that can land after the platform's first usable release.
+**2026-05-22 update:** UX-1 through UX-8 and UX-10 were promoted into PRD stories and ADR updates. **2026-10-07 correction:** the current PRD has no A4/A5 stories; UX-2 was built later (STORY-033) and UX-4 was dropped (see the status line at the top). UX-9 (`/shared:new-shape`) remains unspec'd — a P2 contributor-productivity feature that can land after the platform's first usable release.
 
 ## Next actions
 
