@@ -18,10 +18,17 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ### Added
 
-- **Gateway API exposure**: `expose:` → `HTTPRoute`; `app.yaml` holds gateway and per-env hostname templates (dev default `{service}.{app}-dev.localhost`). `cluster-up` installs Gateway API v1.2.1 and enables Traefik's Gateway provider on k3s, and prints the URLs. Spike-verified on k3s v1.32.5/Traefik 3.3.6; `*.localhost` resolves everywhere (localtest.me / nip.io / lvh.me do not behind rebind-protecting DNS).
+- **Gateway API exposure**: `expose:` → `HTTPRoute`; `app.yaml` holds gateway and per-env hostname templates (dev default `{service}.{app}-dev.localhost`). `cluster-up` installs the Traefik Gateway provider (the Gateway API CRDs come with k3s' Traefik chart) and enables Traefik's Gateway provider on k3s, and prints the URLs. Spike-verified on k3s v1.32.5/Traefik 3.3.6; `*.localhost` resolves everywhere (localtest.me / nip.io / lvh.me do not behind rebind-protecting DNS).
 - **`cplat compose` / `cplat promote`** with 21 more tests (fake `gh`, real renders); `compose add --from-k8s` seeds an entry from a v1 service; `update-service --migrate` removes `k8s/`.
 - `shapes.yml` `runtime:` defaults per deployable shape (validated by `shapes.py check`).
 - `docs/adr/017-gitops-owns-manifests.md`; CI renders a fixture product and runs the label check, `kubectl kustomize` and kubeconform on the generated manifests; offline `validate` in generated gitops repos.
+
+### End-to-end test and UX
+
+- **`tests/e2e/run.sh` + `.github/workflows/e2e.yml`** (nightly, on relevant PRs, manual): renders a gitops-app, a Java service and a web app from the real templates, builds the images, starts the platform's own `local-cluster.sh` (Gateway only, local registry), applies the generated manifests and probes the services through the Gateway; asserts non-root numeric users and read-only filesystems. **Its first run caught a regression before release**: on a fresh cluster the Gateway API CRDs applied by `cluster-up` raced with k3s' own `traefik-crd` Helm chart (which installs them) — `cluster-up` now only enables the provider.
+- `local-cluster.sh`: `WITH_ARGO=0` (Gateway + namespaces only) and `REGISTRY_PORT` (local registry) modes.
+- **`/shared:status`** (`cplat status`): one table per product — pinned tag per environment, CI state of each service's `main`, ArgoCD sync/health (`--context`).
+- `docs/HOW-IT-WORKS.md`: diagrams of bootstrap, build, compose/render, promote and exposure, and which test guards what.
 
 ### Faster / more stable CI
 

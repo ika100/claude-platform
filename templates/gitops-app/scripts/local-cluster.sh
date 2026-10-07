@@ -10,7 +10,6 @@
 #   LOCAL_CLUSTER        cluster name (default <app>-local)
 #   LOCAL_HTTP_PORT      host port of the Gateway (default 8088)
 #   ARGOCD_VERSION       default stable
-#   GATEWAY_API_VERSION  default v1.2.1, the release Traefik 3.3 in k3s supports
 #   GH_TOKEN             default `gh auth token`; needs repo + read:packages/write:packages (ArgoCD mode only)
 #   WITH_ARGO=0          Gateway + namespaces only: no ArgoCD, no GitHub credentials, no root Application
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
@@ -25,7 +24,6 @@ name="${LOCAL_CLUSTER:-$app-local}"
 ctx="k3d-$name"
 port="${LOCAL_HTTP_PORT:-8088}"
 argocd_version="${ARGOCD_VERSION:-stable}"
-gateway_api_version="${GATEWAY_API_VERSION:-v1.2.1}"
 with_argo="${WITH_ARGO:-1}"
 registry_port="${REGISTRY_PORT:-}"
 registry="${name}-registry"
@@ -52,8 +50,9 @@ case "${1:-up}" in
     fi
 
     echo "Enabling the Gateway API (Traefik)"
-    k apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${gateway_api_version}/standard-install.yaml" >/dev/null
-    # k3s ships Traefik without the Gateway provider; this config turns it on and lets routes attach from every namespace
+    # k3s ships Traefik and its CRD chart, which already installs the Gateway API CRDs (applying them ourselves races with
+    # the Helm install and breaks it on a fresh cluster). Only the Gateway *provider* is off by default: turn it on, and let
+    # routes attach from every namespace.
     k apply -f - >/dev/null <<'YAML'
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
