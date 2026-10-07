@@ -6,6 +6,16 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.2.0] — 2026-10-07
+
+Addresses issue #56 ("Improve performance") and the leftovers of the project-management sample.
+
+- **Work starts right away.** `new-service` next steps, `/shared:new-service`, `/svc:build-feature` and the user journey now say that development starts on a feature branch immediately; nothing waits for the bootstrap CI on `main` (#56, idea 3).
+- **Parallel multi-repo execution.** New `/app:run-plan <slug>` (app plugin 0.2.0, [ADR-023](adr/023-parallel-plan-execution.md)): builds every repo whose dependencies are done in parallel, one agent per repo, ends at open PRs, merges only on your word, never pins images. `plan.py ready` computes the wave; the planner writes a `## Contract` section so a backend and its UI can start together (#56, idea 1).
+- **Template pins stay current.** Weekly `bump-template-pins` workflow and `scripts/bump_template_pins.py`: renders `service-java`, `web-nextjs` and `service-go`, bumps the rendered manifest (minor/patch), copies literal unique line changes back into the Jinja source and re-renders to verify. Needs a `BUMP_TOKEN` secret for CI to start on the bot's PR (#56, idea 2).
+- **k9s in the gitops project**: `k9s` in the devbox and `devbox run cluster-ui` (clear error with the fix when the cluster is not running).
+- **Java services wait for their database** at startup (Hikari `initialization-fail-timeout`) instead of crash-looping while PostgreSQL initialises.
+
 - **k9s in the gitops project**: `k9s` is part of the gitops-app devbox and `devbox run cluster-ui` opens it on the local cluster in the `<app>-dev` namespace (clear error with the fix when the cluster is not running). `cluster-up` mentions it when it finishes. Existing projects get it with `/shared:update-service`.
 
 ## [3.1.0] — 2026-10-07
