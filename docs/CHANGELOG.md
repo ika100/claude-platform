@@ -6,6 +6,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.0.3] — 2026-10-07
+
+### Fixed
+
+- **The image publish failed on arm64 in every generated service and web repo that has the scan step (since 2.1.0).** The per-architecture jobs scan the digest they just pushed with Trivy, which resolves a digest to the host platform (linux/amd64) by default. On the arm64 job it found no matching image ("no child with platform linux/amd64 in index"), failed, and the multi-arch manifest and the `latest` / `sha-*` / version tags were never published. Both Trivy steps now set `TRIVY_PLATFORM: linux/${{ matrix.arch }}`. Pull-request runs never reach this step (it only runs when publishing), so it was invisible to the smoke tests; it surfaced when the platform's todo test application was migrated. A static test now asserts the setting in all four templates. **Existing repos: run `/shared:update-service` and merge**, then check that the next `main` build publishes the manifest.
+
 ## [3.0.2] — 2026-10-07
 
 ### Fixed

@@ -142,6 +142,8 @@ jobs:
         env:
           TRIVY_USERNAME: ${{ '{{' }} github.actor {{ '}}' }}
           TRIVY_PASSWORD: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+          # the digest is one architecture's image: resolve it for this runner's platform, not the default (amd64)
+          TRIVY_PLATFORM: linux/${{ '{{' }} matrix.arch {{ '}}' }}
         with:
           image-ref: ghcr.io/${{ '{{' }} github.repository {{ '}}' }}@${{ '{{' }} steps.build.outputs.digest {{ '}}' }}
           severity: CRITICAL,HIGH
@@ -155,6 +157,8 @@ jobs:
         env:
           TRIVY_USERNAME: ${{ '{{' }} github.actor {{ '}}' }}
           TRIVY_PASSWORD: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+          # the digest is one architecture's image: resolve it for this runner's platform, not the default (amd64)
+          TRIVY_PLATFORM: linux/${{ '{{' }} matrix.arch {{ '}}' }}
         with:
           image-ref: ghcr.io/${{ '{{' }} github.repository {{ '}}' }}@${{ '{{' }} steps.build.outputs.digest {{ '}}' }}
           format: cyclonedx
