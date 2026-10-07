@@ -1,6 +1,10 @@
-# Weekly PRs for the GitHub Actions used by CI (they are pinned by commit SHA; Dependabot updates the SHA and the version comment).
+# Monthly, grouped dependency PRs (security updates still arrive immediately and separately): the language ecosystem, the
+# GitHub Actions used by CI (pinned by commit SHA; Dependabot updates the SHA and the version comment), and Docker base images.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: "/"
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    groups:
+      all:
+        patterns: ["*"]

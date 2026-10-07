@@ -27,6 +27,11 @@ env:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the older run (main and tags always run to completion).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   quality:
     name: quality (eslint + tsc)

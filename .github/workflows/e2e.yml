@@ -20,6 +20,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the older run (the nightly run always completes).
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   e2e:
     name: e2e (render → build → k3d → Gateway)

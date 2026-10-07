@@ -10,7 +10,53 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same pull request cancels the older run (main and tags always run to completion).
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  # Decide which expensive jobs a change needs. Pushes to main run everything; pull requests run what they touch.
+  changes:
+    name: detect what changed
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      python: ${{ steps.diff.outputs.python }}
+      gitops: ${{ steps.diff.outputs.gitops }}
+      web: ${{ steps.diff.outputs.web }}
+      go: ${{ steps.diff.outputs.go }}
+      java: ${{ steps.diff.outputs.java }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != pull_request ]; then
+            files=$'templates/\nscripts/\nshapes.yml\ntests/\nplugins/\n.github/workflows/ci.yml'
+          else
+            files=$(git diff --name-only "origin/${BASE}...HEAD")
+          fi
+          echo "changed files:"; awk '{print "  " $0}' <<< "$files"
+          has() { if grep -Eq "$1" <<< "$files"; then echo true; else echo false; fi; }
+          # anything that is not documentation or repository metadata can break the tested code
+          code=$(grep -Evq '^(docs/|.*\.md$|LICENSE$|NOTICE$|\.github/(ISSUE_TEMPLATE/|CODEOWNERS|PULL_REQUEST_TEMPLATE|dependabot))' <<< "$files" && echo true || echo false)
+          shared=$(has '^(scripts/|shapes\.yml$|\.github/workflows/ci\.yml$|tests/fixtures/)')
+          t() { if [ "$shared" = true ] || [ "$(has "$1")" = true ]; then echo true; else echo false; fi; }
+          {
+            echo "code=$code"
+            echo "python=$(t '^templates/(service-python|library-python)/')"
+            echo "gitops=$(t '^templates/gitops-app/')"
+            echo "web=$(t '^templates/web-nextjs/')"
+            echo "go=$(t '^templates/service-go/')"
+            echo "java=$(t '^templates/service-java/')"
+          } | tee -a "$GITHUB_OUTPUT"
+
   validate-manifests:
     name: validate marketplace.json + plugin.json
     runs-on: ubuntu-latest
@@ -51,6 +97,8 @@ jobs:
         run: uv run scripts/shapes.py check
       - name: shape detection fixtures
         run: bash scripts/test-detect-shape.sh
+      - name: relative Markdown links resolve
+        run: python3 scripts/check-links.py
       - name: actions are pinned by commit SHA and workflows declare least-privilege permissions
         run: python3 scripts/pin-actions.py --check
       - name: workflows (platform + every generated repo) pass actionlint
@@ -84,6 +132,8 @@ jobs:
 
   platform-tests:
     name: cplat unit + integration tests
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -101,6 +151,8 @@ jobs:
 
   smoke-test-templates:
     name: smoke-test Copier templates
+    needs: changes
+    if: needs.changes.outputs.python == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -138,6 +190,8 @@ jobs:
 
   smoke-test-gitops-app:
     name: smoke-test gitops-app template
+    needs: changes
+    if: needs.changes.outputs.gitops == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -186,6 +240,8 @@ jobs:
 
   smoke-test-web-nextjs:
     name: smoke-test web-nextjs template
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -239,6 +295,8 @@ jobs:
 
   smoke-test-service-go:
     name: smoke-test service-go template
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -292,6 +350,8 @@ jobs:
 
   smoke-test-service-java:
     name: smoke-test service-java template
+    needs: changes
+    if: needs.changes.outputs.java == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -350,3 +410,20 @@ jobs:
             exit 1
           fi
           echo "OK: PR title is valid."
+
+  # The single status required by branch protection. Jobs skipped by `changes` count as passed; a failed or cancelled job fails it.
+  ci-success:
+    name: ci-success
+    if: always()
+    needs: [changes, validate-manifests, validate-shapes, platform-tests, smoke-test-templates, smoke-test-gitops-app, smoke-test-web-nextjs, smoke-test-service-go, smoke-test-service-java, pr-title]
+    runs-on: ubuntu-latest
+    steps:
+      - name: every needed job passed or was skipped
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.value.result)\t\(.key)"'
+          if echo "$NEEDS" | jq -e 'to_entries | map(.value.result) | any(. == "failure" or . == "cancelled")' >/dev/null; then
+            echo "ERROR: a required job failed or was cancelled" >&2
+            exit 1
+          fi
