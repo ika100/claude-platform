@@ -15,7 +15,7 @@ P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "
 1. **Preview.** Run it with `--dry-run` and the user's arguments. Show the output verbatim. If it exits non-zero, show the error and its `fix:` line and stop — do not retry with guesses.
 2. **Run.** The preview lists the repos in creation order and the `[outward]` steps. The user's request is the confirmation; do not ask again unless the preview shows something they did not ask for. Run the same command without `--dry-run`. It takes a few minutes (one bootstrap per repo).
 3. **If it fails midway**, nothing is rolled back. Show the error (it lists what was created) and offer `--resume`, which skips the repos that exist and continues, including the compose pull request.
-4. **Report.** Relay the script's *What happened / Next / To undo* output; add nothing else.
+4. **Report.** Relay the script's *What happened / Next / To undo* output; add nothing else. The product's first feature is planned before it is built: `/app:build-feature` in the gitops-app repo, then `/app:run-plan` (never `/svc:build-feature` on a component without a plan).
 
 Rules: never create public repos unless the user asked (`--public` or `visibility: public`); never overwrite a non-empty directory; if `gh` is missing the script renders locally and prints the GitHub and compose commands instead.
 

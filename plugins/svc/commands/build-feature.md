@@ -1,5 +1,5 @@
 ---
-description: "Full feature pipeline: PM → architect → parallel coders → quality ‖ tester ‖ security → image check → PR. Usage: /svc:build-feature <description> [--no-pm] [--from-plan <path> [<repo-id>]]"
+description: "Full feature pipeline: PM → architect → parallel coders → quality ‖ tester ‖ security → image check → PR. Usage: /svc:build-feature <description> [--no-pm] [--plan <path>] [--from-plan <path> [<repo-id>]]"
 ---
 
 You are the **orchestrator**. Drive a feature from idea to deployment by delegating to specialized subagents — and fan coders out in parallel git worktrees wherever the architect's plan permits.
@@ -7,6 +7,8 @@ You are the **orchestrator**. Drive a feature from idea to deployment by delegat
 **Feature request:** $ARGUMENTS
 
 **`--no-pm`** (optional): skip Phase 1 for requests that are already precise (a clear spec, an issue with acceptance criteria). The architect then derives the acceptance criteria itself and writes them at the top of the plan; Phase 4 and the PR use those. Saves one agent run (≈ the product-manager prompt plus its codebase reads).
+
+**`--plan <path>`** (optional, [ADR-024](../../../docs/adr/024-spec-driven-bootstrap.md)): build a plan that `/svc:plan-feature` already produced and you reviewed, instead of planning again. Phases 1 and 2 are skipped (print `## Phase 1 skipped — --plan` and `## Phase 2 skipped — --plan`). First validate, and stop with the reason if any check fails: the file starts with the YAML metadata block (`plan_id`, `shape`, `tasks[]`); `shape` equals `$SHAPE` from shape dispatch; every id in `stories:` exists as a `#### STORY-NNN` heading in `docs/backlog.md`. The acceptance criteria of those stories replace the Phase 1 output in Phase 4 and the PR. Mutually exclusive with `--from-plan`. Without `--plan` this command plans by itself as before and writes the same artifacts.
 
 **`--from-plan <path> [<repo-id>]`** (optional, [ADR-011](../../../docs/adr/011-multi-repo-plan-format.md)): if `$ARGUMENTS` starts with this flag, read the multi-repo plan at `<path>`, pick the `repos[]` entry whose `id` is `<repo-id>` (default: the current repo's name, or the `repo` in `.platform-app.yml`), and use that entry's `arguments` block as the feature request from here on. The plan file lives in the gitops-app repo, so do **not** edit it from here; instead tell the user to run `/app:plans start <slug>` before and `/app:plans done <slug> <repo-id>` (in the gitops-app repo) after the Phase 7 PR merges, and include those two commands in the Final Report.
 
@@ -47,7 +49,7 @@ Print `## Phase 0b complete — on $FEATURE_BRANCH, BASE_REF=<short-sha>`.
 
 ## Phase 1 — Product Definition
 
-Skip this phase (print `## Phase 1 skipped — --no-pm`) when `--no-pm` was given.
+Skip this phase (print `## Phase 1 skipped — --no-pm`) when `--no-pm` was given, or when `--plan` was given (stories already exist).
 
 Use the **product-manager** agent. Prompt prelude:
 
@@ -68,8 +70,8 @@ Extract the acceptance criteria checklist when the agent finishes — reused in 
 
 ## Phase 2 — Architecture
 
-Use the **architect** agent. Prompt prelude: same `<project-map>` block. Then:
-- Pass the user stories and acceptance criteria from Phase 1
+Skip this phase (print `## Phase 2 skipped — --plan`) when `--plan` was given: the plan at that path is the plan. Otherwise use the **architect** agent. Prompt prelude: same `<project-map>` block. Then:
+- Pass the user stories and acceptance criteria from Phase 1, and tell the architect to list their ids in the plan metadata as `stories: [STORY-NNN, ...]`
 - Instruction to read the existing codebase before designing
 - Instruction to record `shape: $SHAPE` in the plan metadata and to **emit the structured plan format documented in the architect agent's system prompt** — a YAML metadata block listing every task with `id`, `files`, `parallel_safe`, `depends_on`, followed by per-task prose
 
@@ -212,7 +214,7 @@ Skip with `## Phase 5 skipped — $SHAPE is not deployable` when `$DEPLOYABLE` i
 
 ## Phase 6 — Backlog finalization
 
-If `docs/backlog.md` lists user stories for this feature with a status field, mark each story implemented by this build as **Done**. Single commit: `docs(backlog): mark <story-ids> done`.
+If the plan lists `stories:`, mark exactly those stories **Done**; otherwise, if `docs/backlog.md` lists user stories for this feature with a status field, mark each story implemented by this build as **Done**. Single commit: `docs(backlog): mark <story-ids> done`.
 
 If the backlog uses checkboxes instead of status, tick each acceptance-criterion checkbox covered by tests that passed in Phase 4.
 
@@ -248,7 +250,7 @@ After Phase 6:
 
    ## Related issues / stories
 
-   <CLOSES — e.g. "Closes #42" or "N/A">
+   <the story ids from the plan (e.g. "Implements STORY-007") and the CLOSES list — e.g. "Closes #42" — or "N/A">
 
    ## Testing done
 

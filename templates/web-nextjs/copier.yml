@@ -19,6 +19,8 @@ _skip_if_exists:
   - tests/**
   - e2e/**
   - docs/adr/**
+  - docs/backlog.md
+  - docs/plan/**
   - docs/env-vars.md
   - public/**
   - pnpm-workspace.yaml

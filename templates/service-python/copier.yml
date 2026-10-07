@@ -18,6 +18,8 @@ _skip_if_exists:
   - tests/**
   - migrations/**
   - docs/adr/**
+  - docs/backlog.md
+  - docs/plan/**
   - docs/env-vars.md
 
 _exclude:

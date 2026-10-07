@@ -112,8 +112,15 @@ def check_contract(shapes: list[dict]) -> list[str]:
             for r in need:
                 if f'"{r}"' not in text:
                     errs.append(f"{sid}: devbox.json missing canonical recipe '{r}'")
-        if _template_file(tdir, "CLAUDE.md") is None:
+        claude = _template_file(tdir, "CLAUDE.md")
+        if claude is None:
             errs.append(f"{sid}: template has no CLAUDE.md")
+        elif "### Spec first" not in claude.read_text():
+            errs.append(f"{sid}: CLAUDE.md has no '### Spec first' section (ADR-024)")
+        if not (tdir / "docs" / "plan").is_dir():
+            errs.append(f"{sid}: template has no docs/plan/ (ADR-024)")
+        if sid != "gitops-app" and not (tdir / "docs" / "backlog.md").is_file():
+            errs.append(f"{sid}: template has no docs/backlog.md (ADR-024)")
         settings = _template_file(tdir / ".claude", "settings.json")
         if settings is None:
             errs.append(f"{sid}: template has no .claude/settings.json")

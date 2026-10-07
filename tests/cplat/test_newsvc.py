@@ -136,6 +136,6 @@ def test_data_sets_template_options_and_rejects_unknown_ones(tmp_path):
 
 
 def test_next_steps_tell_the_agent_to_start_a_feature_without_waiting_for_ci():
-    steps = newsvc._next_steps({"name": "svc-a", "shape": "service-python"})
+    steps = newsvc._next_steps({"name": "svc-a", "shape": "service-python", "description": "Task API"})
     joined = "\n".join(steps)
-    assert "/svc:build-feature" in joined and "do not wait" in joined
+    assert "/svc:build-feature --plan" in joined and "do not wait" in joined

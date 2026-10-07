@@ -30,6 +30,7 @@ Save plans to `docs/plan/<feature-slug>.md`. The file MUST start with a YAML met
 plan_id: <feature-slug>
 shape: <shape-id>                # REQUIRED: a key in shapes.yml, e.g. service-python, web-nextjs
 summary: <one-line description>
+stories: [STORY-001]             # ids of the docs/backlog.md stories this plan implements
 tasks:
   - id: t1
     title: <imperative one-line title>
@@ -63,6 +64,8 @@ tasks:
 
 - **`shape`** — required. Set it to the repo's detected shape (the orchestrator passes it in; otherwise ask the orchestrator for it — it comes from `cplat shape`). It must be a key in `shapes.yml`. Plans without it are treated as `service-python` and the orchestrator logs a deprecation notice ([ADR-008](../../../docs/adr/008-shape-detection.md)). Use the shape's idioms for paths and `files` (e.g. `app/**/page.tsx` for `web-nextjs`, `src/main/java/...` for `service-java`).
 
+- **`stories`** — the `STORY-NNN` ids (from `docs/backlog.md`) that this plan implements. Required whenever the backlog has stories for the feature; `/svc:build-feature --plan` refuses a plan whose ids do not exist, and marks exactly these stories done.
+
 - **`files`** — list every file the task will touch. Be conservative: if you list a file, the orchestrator treats it as locked for that task. If two tasks would touch the same file, one of them is *not* `parallel_safe`.
 - **`parallel_safe`** — `true` when the task's `files` do not overlap with any other parallel task and the change is local. Set to `false` for cross-cutting refactors, rename-across-the-codebase work, or anything that needs a coherent view of the repo at one moment.
 - **`depends_on`** — only true dependencies (e.g. t2 imports something t1 creates). Don't add ordering for cosmetic reasons — it serializes work that could parallelize.
@@ -75,6 +78,7 @@ tasks:
 plan_id: price-alerts
 shape: service-python
 summary: Email + webhook alerts when a watched symbol crosses a threshold
+stories: [STORY-004]
 tasks:
   - id: t1
     title: Add AlertRule model and migration
