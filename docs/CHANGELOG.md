@@ -6,6 +6,29 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.0.0] — 2026-10-07
+
+**The project is now `sdlc-foundry`** (formerly *claude-platform*), an agentic SDLC platform. This is a breaking release because the plugin marketplace id changed; nothing else in how you work changes (slash commands keep their names).
+
+### Breaking changes and migration
+
+| What | Before | Now |
+|---|---|---|
+| Repository | `ika100/claude-platform` (GitHub redirects it) | `ika100/sdlc-foundry` |
+| Plugin marketplace id | `ika100-claude` | `sdlc-foundry`, so plugins install as `shared@sdlc-foundry` |
+| Documentation site | `ika100.github.io/claude-platform` (gone) | <https://ika100.github.io/sdlc-foundry/> |
+| Commits | no sign-off | DCO: `git commit -s` (see CONTRIBUTING) |
+
+**To migrate** (once per machine, in Claude Code):
+
+```text
+/plugin marketplace remove ika100-claude
+/plugin marketplace add ika100/sdlc-foundry
+/plugin install shared@sdlc-foundry        # and svc, gitops, web, svc-java, svc-go, app as you use them
+```
+
+then **restart Claude Code**, and in every repository generated from the templates run `/shared:update-service` (it rewrites `.claude/settings.json` and `_src_path` in `.copier-answers.yml`; review the branch it creates). `/shared:doctor` detects plugins still installed under the old marketplace and prints these steps.
+
 ### Renamed to sdlc-foundry (breaking), DCO sign-off
 
 - **The project is now `sdlc-foundry`** (formerly *claude-platform*): repository `ika100/sdlc-foundry`, documentation at <https://ika100.github.io/sdlc-foundry/>, and the plugin marketplace id `sdlc-foundry` (was `ika100-claude`), so plugins install as `shared@sdlc-foundry`. The old name contained a third-party trademark and described only part of the scope: this is an agentic SDLC platform. GitHub redirects the old repository URL; the old Pages URL is gone. **Slash commands do not change** (`/svc`, `/gitops`, `/shared`, `/app`, `/web`, `/svc-java`, `/svc-go`).
