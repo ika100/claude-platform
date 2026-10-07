@@ -1,5 +1,5 @@
 ---
-description: One-table overview of a product (run in its gitops-app repo) — which image each environment pins, whether each service's CI on main is green, and ArgoCD sync/health. Usage: /shared:status [--context <kube-context>]
+description: "One-table overview of a product (run in its gitops-app repo) — which image each environment pins, whether each service's CI on main is green, and ArgoCD sync/health. Usage: /shared:status [--context <kube-context>]"
 ---
 
 Show the product status. One Bash call from the gitops-app repo root:

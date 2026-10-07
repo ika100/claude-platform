@@ -1,5 +1,5 @@
 ---
-description: Release pipeline: runs quality checks, tests, and security scans, then bumps version, generates changelog, opens a PR, merges it, and pushes the tag. Fully automated after user confirms the PR. Usage: /svc:release
+description: "Release pipeline: runs quality checks, tests, and security scans, then bumps version, generates changelog, opens a PR, merges it, and pushes the tag. Fully automated after user confirms the PR. Usage: /svc:release"
 ---
 
 You are the **release orchestrator**. Drive a release through quality gating, test verification, security scanning, release preparation, PR merge, and tagging in sequence. Fail fast — do not proceed to the next phase if a gate fails.

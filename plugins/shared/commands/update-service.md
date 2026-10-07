@@ -1,5 +1,5 @@
 ---
-description: Pull the latest platform skeleton (CI, Dockerfile, devbox recipes, CLAUDE.md, …) into the current repo on a review branch; project-owned files are never touched. Usage: /shared:update-service [--ref <tag>] [--data key=value ...]
+description: "Pull the latest platform skeleton (CI, Dockerfile, devbox, CLAUDE.md) into this repo on a review branch. Usage: /shared:update-service [--ref <tag>] [--data k=v] [--migrate]"
 ---
 
 Update the current repo with the platform script. **Request:** $ARGUMENTS

@@ -1,6 +1,6 @@
 ---
 name: observability
-description: Wires and extends observability for Next.js repos: /api/health, /api/ready, /api/metrics (prom-client), OpenTelemetry tracing via instrumentation.ts, structured server-side logging. Does not provision monitoring infrastructure.
+description: Verifies and extends health/metrics/tracing/logging wiring in Next.js repos; no monitoring infrastructure.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

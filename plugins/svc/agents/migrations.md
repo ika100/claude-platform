@@ -1,6 +1,6 @@
 ---
 name: migrations
-description: Manages Alembic database migrations: init, autogenerate, upgrade, downgrade, and verification. Maintains migration runbooks. Does not modify application models.
+description: "Manages Alembic database migrations: init, autogenerate, upgrade, downgrade, and verification. Maintains migration runbooks. Does not modify application models."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

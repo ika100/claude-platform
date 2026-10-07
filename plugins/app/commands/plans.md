@@ -1,5 +1,5 @@
 ---
-description: Lists and manages multi-repo plans in docs/plan/ of a gitops-app repo (ADR-011 lifecycle: draft → in_progress → completed | abandoned). Usage: /app:plans [list [--all] | show <slug> | start <slug> | done <slug> <repo-id> | abandon <slug>]
+description: "List/manage multi-repo plans in docs/plan/. Usage: /app:plans [list [--all] | show <slug> | start <slug> | done <slug> <repo> | abandon <slug>]"
 ---
 
 You manage the lifecycle of multi-repo plans written by `/app:build-feature`. This is a thin wrapper over `scripts/plan.py` in the gitops-app repo.

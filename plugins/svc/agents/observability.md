@@ -1,6 +1,6 @@
 ---
 name: observability
-description: Configures structured logging (structlog), Prometheus metrics, and OpenTelemetry tracing Adds /metrics endpoint to HTTP services. Does not provision monitoring infrastructure.
+description: Verifies and extends health/metrics/tracing/logging wiring in Python repos; no monitoring infrastructure.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

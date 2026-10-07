@@ -1,6 +1,6 @@
 ---
 name: tester
-description: Writes and runs Vitest (and, when enabled, Playwright) tests for Next.js repos, checks coverage, and validates that implemented code meets acceptance criteria. Use this agent when you need to: write unit/component tests, run the test suite, check coverage, or verify a feature against its acceptance criteria.
+description: Writes and runs tests for Next.js repos, checks coverage, validates acceptance criteria; reports bugs, does not fix them.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

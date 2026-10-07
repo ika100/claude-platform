@@ -1,6 +1,6 @@
 ---
 name: release
-description: Manages semantic versioning, changelog generation, and GitHub PR creation for releases. Creates a release/vX.Y.Z branch — never commits to main. Does not create the git tag (the orchestrator does that after the PR merges).
+description: "Prepares a release for Next.js repos: next semver from commits, CHANGELOG, version bump, release branch + PR; never tags or commits to main."
 tools: Read, Write, Edit, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: tester
-description: Writes and runs tests, checks coverage, and validates that implemented code meets acceptance criteria. Use this agent when you need to: write unit or integration tests, run the test suite, check coverage, or verify that a feature meets its acceptance criteria.
+description: Writes and runs tests for Python repos, checks coverage, validates acceptance criteria; reports bugs, does not fix them.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

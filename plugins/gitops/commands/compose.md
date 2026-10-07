@@ -1,5 +1,5 @@
 ---
-description: Add or remove services in a gitops-app repo. The GitOps repo owns the Kubernetes manifests, so this writes a complete services.yaml entry (shape defaults for port/probes/user/resources, env wiring, optional Gateway exposure) and regenerates ApplicationSets and manifests. Usage: /gitops:compose add|remove <service...> [--expose [host]] [--env KEY=VALUE] [--replicas N] [--from-k8s] [--pr]
+description: "Add/remove services in a gitops-app repo: writes a complete services.yaml entry, regenerates manifests, opens one PR. Usage: /gitops:compose add|remove <service...> [--expose] [--env K=V] [--from-k8s]"
 ---
 
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS

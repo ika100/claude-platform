@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Implements features and bug fixes in Java 21 / Spring Boot 3.x following the architect's plan and the project's conventions. Use this agent when you need to: write new controllers, services, configuration or repositories, fix a bug, refactor a module, or implement a spec from the architect or product-manager agent.
+description: Implements features and fixes in Spring Boot repos following the architect's plan and project conventions; all commands via devbox run.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

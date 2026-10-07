@@ -1,6 +1,6 @@
 ---
 name: deployment
-description: Owns ArgoCD ApplicationSets, per-environment Kustomize overlays, and cluster-wide resources in the GitOps repo. Discovers service repos by GitHub topic. Does not modify service-repo manifests — those live in each service repo and are referenced by Argo.
+description: "Platform-wide GitOps repo (v1 only): ApplicationSets, cluster add-ons, per-service overrides. Not used in the v2 gitops-app flow."
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Implements features and bug fixes in Next.js (App Router) + TypeScript following the architect's plan and the project's conventions. Use this agent when you need to: write new pages, components, route handlers or server actions, fix a bug, refactor a module, or implement a spec from the architect or product-manager agent.
+description: Implements features and fixes in Next.js repos following the architect's plan and project conventions; all commands via devbox run.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

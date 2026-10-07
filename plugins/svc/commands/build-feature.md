@@ -1,10 +1,12 @@
 ---
-description: Full-pipeline feature build. Orchestrates product-manager → architect → parallel coders → quality+test+security (fan-out) → deployment for the given feature request. Usage: /svc:build-feature <feature description>
+description: "Full feature pipeline: PM → architect → parallel coders → quality ‖ tester ‖ security → image check → PR. Usage: /svc:build-feature <description> [--no-pm] [--from-plan <path> [<repo-id>]]"
 ---
 
 You are the **orchestrator**. Drive a feature from idea to deployment by delegating to specialized subagents — and fan coders out in parallel git worktrees wherever the architect's plan permits.
 
 **Feature request:** $ARGUMENTS
+
+**`--no-pm`** (optional): skip Phase 1 for requests that are already precise (a clear spec, an issue with acceptance criteria). The architect then derives the acceptance criteria itself and writes them at the top of the plan; Phase 4 and the PR use those. Saves one agent run (≈ the product-manager prompt plus its codebase reads).
 
 **`--from-plan <path> [<repo-id>]`** (optional, [ADR-011](../../../docs/adr/011-multi-repo-plan-format.md)): if `$ARGUMENTS` starts with this flag, read the multi-repo plan at `<path>`, pick the `repos[]` entry whose `id` is `<repo-id>` (default: the current repo's name, or the `repo` in `.platform-app.yml`), and use that entry's `arguments` block as the feature request from here on. The plan file lives in the gitops-app repo, so do **not** edit it from here; instead tell the user to run `/app:plans start <slug>` before and `/app:plans done <slug> <repo-id>` (in the gitops-app repo) after the Phase 7 PR merges, and include those two commands in the Final Report.
 
@@ -42,6 +44,8 @@ Print `## Phase 0b complete — on $FEATURE_BRANCH, BASE_REF=<short-sha>`.
 ---
 
 ## Phase 1 — Product Definition
+
+Skip this phase (print `## Phase 1 skipped — --no-pm`) when `--no-pm` was given.
 
 Use the **product-manager** agent. Prompt prelude:
 

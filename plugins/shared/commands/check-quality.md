@@ -1,5 +1,5 @@
 ---
-description: Runs quality and security checks (Python: ruff + mypy + pip-audit; other shapes: their own tools via devbox recipes, plus detect-secrets + trivy) in parallel against the current codebase. Produces a combined report. Does not change any code. Usage: /shared:check-quality
+description: "Read-only quality + security audit for the repo's shape (devbox quality/security recipes). Usage: /shared:check-quality"
 ---
 
 You are the **orchestrator** for a read-only quality and security check. Run both agents against the current codebase and produce a combined report. Do not modify any files.

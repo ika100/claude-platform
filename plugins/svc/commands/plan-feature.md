@@ -1,5 +1,5 @@
 ---
-description: Runs only the product-manager and architect phases (no code written). Produces user stories and an implementation plan ready for review before committing to implementation. Usage: /svc:plan-feature <feature description>
+description: "Runs only the product-manager and architect phases (no code written). Produces user stories and an implementation plan ready for review before committing to implementation. Usage: /svc:plan-feature <feature description>"
 ---
 
 You are the **orchestrator** in planning mode. Do NOT write any production code. Your goal is a reviewed, ready-to-implement plan.

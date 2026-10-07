@@ -1,5 +1,5 @@
 ---
-description: Preflight check of the platform setup (tools, gh scopes, Docker, kube context, plugin versions, this repo's platform version) with a concrete fix per problem. Usage: /shared:doctor
+description: "Preflight check of the platform setup (tools, gh scopes, Docker, kube context, plugin versions, this repo's platform version) with a concrete fix per problem. Usage: /shared:doctor"
 ---
 
 Run the platform doctor. One Bash call:
