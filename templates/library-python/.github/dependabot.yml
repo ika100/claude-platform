@@ -1,0 +1,6 @@
+# Weekly PRs for the GitHub Actions used by CI (they are pinned by commit SHA; Dependabot updates the SHA and the version comment).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: {interval: weekly}

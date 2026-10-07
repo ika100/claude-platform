@@ -22,13 +22,17 @@ on:
 env:
   PUBLISH: ${{ '{{' }} github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) {{ '}}' }}
 
+# Least privilege by default; jobs that publish packages declare what they need.
+permissions:
+  contents: read
+
 jobs:
   quality:
     name: quality (ruff + mypy)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: jetify-com/devbox-install-action@v0.15.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jetify-com/devbox-install-action@8c6a66ed6273138b1915457069de78cb52fe3bd7 # v0.15.0
         with:
           enable-cache: true
       - run: devbox run quality
@@ -37,8 +41,8 @@ jobs:
     name: test (pytest + coverage)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: jetify-com/devbox-install-action@v0.15.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jetify-com/devbox-install-action@8c6a66ed6273138b1915457069de78cb52fe3bd7 # v0.15.0
         with:
           enable-cache: true
       - run: devbox run test
@@ -47,8 +51,8 @@ jobs:
     name: security (pip-audit + detect-secrets + bandit)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: jetify-com/devbox-install-action@v0.15.0
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: jetify-com/devbox-install-action@8c6a66ed6273138b1915457069de78cb52fe3bd7 # v0.15.0
         with:
           enable-cache: true
       - run: devbox run security
@@ -106,11 +110,11 @@ jobs:
         # pull an amd64-only image ("no match for platform in manifest"), so main/tags publish both; PR builds are amd64 only.
         include: ${{ '{{' }} fromJSON(github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && '[{"arch":"amd64","runner":"ubuntu-latest"},{"arch":"arm64","runner":"ubuntu-24.04-arm"}]' || '[{"arch":"amd64","runner":"ubuntu-latest"}]') {{ '}}' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         if: env.PUBLISH == 'true'
         with:
           registry: ghcr.io
@@ -119,13 +123,44 @@ jobs:
 
       - name: Build (and push by digest when publishing)
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           platforms: linux/${{ '{{' }} matrix.arch {{ '}}' }}
           outputs: type=image,name=ghcr.io/${{ '{{' }} github.repository {{ '}}' }},push-by-digest=true,name-canonical=true,push=${{ '{{' }} env.PUBLISH {{ '}}' }}
           cache-from: type=gha,scope=${{ '{{' }} matrix.arch {{ '}}' }}
           cache-to: type=gha,mode=max,scope=${{ '{{' }} matrix.arch {{ '}}' }}
+
+      - name: Scan the image for fixable HIGH/CRITICAL vulnerabilities
+        if: env.PUBLISH == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          # releases (v*.*.* tags) are blocked by findings; main builds only report them
+          exit-code: ${{ startsWith(github.ref, 'refs/tags/v') && '1' || '0' }}
+
+      - name: Write the SBOM (CycloneDX)
+        if: env.PUBLISH == 'true'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx
+          output: sbom-${{ matrix.arch }}.cdx.json
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: env.PUBLISH == 'true'
+        with:
+          name: sbom-${{ matrix.arch }}
+          path: sbom-${{ matrix.arch }}.cdx.json
+          retention-days: 90
 
       - name: Export digest
         if: env.PUBLISH == 'true'
@@ -134,7 +169,7 @@ jobs:
           digest="${{ '{{' }} steps.build.outputs.digest {{ '}}' }}"
           touch "/tmp/digests/${digest#sha256:}"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: env.PUBLISH == 'true'
         with:
           name: digests-${{ '{{' }} matrix.arch {{ '}}' }}
@@ -151,17 +186,17 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           path: /tmp/digests
           pattern: digests-*
           merge-multiple: true
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ghcr.io/${{ '{{' }} github.repository {{ '}}' }}
           tags: |
@@ -171,7 +206,7 @@ jobs:
             type=sha,prefix=sha-,format=short
             type=raw,value=latest,enable={{ '{{' }}is_default_branch{{ '}}' }}
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ '{{' }} github.actor {{ '}}' }}

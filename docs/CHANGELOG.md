@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Supply chain (Phase G, slice 3, ADR-019)
+
+- **All GitHub Actions pinned by commit SHA** (91 references, platform and templates) with `scripts/pin-actions.py`; `--check` runs in platform CI. Every generated repo (incl. gitops-app and library-python) gets Dependabot for Actions, which keeps the pins current.
+- **Least-privilege workflows**: top-level `permissions: contents: read` everywhere; `packages: write` only on the image jobs.
+- **Image scan + SBOM** in the service/web CI: Trivy scans each pushed architecture (fixable HIGH/CRITICAL; blocks `v*.*.*` releases, reports on main) and a CycloneDX SBOM is kept for 90 days.
+- **`cluster-up` credential split**: `REPO_TOKEN` (Contents: read) for ArgoCD and `PULL_TOKEN` (read:packages) for GHCR instead of one broad token.
+
 ### Secrets with External Secrets Operator (Phase G, slice 2, ADR-018)
 
 - **`secrets:` in `services.yaml`**: `generate: [KEY…]` has ESO create random values in the cluster once per environment (DB passwords, signing keys); `remote: {keys: […]}` reads from a SecretStore (`app.yaml` `secretStore`). Rendered as `ExternalSecret` (+ `Password` generator) and wired into the pod via `envFrom`. Secret values never enter git; secret-looking keys with a value in `env:` are rejected.

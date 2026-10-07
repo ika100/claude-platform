@@ -13,7 +13,10 @@
 #   K3S_IMAGE            default rancher/k3s:v1.32.5-k3s1 — the version the Gateway setup below is verified against
 #                        (k3d's own default may be older and ship a Traefik without Gateway API support)
 #   GATEWAY_API_VERSION  only used if k3s' Traefik chart did not install the Gateway API CRDs (default v1.2.1)
-#   GH_TOKEN             default `gh auth token`; needs repo + read:packages/write:packages (ArgoCD mode only)
+#   GH_TOKEN             default `gh auth token`; used for both credentials below unless they are set (ArgoCD mode only)
+#   REPO_TOKEN           least-privilege token for ArgoCD to read this repo: a fine-grained PAT with only
+#                        "Contents: read" on the GitOps repo (default GH_TOKEN)
+#   PULL_TOKEN           token for the image pull secret: a classic PAT with only read:packages (default GH_TOKEN)
 #   WITH_ARGO=0          Gateway + namespaces only: no ArgoCD, no GitHub credentials, no root Application
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
 #   ESO_VERSION          External Secrets Operator chart version (default 2.12.0)
@@ -45,7 +48,15 @@ case "${1:-up}" in
     k3d registry delete "k3d-${registry}" >/dev/null 2>&1 || true
     ;;
   up)
-    if [ "$with_argo" = 1 ]; then token="${GH_TOKEN:-$(gh auth token)}"; fi
+    if [ "$with_argo" = 1 ]; then
+      token="${GH_TOKEN:-}"
+      if [ -z "$token" ] && { [ -z "${REPO_TOKEN:-}" ] || [ -z "${PULL_TOKEN:-}" ]; }; then token=$(gh auth token); fi
+      repo_token="${REPO_TOKEN:-$token}"
+      pull_token="${PULL_TOKEN:-$token}"
+      if [ -z "${REPO_TOKEN:-}" ] || [ -z "${PULL_TOKEN:-}" ]; then
+        echo "Note: using your broad GitHub login token for ArgoCD/GHCR; REPO_TOKEN (Contents: read) and PULL_TOKEN (read:packages) limit what the cluster can do with it"
+      fi
+    fi
     if k3d cluster list "$name" >/dev/null 2>&1; then
       echo "Cluster $name exists - reusing it"
       k3d cluster start "$name" >/dev/null 2>&1 || true
@@ -164,7 +175,7 @@ YAML
       echo "Wiring credentials (GitHub org ${org})"
       # Argo reads this (private) GitOps repo with the token; services no longer need any repo access (ADR-017).
       k -n argocd create secret generic github-creds --from-literal=url="https://github.com/${org}" \
-        --from-literal=username="${org}" --from-literal=password="$token" --dry-run=client -o yaml | k apply -f - >/dev/null
+        --from-literal=username="${org}" --from-literal=password="$repo_token" --dry-run=client -o yaml | k apply -f - >/dev/null
       k -n argocd label secret github-creds argocd.argoproj.io/secret-type=repo-creds --overwrite >/dev/null
     fi
 
@@ -174,7 +185,7 @@ YAML
       k create namespace "$ns" --dry-run=client -o yaml | k apply -f - >/dev/null
       if [ "$with_argo" = 1 ]; then
         k -n "$ns" create secret docker-registry ghcr-pull --docker-server=ghcr.io --docker-username="${org}" \
-          --docker-password="$token" --dry-run=client -o yaml | k apply -f - >/dev/null
+          --docker-password="$pull_token" --dry-run=client -o yaml | k apply -f - >/dev/null
         k -n "$ns" patch serviceaccount default -p '{"imagePullSecrets":[{"name":"ghcr-pull"}]}' >/dev/null
       fi
     done
