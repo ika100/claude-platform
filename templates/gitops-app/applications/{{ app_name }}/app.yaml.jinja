@@ -25,7 +25,7 @@ secretStore:
 #          Values may be per environment: {dev: 1, prod: 3}. Needs the CloudNativePG operator (`cluster-up` installs it locally).
 #          observability = an OpenTelemetry collector per environment (ADR-021): every service gets OTEL_* variables, the
 #          collector receives OTLP and scrapes each service's Prometheus `metrics:` path. Optional backends: `ui: lgtm` (local
-#          Grafana/Tempo/Loki/Prometheus dev stack that `cluster-up` installs, http://grafana.localhost:8088) or
+#          Grafana/Tempo/Loki/Prometheus dev stack that `cluster-up` installs, http://grafana.localhost:8088 (or the port cluster-up prints)) or
 #          `exportTo: https://your-otlp-http-endpoint` (+ `headersSecret: <Secret with key AUTHORIZATION>`).
 # addons:
 #   postgres: {version: 17, instances: {dev: 1, prod: 3}, storage: {dev: 1Gi, prod: 20Gi}}
