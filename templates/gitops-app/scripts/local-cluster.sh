@@ -10,6 +10,9 @@
 #   LOCAL_CLUSTER        cluster name (default <app>-local)
 #   LOCAL_HTTP_PORT      host port of the Gateway (default 8088)
 #   ARGOCD_VERSION       default stable
+#   K3S_IMAGE            default rancher/k3s:v1.32.5-k3s1 — the version the Gateway setup below is verified against
+#                        (k3d's own default may be older and ship a Traefik without Gateway API support)
+#   GATEWAY_API_VERSION  only used if k3s' Traefik chart did not install the Gateway API CRDs (default v1.2.1)
 #   GH_TOKEN             default `gh auth token`; needs repo + read:packages/write:packages (ArgoCD mode only)
 #   WITH_ARGO=0          Gateway + namespaces only: no ArgoCD, no GitHub credentials, no root Application
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
@@ -24,6 +27,8 @@ name="${LOCAL_CLUSTER:-$app-local}"
 ctx="k3d-$name"
 port="${LOCAL_HTTP_PORT:-8088}"
 argocd_version="${ARGOCD_VERSION:-stable}"
+k3s_image="${K3S_IMAGE:-rancher/k3s:v1.32.5-k3s1}"
+gateway_api_version="${GATEWAY_API_VERSION:-v1.2.1}"
 with_argo="${WITH_ARGO:-1}"
 registry_port="${REGISTRY_PORT:-}"
 registry="${name}-registry"
@@ -41,7 +46,7 @@ case "${1:-up}" in
       echo "Cluster $name exists - reusing it"
       k3d cluster start "$name" >/dev/null 2>&1 || true
     else
-      create_args=(-p "${port}:80@loadbalancer" --wait)
+      create_args=(--image "$k3s_image" -p "${port}:80@loadbalancer" --wait)
       if [ -n "$registry_port" ]; then
         k3d registry list "k3d-${registry}" >/dev/null 2>&1 || k3d registry create "$registry" --port "$registry_port" >/dev/null
         create_args+=(--registry-use "k3d-${registry}:${registry_port}")
@@ -50,9 +55,15 @@ case "${1:-up}" in
     fi
 
     echo "Enabling the Gateway API (Traefik)"
-    # k3s ships Traefik and its CRD chart, which already installs the Gateway API CRDs (applying them ourselves races with
-    # the Helm install and breaks it on a fresh cluster). Only the Gateway *provider* is off by default: turn it on, and let
-    # routes attach from every namespace.
+    # k3s installs Traefik with a Helm job; its CRD chart brings the Gateway API CRDs on current k3s. Wait for that job
+    # first so that anything we add cannot race with it (applying the CRDs ourselves breaks the Helm install), and only
+    # add the CRDs if the chart did not.
+    for _ in $(seq 1 60); do k -n kube-system get job helm-install-traefik-crd >/dev/null 2>&1 && break; sleep 2; done
+    k -n kube-system wait --for=condition=complete job/helm-install-traefik-crd --timeout=240s >/dev/null
+    if ! k get crd gatewayclasses.gateway.networking.k8s.io >/dev/null 2>&1; then
+      k apply --server-side -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${gateway_api_version}/standard-install.yaml" >/dev/null
+    fi
+    # The Gateway provider is off by default: turn it on, and let routes attach from every namespace.
     k apply -f - >/dev/null <<'YAML'
 apiVersion: helm.cattle.io/v1
 kind: HelmChartConfig
@@ -69,11 +80,18 @@ spec:
         web:
           namespacePolicy: All
 YAML
+    ready=0
     for _ in $(seq 1 60); do
-      [ "$(k get gatewayclass traefik -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null)" = "True" ] &&
-        [ "$(k -n kube-system get gateway traefik-gateway -o jsonpath='{.status.conditions[?(@.type=="Programmed")].status}' 2>/dev/null)" = "True" ] && break
+      if [ "$(k get gatewayclass traefik -o jsonpath='{.status.conditions[?(@.type=="Accepted")].status}' 2>/dev/null)" = "True" ] &&
+        [ "$(k -n kube-system get gateway traefik-gateway -o jsonpath='{.status.conditions[?(@.type=="Programmed")].status}' 2>/dev/null)" = "True" ]; then ready=1; break; fi
       sleep 5
     done
+    if [ "$ready" != 1 ]; then
+      echo "ERROR: the Traefik Gateway did not become ready within 5 minutes." >&2
+      k -n kube-system get pods,job 2>&1 | tail -15 >&2
+      echo "  fix: check the k3s version (K3S_IMAGE) and 'kubectl --context $ctx -n kube-system logs deploy/traefik'" >&2
+      exit 1
+    fi
 
     if [ "$with_argo" = 1 ]; then
       echo "Installing ArgoCD ($argocd_version)"
