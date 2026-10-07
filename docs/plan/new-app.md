@@ -3,6 +3,7 @@ plan_id: new-app
 shape: none   # the platform repo itself; not a key in shapes.yml, so /svc:build-feature cannot run here, work by hand or with the generic coder
 summary: /shared:new-app creates the gitops-app repo and all component repos from an app.yml and opens one compose PR
 story: STORY-033
+status: implemented   # t1-t5 done on branch feature/new-app
 tasks:
   - id: t1
     title: Manifest loading, validation, ordering and dry-run preview (cplat new-app)

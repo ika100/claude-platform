@@ -8,6 +8,7 @@ The slash commands (plugins/*/commands/*.md) are thin: they run this script with
 and run it for real. Everything that can be code is code (and has tests in tests/cplat).
 
   cplat.py new-service <name> <description…> [--web|--gitops|--library|--type SHAPE] [--app ORG/REPO] [--dry-run]
+  cplat.py new-app <app.yml> [--resume] [--no-github] [--dry-run]   create a gitops-app repo + all component repos, one compose PR
   cplat.py update-service [--data KEY=VALUE] [--dry-run]
   cplat.py doctor [--json]
   cplat.py shape [--repo DIR]          shape + agent routing for the /svc:* orchestrators
@@ -30,6 +31,7 @@ import core  # noqa: E402
 
 COMMANDS = {
     "new-service": "newsvc",
+    "new-app": "newapp",
     "update-service": "update",
     "doctor": "doctor",
     "shape": "shapecmd",

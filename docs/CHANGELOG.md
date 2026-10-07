@@ -6,6 +6,8 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **`/shared:new-app <app.yml>`** (shared plugin 0.8.0, `cplat new-app`, [STORY-033](backlog.md)): creates the gitops-app repo and every component repo of a product from a manifest (`app`, optional `org`/`visibility`, `components` with `name`, `description`, `shape`, optional `data`), then opens one `compose add` pull request for the deployable ones. Each repo goes through the same code as `/shared:new-service`. Creation order is computed (gitops-app, libraries, services, web), validation and `gh repo view` checks run before anything is created (also in `--dry-run`), a failure midway lists the repos that exist and `--resume` continues; nothing is rolled back. Replaces the 6 `new-service` + 4 `compose` commands of the end-to-end scenario.
+
 ## [3.2.0] — 2026-10-07
 
 Addresses issue #56 ("Improve performance") and the leftovers of the project-management sample.
