@@ -400,6 +400,32 @@ components:
 - [ ] The output follows the `Report` convention: what I will do (with `[outward]` marks) / what happened / next / how to undo.
 - [ ] Interactive mode is out of scope for this story.
 
+#### STORY-034: Every new repo and app starts spec-first
+**Status:** planned · **Priority:** P0 · **Source:** user request 2026-10-07 · **Plan:** [plan/spec-driven-bootstrap.md](plan/spec-driven-bootstrap.md)
+
+As a founder, I want creating a service, library, web app or whole product to lead into `plan-feature` and then `build-feature`, so that every feature has a reviewed story and plan before code, and the repo always holds the artifacts (`docs/backlog.md`, `docs/plan/<slug>.md`) that tie the code to its spec.
+
+**Acceptance criteria:**
+- [ ] The *Next* steps of `/shared:new-service` (service-python, service-java, service-go, web-nextjs, library-python) name `/svc:plan-feature "<the repo's description>"` as the first step, followed by `/svc:build-feature --plan docs/plan/<slug>.md`. For gitops-app they name `/app:build-feature`. No bootstrap output suggests `/svc:build-feature` without a plan as the first step.
+- [ ] The *Next* steps of `/shared:new-app` name `/app:build-feature "<first product feature>"` in the gitops-app repo, then `/app:run-plan <slug>`; each component's own first feature follows from that plan via `--from-plan`.
+- [ ] Every template ships a `docs/backlog.md` skeleton (story format, no stories) and a `docs/plan/` directory (gitops-app already has one). Both are project-owned: `/shared:update-service` never overwrites them and never adds them to an existing repo.
+- [ ] Every template's `CLAUDE.md` states the rule: a feature starts with `/svc:plan-feature` (or `/app:build-feature`), is built from the approved plan, and its PR cites the story ids. Small changes stay on `/svc:quick-task` and bugs on `/svc:fix-bug`.
+- [ ] `/svc:plan-feature` ends by printing `/svc:build-feature --plan docs/plan/<slug>.md`. Plans and stories reference each other: stories have ids (`STORY-NNN`), the plan's metadata lists `stories: [STORY-NNN, …]`.
+- [ ] `/svc:build-feature --plan <path>` skips the product-manager and architect phases, validates the plan (YAML block, `shape` equals the repo's shape, referenced stories exist), takes the acceptance criteria from those stories, and builds. Phase 6 marks those stories done and the PR description lists them. Without `--plan` the command behaves as today and still writes the same artifacts.
+- [ ] The platform's add-a-shape contract requires the seed `docs/backlog.md` and the `CLAUDE.md` rule; `shapes.py check` fails when a template lacks them.
+- [ ] Tests cover the bootstrap output of each shape, the templates' seed files and rule, and the plan validation of `--plan`.
+
+#### STORY-036: Plans are approved before they are built
+**Status:** planned · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
+
+As a founder, I want a plan to be explicitly approved before `build-feature` consumes it, so that the review step between planning and building is real and recorded.
+
+**Acceptance criteria:**
+- [ ] `/svc:plan-feature` writes `status: draft` into the plan metadata and its closing message says how to approve (review the files, then confirm).
+- [ ] Approving sets `status: approved` (a one-line edit by the user or by `/svc:plan-feature --approve <slug>`), recorded in git history.
+- [ ] `/svc:build-feature --plan <path>` refuses a plan that is not `approved` and says how to approve it; without `--plan` the command is unchanged.
+- [ ] The multi-repo plan lifecycle of ADR-011 (`draft` → `in_progress` → `completed`) is unchanged; this status belongs to single-repo plans only, and the docs say how the two differ.
+
 ## Not built (specified in the PRD, absent from the code)
 
 | Item | PRD ref | State | Evidence |
