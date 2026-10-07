@@ -49,6 +49,9 @@ UPDATERS: dict[str, dict] = {
 }
 WHOLE_FILE = {"go.sum"}          # generated, no per-line mapping: copied as a whole when the source has no Jinja
 JINJA = ("{{", "{%", "{#")
+# Lines that move together with something else by hand and are never bumped here (a consistency check requires
+# package.json packageManager to equal the pnpm pin in devbox.json).
+PROTECTED = ("\"packageManager\"",)
 
 
 def source_of(template_dir: Path, rel: str) -> Path | None:
@@ -70,6 +73,8 @@ def copy_back(old: str, new: str, source: str) -> tuple[str, list[str]]:
             skipped.append(f"not a one-to-one line change: {' | '.join(old_lines[i1:i2])[:80]!r}")
             continue
         for before, after in zip(old_lines[i1:i2], new_lines[j1:j2]):
+            if any(p in before for p in PROTECTED):
+                continue
             hits = [n for n, line in enumerate(lines) if line == before]
             if len(hits) != 1 or any(t in before for t in JINJA):
                 skipped.append(f"{before.strip()[:70]!r}: {'appears ' + str(len(hits)) + ' times in the template' if not any(t in before for t in JINJA) else 'contains Jinja'}")
