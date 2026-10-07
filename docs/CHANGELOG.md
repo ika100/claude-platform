@@ -6,6 +6,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.0.1] — 2026-10-07
+
+### Fixed
+
+- **`/shared:update-service` no longer adds starter files to project-owned paths.** The templates mark `app/**`, `tests/**`, `e2e/**`, `docs/adr/**`, `public/**` and a few docs as `_skip_if_exists` (never overwritten), but copier still *creates* files that are missing there. Since 2.2.0 an update of an existing web app therefore added the new starter UI (`app/globals.css`, `app/_components/*`, `app/not-found.tsx`, `app/error.tsx`, `app/icon.svg`) and a `tests/layout.test.tsx` that asserts a layout the app does not have, which would fail its CI. Updates now remove new files in those paths and say so in the report. **If you already ran an update on a web repo with 2.2.0 or 3.0.0**, delete those files if you do not use the starter UI (`git rm -r app/_components app/globals.css app/not-found.tsx app/error.tsx app/icon.svg tests/layout.test.tsx`). Found while migrating the platform's own test application to the new marketplace.
+
 ## [3.0.0] — 2026-10-07
 
 **The project is now `sdlc-foundry`** (formerly *claude-platform*), an agentic SDLC platform. This is a breaking release because the plugin marketplace id changed; nothing else in how you work changes (slash commands keep their names).

@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import fnmatch
 import re
 from pathlib import Path
+
+import yaml
 
 import core
 from core import PLATFORM_ROOT, PlatformError, Report, run
@@ -61,6 +64,34 @@ def branch_name(repo: Path | None = None) -> str:
     return name
 
 
+def project_owned_patterns(template: str) -> list[str]:
+    """The template's `_skip_if_exists` globs: bootstrap-only paths (app code, tests, ADRs ...) that updates must never touch."""
+    cfg = PLATFORM_ROOT / "templates" / template / "copier.yml"
+    try:
+        return [str(p) for p in (yaml.safe_load(cfg.read_text()) or {}).get("_skip_if_exists") or []]
+    except (OSError, yaml.YAMLError):
+        return []
+
+
+def drop_new_project_owned_files(repo: Path, patterns: list[str]) -> list[str]:
+    """copier creates files that do not exist yet even inside `_skip_if_exists` paths. For an update that is wrong: a repo that
+    evolved its own app code or tests must not receive new starter files (and tests that assert the starter UI). Remove them."""
+    dropped = []
+    for line in run(["git", "status", "--porcelain", "-uall"], cwd=repo).stdout.splitlines():
+        if not line.startswith("??"):
+            continue
+        path = line[3:]
+        if any(fnmatch.fnmatch(path, pattern) for pattern in patterns):
+            (repo / path).unlink()
+            dropped.append(path)
+    for directory in sorted({str(Path(d).parent) for d in dropped}, key=len, reverse=True):   # tidy empty directories
+        try:
+            (repo / directory).rmdir()
+        except OSError:
+            pass
+    return dropped
+
+
 def plan(req: dict) -> Report:
     was = req["old"] or "none — this repo has no .platform-version stamp yet"
     r = Report(title=f"Update {req['repo'].name} ({req['shape']}) from platform {was} → {req['new']}")
@@ -68,7 +99,7 @@ def plan(req: dict) -> Report:
     if cur in ("main", "master"):
         r.will_do.append(f"create review branch {branch_name(req['repo'])}")
     r.will_do.append(f"re-apply templates/{req['template']} with the repo's recorded answers" + (f" plus {', '.join(req['data'])}" if req["data"] else ""))
-    r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, devbox.json, CLAUDE.md, …); project-owned files are never touched")
+    r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, devbox.json, CLAUDE.md, …); project-owned files (app code, tests, ADRs) are never touched, and new starter files in those paths are not added")
     if req["migrate"]:
         r.will_do.append("DELETE k8s/ (v1 → v2 migration: manifests are generated in the product's gitops-app repo; recoverable from git history)")
     r.will_do.append("restore the stable template source in .copier-answers.yml and stamp .platform-version")
@@ -91,6 +122,9 @@ def execute(req: dict) -> Report:
     for kv in req["data"]:
         cmd += ["--data", kv]
     run(cmd, cwd=repo)
+    dropped = drop_new_project_owned_files(repo, project_owned_patterns(req["template"]))
+    if dropped:
+        r.did.append(f"left out {len(dropped)} new starter file(s) in project-owned paths (app code, tests, docs): {', '.join(dropped[:4])}{' ...' if len(dropped) > 4 else ''}")
     answers = repo / ".copier-answers.yml"
     answers.write_text(re.sub(r"^_src_path:.*$", f"_src_path: gh:ika100/sdlc-foundry/templates/{req['template']}", answers.read_text(), flags=re.M))
     core.write_stamp(repo, req["shape"], req["ref"])
