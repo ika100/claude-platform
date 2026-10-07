@@ -56,3 +56,7 @@ The `/svc:*` orchestrators route to `<plugin>:<role>` through `cplat shape` (`sc
 - `.github/workflows/ci.yml`: a `smoke-test-<id>` job that renders the template (`--skip-tasks`, plus the optional-feature variants) and runs the real build/test/lint with the toolchain.
 - `devbox.json` (platform): a `smoke-<id>` recipe, added to `smoke`.
 - Docs: `docs/AGENTS.md` (agents + model rationale), `docs/ADOPTING.md` (migration section), README tables, `docs/CHANGELOG.md`, and an ADR for any decision the PRD left open (stack choices).
+
+## 6. Keeping dependency pins current
+
+Dependabot cannot read `*.jinja` manifests, so the `bump-template-pins` workflow (Mondays, or run it by hand) does it: `scripts/bump_template_pins.py` renders `service-java`, `web-nextjs` and `service-go`, lets Maven / npm-check-updates / Go bump the rendered manifest (minor and patch only), copies each changed line back into the template when it is literal and unique, and re-renders to verify. The resulting pull request runs the normal smoke tests. To cover a new shape, add an entry to `UPDATERS` in the script. Setup: a repository secret `BUMP_TOKEN` (fine-grained, Contents + Pull requests write) makes CI start for the bot's pull request; without it the PR says to close and reopen it.

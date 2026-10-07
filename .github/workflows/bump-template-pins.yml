@@ -1,0 +1,72 @@
+# Keeps the dependency pins inside the Copier templates current (issue #56): Dependabot cannot read *.jinja manifests,
+# so new projects would otherwise start with old versions. scripts/bump_template_pins.py renders each template, bumps
+# the rendered manifest (minor/patch only) and copies the changes back; the pull request then runs the normal CI,
+# whose smoke tests generate and build every template with the new versions.
+#
+# One-time setup: pull requests created with the default GITHUB_TOKEN do not start CI. Add a repository secret
+# BUMP_TOKEN (a fine-grained token with Contents + Pull requests: read/write on this repository) so the PR is checked.
+name: bump-template-pins
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'      # Mondays 05:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bump-template-pins
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    name: bump template pins
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ secrets.BUMP_TOKEN || github.token }}
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+      - name: Install copier
+        run: uv tool install copier
+      - name: Bump the pins
+        run: uv run --with pyyaml --with ruamel.yaml scripts/bump_template_pins.py | tee "$RUNNER_TEMP/bump.log"
+      - name: Open a pull request when something changed
+        env:
+          GH_TOKEN: ${{ secrets.BUMP_TOKEN || github.token }}
+          HAS_BUMP_TOKEN: ${{ secrets.BUMP_TOKEN != '' }}
+        run: |
+          if git diff --quiet; then echo "Everything is current."; exit 0; fi
+          branch="chore/bump-template-pins-$(date +%Y%m%d)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A templates
+          git commit -s -m "chore(deps): bump template dependency pins"
+          git push -u origin "$branch"
+          {
+            echo "Automated by \`bump-template-pins\` (minor and patch versions only). Smoke tests build every template with the new pins."
+            echo
+            echo '```'
+            cat "$RUNNER_TEMP/bump.log"
+            echo '```'
+            if [ "$HAS_BUMP_TOKEN" != "true" ]; then
+              echo
+              echo "No BUMP_TOKEN secret is set, so CI did not start for this pull request: close and reopen it to run the checks."
+            fi
+          } > "$RUNNER_TEMP/body.md"
+          gh pr create --title "chore(deps): bump template dependency pins" --body-file "$RUNNER_TEMP/body.md"
