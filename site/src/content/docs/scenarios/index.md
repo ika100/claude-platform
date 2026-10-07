@@ -13,6 +13,7 @@ description: "Seven concrete situations, the commands you run and what you get, 
 | [Add Postgres, secrets and observability](/sdlc-foundry/scenarios/addons-secrets-observability/) | The service needs a database, credentials and telemetry |
 | [Adopt an existing repository](/sdlc-foundry/scenarios/adopt-existing/) | You already have services and want the platform's flow |
 | [Harden for an audit](/sdlc-foundry/scenarios/harden-for-audit/) | Someone asks how supply chain and runtime are controlled |
+| [Worked example: project management app](/sdlc-foundry/scenarios/project-management-app/) | You want to see a complete product built and running on a laptop |
 | [Extend the platform](/sdlc-foundry/scenarios/extend-the-platform/) | You need a language or addon the platform does not have |
 
 All scenarios assume the [setup from "Get started"](/sdlc-foundry/get-started/) and use the placeholder organisation `acme`.
