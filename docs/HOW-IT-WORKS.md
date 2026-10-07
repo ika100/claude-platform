@@ -85,6 +85,10 @@ flowchart LR
 
 `devbox run cluster-up` builds this locally: k3d, ArgoCD, Traefik's Gateway provider, your `gh` token as repo credential and GHCR pull secret, the root Application. `*.localhost` hostnames resolve to 127.0.0.1 with no DNS setup. On a real cluster a human runs `KUBE_CONTEXT=<ctx> devbox run bootstrap` once; from then on every change arrives through merged PRs and agents never run `kubectl apply`.
 
+### Secrets
+
+Git holds only references. `services.yaml` `secrets:` becomes `ExternalSecret`s: `generate: [DB_PASSWORD]` makes External Secrets Operator create a random value in the cluster once per environment; `remote: {keys: [STRIPE_KEY]}` reads it from the secret store (locally the `secrets-store` namespace: `/gitops:secret set <service> <secret> <KEY>`; on real clusters Vault/AWS/GCP via the store named in `app.yaml`). Pods see them as environment variables. Details: ADR-018.
+
 ## 6. Keep it current
 
 - Agents/commands: `claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.

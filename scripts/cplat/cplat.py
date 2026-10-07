@@ -13,6 +13,7 @@ and run it for real. Everything that can be code is code (and has tests in tests
   cplat.py shape [--repo DIR]          shape + agent routing for the /svc:* orchestrators
   cplat.py compose add|remove <service…> [--expose] [--env K=V] [--from-k8s] [--pr]   (run inside a gitops-app repo)
   cplat.py promote <service…|--all> <from> <to> [--version V] [--sha S] [--pr]
+  cplat.py secret set|list ...         remote secrets of the local cluster (values never go to git)
   cplat.py status [--context KUBE_CONTEXT]   one table: pins per env, service CI, Argo sync/health
 """
 from __future__ import annotations
@@ -32,6 +33,7 @@ COMMANDS = {
     "compose": "compose",
     "promote": "promote",
     "status": "status",
+    "secret": "secret",
 }
 
 

@@ -16,6 +16,8 @@
 #   GH_TOKEN             default `gh auth token`; needs repo + read:packages/write:packages (ArgoCD mode only)
 #   WITH_ARGO=0          Gateway + namespaces only: no ArgoCD, no GitHub credentials, no root Application
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
+#   ESO_VERSION          External Secrets Operator chart version (default 2.12.0)
+#   WITH_ESO=0           skip External Secrets Operator (no `secrets:` support in that cluster)
 #   REGISTRY_PORT        also create a local image registry reachable as localhost:<port> from the host and as
 #                        k3d-<cluster>-registry:<port> from the cluster
 # Re-running `up` is safe; it re-applies credentials and the root Application.
@@ -31,6 +33,8 @@ k3s_image="${K3S_IMAGE:-rancher/k3s:v1.32.5-k3s1}"
 gateway_api_version="${GATEWAY_API_VERSION:-v1.2.1}"
 with_argo="${WITH_ARGO:-1}"
 registry_port="${REGISTRY_PORT:-}"
+eso_version="${ESO_VERSION:-2.12.0}"
+with_eso="${WITH_ESO:-1}"
 registry="${name}-registry"
 org=$(sed -n 's/^github_org:[[:space:]]*//p' .copier-answers.yml | head -1)
 k() { kubectl --context "$ctx" "$@"; }
@@ -91,6 +95,62 @@ YAML
       k -n kube-system get pods,job 2>&1 | tail -15 >&2
       echo "  fix: check the k3s version (K3S_IMAGE) and 'kubectl --context $ctx -n kube-system logs deploy/traefik'" >&2
       exit 1
+    fi
+
+    if [ "$with_eso" = 1 ]; then
+      echo "Installing External Secrets Operator ($eso_version)"
+      # k3s' Helm controller installs the chart, so no helm binary is needed. `generate` secrets need only the operator;
+      # `remote` secrets read from the platform-secrets store: Secrets in the secrets-store namespace (set with `devbox run secret`).
+      k create namespace external-secrets --dry-run=client -o yaml | k apply -f - >/dev/null
+      k create namespace secrets-store --dry-run=client -o yaml | k apply -f - >/dev/null
+      k apply -f - >/dev/null <<YAML
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: external-secrets
+  namespace: kube-system
+spec:
+  repo: https://charts.external-secrets.io
+  chart: external-secrets
+  version: ${eso_version}
+  targetNamespace: external-secrets
+  valuesContent: |-
+    installCRDs: true
+YAML
+      for _ in $(seq 1 60); do k get crd clustersecretstores.external-secrets.io >/dev/null 2>&1 && break; sleep 3; done
+      for d in external-secrets external-secrets-webhook external-secrets-cert-controller; do
+        k -n external-secrets rollout status "deploy/$d" --timeout=300s >/dev/null
+      done
+      k apply -f - >/dev/null <<'YAML'
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: eso-store, namespace: secrets-store}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: {name: eso-store, namespace: secrets-store}
+rules:
+  - {apiGroups: [""], resources: [secrets], verbs: [get, list, watch]}
+  - {apiGroups: [authorization.k8s.io], resources: [selfsubjectrulesreviews], verbs: [create]}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: {name: eso-store, namespace: secrets-store}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: eso-store}
+subjects: [{kind: ServiceAccount, name: eso-store, namespace: secrets-store}]
+---
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata: {name: platform-secrets}
+spec:
+  provider:
+    kubernetes:
+      remoteNamespace: secrets-store
+      server:
+        caProvider: {type: ConfigMap, name: kube-root-ca.crt, namespace: secrets-store, key: ca.crt}
+      auth:
+        serviceAccount: {name: eso-store, namespace: secrets-store}
+YAML
     fi
 
     if [ "$with_argo" = 1 ]; then

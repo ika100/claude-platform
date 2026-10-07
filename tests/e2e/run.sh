@@ -59,13 +59,18 @@ app_dir = gitops.find_app(repo)
 y, data = gitops.load(app_dir)
 services = gitops.services_of(data)
 shapes = {s["id"]: s for s in core.registry.load()}
-ns = argparse.Namespace(port=None, replicas=None, env=[], expose=True)
+ns = argparse.Namespace(port=None, replicas=None, env=[], expose=True, generate=[], secret=[])
 for name, shape in (("e2e-api", "service-java"), ("e2e-web", "web-nextjs")):
     ns.env = ["API_URL=http://e2e-api"] if name == "e2e-web" else []
+    ns.generate = ["e2e-api-auth=DB_PASSWORD,JWT_KEY"] if name == "e2e-api" else []   # random values created by ESO
+    ns.secret = ["e2e-api-stripe=STRIPE_KEY"] if name == "e2e-api" else []            # read from the secret store
     services.append(compose.build_entry(name, f"e2e/{name}", shapes[shape], None, registry, ns, {}))
 gitops.save(app_dir, y, data)
 PY
 uv run scripts/render.py)
+
+step "Set the remote secret in the local store (what a developer does with /gitops:secret)"
+printf 'sk_test_e2e' | $cplat secret set e2e-api e2e-api-stripe STRIPE_KEY --value-stdin --repo-dir "$work/e2e-gitops" >/dev/null
 
 step "Apply the generated manifests (what ArgoCD would sync)"
 ns=e2e-dev
@@ -92,3 +97,16 @@ probe "http://e2e-api.e2e-dev.localhost:$port/api/info" '"service":"e2e-api"'
 
 step "Pods run as the declared non-root user with a read-only filesystem"
 kubectl --context k3d-$cluster -n $ns get pods -o jsonpath='{range .items[*]}{.metadata.name}{" ro="}{.spec.containers[0].securityContext.readOnlyRootFilesystem}{" uid="}{.spec.containers[0].securityContext.runAsUser}{"\n"}{end}'
+
+step "External Secrets: generated values are random and stable, remote values arrive"
+kc() { kubectl --context k3d-$cluster -n $ns "$@"; }
+secret_val() { kc get secret "$1" -o jsonpath="{.data.$2}" 2>/dev/null | base64 -d; }
+for _ in $(seq 1 40); do [ -n "$(secret_val e2e-api-auth DB_PASSWORD)" ] && [ -n "$(secret_val e2e-api-stripe STRIPE_KEY)" ] && break; sleep 3; done
+db=$(secret_val e2e-api-auth DB_PASSWORD); jwt=$(secret_val e2e-api-auth JWT_KEY)
+[ "${#db}" = 32 ] || fail "generated DB_PASSWORD has length ${#db}, expected 32"
+[ "$db" != "$jwt" ] || fail "generated keys must differ"
+[ "$(secret_val e2e-api-stripe STRIPE_KEY)" = sk_test_e2e ] || fail "remote secret did not arrive"
+kc annotate externalsecret e2e-api-auth force-sync="$(date +%s)" --overwrite >/dev/null; sleep 8
+[ "$(secret_val e2e-api-auth DB_PASSWORD)" = "$db" ] || fail "generated secret changed on re-sync (it must be created once)"
+kc get pod -l app=e2e-api -o jsonpath='{.items[0].spec.containers[0].envFrom[*].secretRef.name}' | grep -q e2e-api-auth || fail "pod does not consume the generated secret"
+echo "ok   generated + remote secrets synced and consumed"

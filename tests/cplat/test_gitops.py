@@ -288,3 +288,121 @@ def test_status_degrades_when_tools_are_missing(gitops_repo, gh, monkeypatch):
     monkeypatch.setattr(status, "sh", lambda cmd: None)
     _, rows = status.collect(gitops_repo, None, None)
     assert rows[0]["ci"] == "?" and rows[0]["argo"] == "-"
+
+
+# ---------------- secrets (ESO, ADR-018) ----------------
+
+def dev_dir(repo, svc="todo-api"):
+    return repo / "applications/todo/overlays/dev" / svc
+
+
+def test_generate_and_remote_secrets_render_externalsecrets_and_envfrom(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api", "--generate", "todo-api-auth=DB_PASSWORD,JWT_KEY", "--secret", "todo-api-stripe=STRIPE_KEY")
+    d = dev_dir(gitops_repo)
+    gen = yaml.safe_load((d / "externalsecret-todo-api-auth.yaml").read_text())
+    assert gen["spec"]["refreshInterval"] == "0" and gen["spec"]["target"]["creationPolicy"] == "Owner"
+    assert [e["rewrite"][0]["regexp"]["target"] for e in gen["spec"]["dataFrom"]] == ["DB_PASSWORD", "JWT_KEY"]
+    assert "secretStoreRef" not in gen["spec"]
+    assert yaml.safe_load((d / "password-generator.yaml").read_text())["spec"]["length"] == 32
+    rem = yaml.safe_load((d / "externalsecret-todo-api-stripe.yaml").read_text())
+    assert rem["spec"]["secretStoreRef"] == {"name": "platform-secrets", "kind": "ClusterSecretStore"}
+    assert rem["spec"]["data"] == [{"secretKey": "STRIPE_KEY", "remoteRef": {"key": "todo-dev-todo-api-stripe", "property": "STRIPE_KEY"}}]
+    dep = yaml.safe_load((d / "deployment.yaml").read_text())
+    assert [e["secretRef"]["name"] for e in dep["spec"]["template"]["spec"]["containers"][0]["envFrom"]] == ["todo-api-auth", "todo-api-stripe"]
+    kust = yaml.safe_load((d / "kustomization.yaml").read_text())
+    assert "externalsecret-todo-api-auth.yaml" in kust["resources"] and "password-generator.yaml" in kust["resources"]
+    assert render_check(gitops_repo).returncode == 0
+
+
+def test_no_secrets_means_no_extra_files(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api")
+    assert {p.name for p in dev_dir(gitops_repo).iterdir()} == {"deployment.yaml", "service.yaml", "kustomization.yaml"}
+
+
+def test_removed_secret_files_are_pruned(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api", "--generate", "todo-api-auth=DB_PASSWORD")
+    commit(gitops_repo)
+    f = gitops_repo / "applications/todo/services.yaml"
+    data = yaml.safe_load(f.read_text())
+    del data["services"][0]["secrets"]
+    f.write_text(yaml.safe_dump(data))
+    subprocess.run(["uv", "run", "scripts/render.py"], cwd=gitops_repo, check=True, capture_output=True)
+    assert not list(dev_dir(gitops_repo).glob("externalsecret-*")) and not (dev_dir(gitops_repo) / "password-generator.yaml").exists()
+
+
+@pytest.mark.parametrize("secret,msg", [
+    ({"name": "x", "generate": ["A"], "remote": {"keys": ["B"]}}, "exactly one of"),
+    ({"name": "x"}, "exactly one of"),
+    ({"name": "Bad_Name", "generate": ["A"]}, "DNS label"),
+    ({"name": "x", "generate": ["1BAD"]}, "environment variable name"),
+])
+def test_invalid_secret_declarations_are_rejected(gitops_repo, gh, secret, msg):
+    run_compose(gitops_repo, "add", "todo-api")
+    f = gitops_repo / "applications/todo/services.yaml"
+    data = yaml.safe_load(f.read_text())
+    data["services"][0]["secrets"] = [secret]
+    f.write_text(yaml.safe_dump(data))
+    p = subprocess.run(["uv", "run", "scripts/render.py"], cwd=gitops_repo, capture_output=True, text=True)
+    assert p.returncode == 1 and msg in p.stderr
+
+
+def test_literal_secret_in_env_is_rejected(gitops_repo, gh):
+    p_before = run_compose(gitops_repo, "add", "todo-api")
+    assert p_before == 0
+    f = gitops_repo / "applications/todo/services.yaml"
+    data = yaml.safe_load(f.read_text())
+    data["services"][0]["env"]["DB_PASSWORD"] = "hunter2"
+    f.write_text(yaml.safe_dump(data))
+    p = subprocess.run(["uv", "run", "scripts/render.py"], cwd=gitops_repo, capture_output=True, text=True)
+    assert p.returncode == 1 and "looks like a secret" in p.stderr and "generate: [DB_PASSWORD]" in p.stderr
+
+
+def test_secret_flags_need_a_single_service_and_valid_syntax(gitops_repo, gh):
+    with pytest.raises(core.PlatformError, match="exactly one service"):
+        run_compose(gitops_repo, "add", "todo-api", "todo-web", "--generate", "a=B")
+    with pytest.raises(core.PlatformError, match="SECRET=KEY"):
+        run_compose(gitops_repo, "add", "todo-api", "--generate", "nokeys")
+
+
+class FakeKubectl:
+    def __init__(self):
+        self.secrets: dict[str, dict] = {}
+        self.calls: list[list[str]] = []
+
+    def __call__(self, args, input_text=None):
+        self.calls.append(args)
+        a = [x for x in args if x not in ("--context",)]
+        if "get" in a:
+            name = a[a.index("secret") + 1]
+            if name not in self.secrets:
+                raise core.PlatformError("NotFound")
+            return json.dumps({"data": {k: "x" for k in self.secrets[name]}})
+        if "create" in a:
+            self.secrets[a[a.index("generic") + 1]] = {}
+            return ""
+        if "patch" in a:
+            name = a[a.index("secret") + 1]
+            self.secrets[name].update(json.loads(input_text)["stringData"])
+            return ""
+        raise AssertionError(args)
+
+
+def test_secret_set_and_list(gitops_repo, gh, monkeypatch, capsys):
+    import secret
+    run_compose(gitops_repo, "add", "todo-api", "--generate", "todo-api-auth=DB_PASSWORD", "--secret", "todo-api-stripe=STRIPE_KEY")
+    k = FakeKubectl()
+    monkeypatch.setattr(secret, "kubectl", k)
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO("sk_test_1\n"))
+    base = ["--repo-dir", str(gitops_repo)]
+    assert secret.main(["list", *base]) == 0
+    assert "STRIPE_KEY: MISSING" in capsys.readouterr().out
+    assert secret.main(["set", "todo-api", "todo-api-stripe", "STRIPE_KEY", "--value-stdin", *base]) == 0
+    assert k.secrets["todo-dev-todo-api-stripe"] == {"STRIPE_KEY": "sk_test_1"}
+    out = capsys.readouterr().out
+    assert "sk_test_1" not in out
+    assert secret.main(["list", *base]) == 0
+    out = capsys.readouterr().out
+    assert "STRIPE_KEY: set" in out and "generated by External Secrets Operator" in out
+    assert not any("sk_test_1" in " ".join(c) for c in k.calls)   # never on a command line
+    with pytest.raises(core.PlatformError, match="generated"):
+        secret.main(["set", "todo-api", "todo-api-auth", "DB_PASSWORD", "--value-stdin", *base])

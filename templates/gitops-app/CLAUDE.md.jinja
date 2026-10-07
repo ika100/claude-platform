@@ -27,7 +27,7 @@ Everything marked GENERATED is derived from `services.yaml` + `app.yaml` by `dev
 `/gitops:compose add <service>` writes a complete entry using the shape defaults (port, probes, numeric user, writable volumes, resources) — every value explicit so it can be reviewed. Then adapt it:
 
 - **Wiring between services** is configuration of the *product*, so it lives here: `env: {API_URL: http://todo-api}` (a Service is reachable by its name inside the environment's namespace).
-- `replicas` (a number or per environment), `resources`, `secretRefs` (names of existing Secrets exposed as env vars; never put secret values in this repo).
+- `replicas` (a number or per environment), `resources`, `secrets` (`generate: [KEY]` = ESO creates random values in the cluster; `remote: {keys: [KEY]}` = read from the secret store; add with `/gitops:compose add <svc> --generate NAME=KEY` / `--secret NAME=KEY`, set local values with `/gitops:secret`) and `secretRefs` (names of Secrets managed elsewhere). Never put secret values in this repo or in `env`.
 - `expose: {host: web}` publishes the service through the Gateway at the hostname template in `app.yaml` (dev default: `<service>.{{ app_name }}-dev.localhost`, which resolves to 127.0.0.1 with no DNS setup).
 - `environments: [dev]` — a service is rendered only for the listed environments. New services start in `dev`; `/gitops:promote` adds `staging`, then `prod`.
 
@@ -35,7 +35,7 @@ Everything marked GENERATED is derived from `services.yaml` + `app.yaml` by `dev
 
 Argo must be able to read this repo. Then, once per cluster, a human runs `KUBE_CONTEXT=<context> devbox run bootstrap` (`kubectl apply -n argocd -f bootstrap/`; the context must be named explicitly so it never hits whatever cluster happens to be current). That creates the root Application `{{ app_name }}-root`, which watches `applications/{{ app_name }}/applicationset.yaml` in git; from then on every change reaches the cluster through merged PRs. Agents never run `bootstrap` or any `kubectl apply`.
 
-**To try the product on your machine:** `devbox run cluster-up` creates a k3d cluster `{{ app_name }}-local` (port 8088 → the Gateway), installs ArgoCD and enables the Gateway API, gives Argo your `gh` token for this private repo, pre-creates `{{ app_name }}-{dev,staging,prod}` with a GHCR pull secret, applies the root Application and prints the URLs of exposed services. `devbox run cluster-down` removes it. Needs Docker running; the `gh` token needs `repo` and `read:packages`.
+**To try the product on your machine:** `devbox run cluster-up` creates a k3d cluster `{{ app_name }}-local` (port 8088 → the Gateway), installs ArgoCD and External Secrets Operator and enables the Gateway API, gives Argo your `gh` token for this private repo, pre-creates `{{ app_name }}-{dev,staging,prod}` with a GHCR pull secret, applies the root Application and prints the URLs of exposed services. `devbox run cluster-down` removes it. Needs Docker running; the `gh` token needs `repo` and `read:packages`.
 
 ## Pin policy
 
