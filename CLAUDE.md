@@ -4,7 +4,7 @@ This file is for Claude Code working inside the `ika100/claude-platform` repo it
 
 ## Purpose
 
-This repo is **the source of truth** for Claude Code agents, slash commands, and Copier templates used across the ika100 services fleet. Changes here propagate to many downstream repos — be careful.
+This repo is **the source of truth** for Claude Code agents, slash commands, and Copier templates used by every repository generated from it. Changes here propagate to many downstream repos — be careful.
 
 ## Layout
 

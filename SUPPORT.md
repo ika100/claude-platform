@@ -1,0 +1,9 @@
+# Getting help
+
+- **How do I ...? / Is this the right approach?** Ask in [Discussions](https://github.com/ika100/claude-platform/discussions).
+- **Something is broken or surprising.** Run `/shared:report-issue` in Claude Code (it collects versions and the error text and removes secrets), or [open an issue](https://github.com/ika100/claude-platform/issues/new/choose).
+- **First, try `/shared:doctor`.** It checks your tools, `gh` scopes, Docker, kube context and plugin versions, and prints a fix for each problem. A running Claude Code session keeps old plugin prompts: restart it after `claude plugin update`.
+- **Documentation:** [User journey](docs/USER-JOURNEY.md), [How it works](docs/HOW-IT-WORKS.md), [Adopting an existing repo](docs/ADOPTING.md) (with troubleshooting).
+- **Security problems:** see [SECURITY.md](SECURITY.md); do not post them publicly.
+
+This is a volunteer-maintained project; responses are best effort.

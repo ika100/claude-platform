@@ -5,7 +5,7 @@
     "name": "Eike Hensler",
     "email": "eike.hensler@gmail.com"
   },
-  "description": "Reusable Claude Code agents, slash commands, and Copier templates for the ika100 services fleet.",
+  "description": "Reusable Claude Code agents, slash commands, and Copier templates for building and operating services on Kubernetes with GitOps.",
   "plugins": [
     {
       "name": "svc",

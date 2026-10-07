@@ -1,0 +1,7 @@
+# Every change is reviewed by the maintainer; add more owners per path as the project grows.
+*                      @ika100
+/templates/            @ika100
+/plugins/              @ika100
+/scripts/              @ika100
+/.github/              @ika100
+/docs/adr/             @ika100

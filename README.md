@@ -1,6 +1,16 @@
-# ika100/claude-platform
+# claude-platform
 
-Reusable Claude Code agents, slash commands, and Copier templates for the **ika100** services fleet.
+[![CI](https://github.com/ika100/claude-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ika100/claude-platform/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/ika100/claude-platform)](https://github.com/ika100/claude-platform/releases)
+
+**Claude Code agents, slash commands and Copier templates that take a product from "new repo" to "running in Kubernetes via GitOps".**
+
+You describe what you want in Claude Code; the platform scaffolds the repos (Python, Java, Go and Next.js services, plus a GitOps repo), builds and publishes multi-arch images, and renders every Kubernetes manifest from one declarative file in the GitOps repo. Secrets, a Postgres addon, OpenTelemetry observability and Kyverno guard rails are one declaration each; promotion between environments is a reviewed pull request. Everything that can be code is a tested script (`cplat`), and agents only orchestrate it.
+
+- **Start here:** [docs/USER-JOURNEY.md](docs/USER-JOURNEY.md) (end-to-end walk-through) and [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) (diagrams).
+- **Needs:** [Claude Code](https://claude.com/claude-code), `git`, `gh`, `uv`, [devbox](https://www.jetify.com/devbox) and Docker for local clusters; run `/shared:doctor` to check.
+- **Status:** used end to end on a real test application; see the [changelog](docs/CHANGELOG.md) and [ADRs](docs/adr).
 
 ## What's here
 
@@ -102,6 +112,15 @@ See `docs/ADOPTING.md` for the full migration guide.
 
 These two channels are independent — you can ship new agents without forcing all repos to run `/shared:update-service`, and vice versa.
 
+## Using it for your own organisation
+
+The marketplace is published as `ika100/claude-platform` and installs as `ika100-claude`. Generated repositories use the `github_org` you are asked for (it defaults to the account `gh` is logged in as), so nothing in the output is tied to this repository's owner. To run your own variant, fork the repository, change the owner in `.claude-plugin/marketplace.json`, and add your fork with `/plugin marketplace add <you>/claude-platform`. Code generated from the templates is yours; this repository's license does not apply to it.
+
+## Contributing, security, support
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): how to set up, which checks to run, PR rules. [Code of Conduct](CODE_OF_CONDUCT.md).
+- [SECURITY.md](SECURITY.md): report vulnerabilities privately. [SUPPORT.md](SUPPORT.md): where to ask questions.
+
 ## License
 
-Apache-2.0
+[Apache License 2.0](LICENSE). Copyright 2026 Eike Hensler.
