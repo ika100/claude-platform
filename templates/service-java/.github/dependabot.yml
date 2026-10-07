@@ -1,13 +1,24 @@
-# Weekly dependency PRs: the language ecosystem, the GitHub Actions used by CI, and the Docker base images.
+# Monthly, grouped dependency PRs (security updates still arrive immediately and separately): the language ecosystem, the
+# GitHub Actions used by CI (pinned by commit SHA; Dependabot updates the SHA and the version comment), and Docker base images.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: "/"
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
     open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
   - package-ecosystem: github-actions
     directory: "/"
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    groups:
+      all:
+        patterns: ["*"]
   - package-ecosystem: docker
     directory: "/"
-    schedule: {interval: weekly}
+    schedule: {interval: monthly}
+    groups:
+      all:
+        patterns: ["*"]

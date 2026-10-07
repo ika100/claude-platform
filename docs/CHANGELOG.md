@@ -13,6 +13,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 - Existing services are unaffected (`app/**` is project-owned); new web services get the design.
 - e2e: log checks no longer fail intermittently under `pipefail` (`kubectl logs | grep -q` could die of SIGPIPE).
 
+### CI usage cut, link check, local CI
+
+- **Platform CI** only runs what a change needs: a `changes` job (plain `git diff`, no third-party action) gates the template smoke jobs and the cplat tests; docs-only pull requests run the validation jobs only (about 2 minutes instead of about 25). Superseded runs of the same PR are cancelled. A final `ci-success` job aggregates everything and is the single required status for branch protection (skipped jobs count as passed; matrix jobs would otherwise block merges forever). The e2e workflow is path-filtered, nightly and cancels superseded PR runs.
+- **Dependabot** is monthly and grouped (Actions together; minor and patch together per language ecosystem) in the platform repository and in every template, so a month of updates is a handful of PRs instead of 16; security updates still arrive immediately.
+- **Generated repos** cancel superseded PR runs (`concurrency` in every `ci.yml`).
+- `scripts/check-links.py` (relative Markdown links, in CI) and `scripts/ci-local.sh` / `devbox run ci-local` (the cheap CI checks locally; `--render` also renders every template).
+
 ### Feedback loop and fixes for the old issues
 
 - **`/shared:report-issue`** (`cplat feedback`): when a step fails because a platform template, script or command misbehaves, every agent and command now tells Claude to stop, summarize and offer to file an issue. The draft carries platform/plugin versions, shape, OS and tool availability plus the error tail, with tokens, passwords, e-mail addresses and home-directory names removed; it is shown to you and filed through `gh` only after your OK (a prefilled browser link without `gh`). An unexpected `cplat` crash prints the same pointer. Issue templates (`bug_report`, `feedback`) and labels added; README documents it.

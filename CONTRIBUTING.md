@@ -38,10 +38,13 @@ git clone https://github.com/ika100/claude-platform && cd claude-platform
 ```bash
 uv run scripts/shapes.py check                                              # registry, templates, plugins, descriptions
 python3 scripts/pin-actions.py --check                                      # every GitHub Action pinned by SHA, workflows have permissions
+python3 scripts/check-links.py                                               # relative Markdown links resolve
 uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q # CLI + render tests (3 tests need the Kyverno CLI and skip without it)
 copier copy ./templates/web-nextjs /tmp/try --defaults --trust --skip-tasks --data project_name=try   # render a template you touched
 bash tests/e2e/run.sh                                                       # whole stack on a local k3d cluster (Docker, k3d, kubectl)
 ```
+
+`bash scripts/ci-local.sh` (or `devbox run ci-local`; add `--render` to render every template) runs the first four in one go.
 
 CI runs the same checks plus a smoke test per template (generated repos must pass their own `quality` and `test` recipes). Pull requests that only touch documentation run a reduced set of jobs.
 
@@ -62,4 +65,4 @@ Maintainers release: move `[Unreleased]` under a new `## [x.y.z] - date` heading
 
 ## CI cost
 
-CI is free for this public repository, but forks and private copies may pay per minute. The `changes` job skips template smoke tests and the cluster test when a PR does not touch them, superseded runs are cancelled, and Dependabot batches its updates. Run the checks above locally to avoid waiting for CI.
+CI is free for this public repository, but forks and private copies may pay per minute. A `changes` job decides which template smoke tests a PR needs (docs-only PRs run only the validation jobs), the cluster test runs only when the GitOps template, the CLI or the e2e files change (plus nightly), superseded runs of the same PR are cancelled, and Dependabot batches its updates monthly. The only required status is `ci-success`, which passes when every job that ran passed (skipped jobs count as passed). Run `scripts/ci-local.sh` to avoid waiting for CI.
