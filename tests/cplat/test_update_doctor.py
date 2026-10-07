@@ -156,3 +156,32 @@ def test_doctor_reports_legacy_and_current_installs_together(monkeypatch):
     monkeypatch.setattr(doctor, "legacy_plugins", lambda: {"svc": "2.1.0"})
     names = [c["name"] for c in doctor.check_plugins()]
     assert names[0] == "plugins (old marketplace)" and "plugins" in names
+
+
+def test_update_does_not_add_starter_files_to_project_owned_paths(tmp_path):
+    """An existing web app has its own UI and tests: an update must not re-create (or newly add) template starter files in app/ or tests/."""
+    newsvc.main(["own-ui", "desc", "--web", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"])
+    repo = tmp_path / "own-ui"
+    import shutil
+    starter = ["app/globals.css", "app/not-found.tsx", "app/error.tsx", "app/icon.svg", "app/_components/site-header.tsx", "tests/layout.test.tsx"]
+    shutil.rmtree(repo / "app/_components")
+    for f in ("app/globals.css", "app/not-found.tsx", "app/error.tsx", "app/icon.svg", "tests/layout.test.tsx"):
+        (repo / f).unlink()                              # this repo never had the starter UI (it predates it)
+    (repo / "CLAUDE.md").write_text("# local edit\n")    # skeleton file: must be restored
+    (repo / "app/page.tsx").write_text("export default function Page() { return null }\n")   # project-owned: must survive
+    git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "own ui")
+
+    assert update.main(["--repo", str(repo), "--skip-tasks", "--json"]) == 0
+
+    for f in starter:
+        assert not (repo / f).exists(), f"{f} was added to a project-owned path"
+    assert not (repo / "app/_components").exists()       # empty directory tidied up
+    assert (repo / "app/page.tsx").read_text().startswith("export default function Page")
+    assert "local edit" not in (repo / "CLAUDE.md").read_text()
+    assert core.read_stamp(repo)["platform"] == core.platform_version()
+
+
+def test_project_owned_patterns_come_from_the_templates_own_list():
+    patterns = update.project_owned_patterns("web-nextjs")
+    assert "app/**" in patterns and "tests/**" in patterns
+    assert update.project_owned_patterns("no-such-template") == []
