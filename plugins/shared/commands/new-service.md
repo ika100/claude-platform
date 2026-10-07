@@ -15,3 +15,5 @@ P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -
 3. **Report.** Relay the script's *What happened / Next / To undo* output; add nothing else.
 
 Rules: never create public repos; never overwrite a non-empty directory; if `gh` is missing the script prints the GitHub commands instead of failing.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

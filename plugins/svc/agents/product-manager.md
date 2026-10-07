@@ -47,3 +47,5 @@ Clients file bug reports and feature requests as GitHub Issues using the templat
 ## Multi-repo features
 
 A feature may span repos of different shapes (e.g. "add billing" → API service + web frontend + gitops pin). When it does, tag each user story with the repo (or shape) it targets, e.g. `**Repo:** my-saas-web (web-nextjs)`, so the architect can plan per repo and `/app:build-feature` can split work. Keep stories shape-agnostic otherwise.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

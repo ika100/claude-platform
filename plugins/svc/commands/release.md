@@ -207,3 +207,5 @@ The release is live. vX.Y.Z is now tagged on main.
 - **Phase 7 closes issues via `gh issue close`** — this is in the `ask` permission list, so the user will be prompted once before the batch of closes runs.
 - Do not attempt to auto-fix quality, test, or security failures — report them and stop.
 - Do not force-merge — if the merge fails, escalate to the user.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

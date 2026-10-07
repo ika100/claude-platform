@@ -15,10 +15,12 @@ and run it for real. Everything that can be code is code (and has tests in tests
   cplat.py promote <service…|--all> <from> <to> [--version V] [--sha S] [--pr]
   cplat.py addon add|remove|list [postgres]   backing services of the application (app.yaml)
   cplat.py secret set|list ...         remote secrets of the local cluster (values never go to git)
+  cplat.py feedback --title T [--what …] [--details-file F] [--submit]   draft (and file) a platform issue, secrets removed
   cplat.py status [--context KUBE_CONTEXT]   one table: pins per env, service CI, Argo sync/health
 """
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -36,6 +38,7 @@ COMMANDS = {
     "status": "status",
     "secret": "secret",
     "addon": "addon",
+    "feedback": "feedback",
 }
 
 
@@ -51,6 +54,13 @@ def main(argv: list[str]) -> int:
         if e.hint:
             print(f"  fix: {e.hint}", file=sys.stderr)
         return 1
+    except Exception as e:  # noqa: BLE001  (an unexpected crash is a platform defect, not a user error)
+        print(f"ERROR: unexpected failure in `cplat {argv[0]}`: {type(e).__name__}: {e}", file=sys.stderr)
+        print("  This looks like a platform bug. Run `/shared:report-issue` (or `cplat feedback --title ...`) to file it; "
+              "nothing is sent without your OK.", file=sys.stderr)
+        if os.environ.get("CPLAT_DEBUG"):
+            raise
+        return 70
 
 
 if __name__ == "__main__":

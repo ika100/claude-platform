@@ -101,3 +101,5 @@ Document every override in `overrides/<service-name>/README.md` with: who pinned
 - **Argo manages reconciliation** — do not `kubectl apply` services manually unless rescuing a broken cluster state.
 - **GitHub token** for the scmProvider lives in a `github-token` secret in the `argocd` namespace. If absent, the ApplicationSet won't discover anything. Provision out-of-band.
 - **Convention over configuration** — the topic + overlay path contract is the only way services join the fleet. Don't add bespoke per-service Applications without a documented reason.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

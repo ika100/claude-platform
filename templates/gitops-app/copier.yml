@@ -27,7 +27,7 @@ _exclude:
   - ".git"
 
 _tasks:
-  - "git init -q"
+  - "git init -q -b main"
   - "devbox install"
   - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from gitops-app template'"
   - "echo 'Bootstrap complete. Run: cd {{ project_name }} && devbox run quality'"

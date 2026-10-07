@@ -32,7 +32,7 @@ _exclude:
   - "{% if not needs_observability %}instrumentation.ts{% endif %}"
 
 _tasks:
-  - "git init -q"
+  - "git init -q -b main"
   - "devbox install"
   - "devbox run -- pnpm install"
   - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from web-nextjs template'"

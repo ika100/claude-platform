@@ -19,3 +19,5 @@ Migrating a service that still has `k8s/base` (platform v1)? Add `--from-k8s` to
 Secrets: `--generate NAME=KEY,KEY` makes External Secrets Operator create random values in the cluster (DB passwords, signing keys); `--secret NAME=KEY` declares values read from the secret store (set locally with `/gitops:secret`). Values never go to git.
 
 Rules: only `applications/` and `bootstrap/` change; never `kubectl apply`; never add GitHub topics (report the missing one instead).
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

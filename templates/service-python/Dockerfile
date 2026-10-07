@@ -15,6 +15,9 @@ RUN uv sync --frozen --no-dev 2>/dev/null || uv sync --no-dev
 
 
 FROM python:{{ python_version }}-slim AS runtime
+# Links the GHCR package to this repository, so CI's GITHUB_TOKEN can push to it (no manual "Manage Actions access" step).
+LABEL org.opencontainers.image.source="https://github.com/{{ github_org }}/{{ project_name }}" \
+      org.opencontainers.image.description="{{ description | replace('"', '') | replace('\\', '') }}"
 
 # Fixed numeric IDs: Kubernetes cannot verify runAsNonRoot for a named user.
 RUN groupadd -r -g 10001 app && useradd -r -u 10001 -g app -d /app -s /usr/sbin/nologin app

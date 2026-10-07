@@ -15,7 +15,7 @@ _skip_if_exists:
   - docs/adr/**
 
 _tasks:
-  - "git init -q"
+  - "git init -q -b main"
   - "devbox install"
   - "devbox run -- uv sync --all-extras"
   - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from library-python template'"

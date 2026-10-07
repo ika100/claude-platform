@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Ask or report from inside Claude Code
+    url: https://github.com/ika100/claude-platform#reporting-problems
+    about: Run /shared:report-issue; it drafts this issue with diagnostics and removes secrets first.

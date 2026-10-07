@@ -18,3 +18,5 @@ P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -
 Rules (enforced by the script; do not work around them): staging pins `sha-<7>` of a build of the service's main; prod pins the release image `X.Y.Z` (the `vX.Y.Z` git tag without the `v`); promotion only moves forward; dev tracks `latest`. Only `applications/` changes; never `kubectl apply`; never auto-merge.
 
 Running from a service repo? If `.platform-app.yml` exists, clone the listed gitops-app repo (`gh repo clone <org>/<repo>`) and run the command there.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.
