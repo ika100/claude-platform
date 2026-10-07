@@ -13,6 +13,11 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 - Existing services are unaffected (`app/**` is project-owned); new web services get the design.
 - e2e: log checks no longer fail intermittently under `pipefail` (`kubectl logs | grep -q` could die of SIGPIPE).
 
+### Documentation site
+
+- **GitHub Pages site** at <https://ika100.github.io/claude-platform/> (Astro Starlight, no analytics, no third-party requests, full-text search): vision, problem statement, client value by role with measured evidence and honest limits, seven usage scenarios, get started, concepts, and the user documentation. Guides, ADRs, the changelog and community pages are synced from the repository's Markdown; the command, shape, configuration and CLI reference pages are generated from the code, so they cannot drift. Built and link-checked in CI (`site` job, part of `ci-success`), published by `pages.yml`; Dependabot covers its npm dependencies.
+- `docs/USER-JOURNEY.md` refreshed: a chapter for secrets, Postgres, observability and guard rails, `doctor`/`status`/`report-issue`, and honest limits that match the tested-script design.
+
 ### Open source
 
 - **Public repository** under the Apache License 2.0 (`LICENSE`, `NOTICE`), with a contributing guide, Code of Conduct (Contributor Covenant 2.1), security policy (private vulnerability reporting), support guide, CODEOWNERS and a PR template. The three todo test repositories are public too.

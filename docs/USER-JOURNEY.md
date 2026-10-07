@@ -188,7 +188,23 @@ Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`
 
 ---
 
-## Chapter 7 — Living with it
+## Chapter 7 — Secrets, a database, telemetry and guard rails
+
+Everything here is a declaration in the GitOps repo; `render.py` turns it into manifests and ArgoCD syncs them.
+
+| You want | Run | You get |
+|---|---|---|
+| A random credential the product owns | `/gitops:compose add taskboard-api --generate taskboard-api-auth=JWT_KEY` | An `ExternalSecret`: External Secrets Operator creates the value in the cluster, once per environment. Nothing in git |
+| A credential someone else issues | `/gitops:compose add taskboard-api --secret taskboard-api-stripe=STRIPE_KEY`, then `/gitops:secret set taskboard-api taskboard-api-stripe STRIPE_KEY` | The value is read from your secret store (locally the `secrets-store` namespace) |
+| A Postgres database | `/gitops:addon add postgres`, then `uses: [postgres]` on the service (`--uses postgres` for a new one) | A CloudNativePG cluster per environment; `DATABASE_URL` and `PG*` reach the service |
+| Traces and metrics | `/gitops:addon add observability --ui lgtm` | An OpenTelemetry collector per environment, `OTEL_*` in every service, a local Grafana at `http://grafana.localhost:8088` |
+| Policy | add `policies: {}` to `app.yaml` | Kyverno policies per environment (Audit in dev and staging, Enforce in production) and an offline check in `devbox run validate` |
+
+`devbox run cluster-up` installs whichever operators these declarations need on your local cluster; on a real cluster they must be installed by its owner. Limits: the Postgres addon has no backups or pooling, observability ships no alert rules. Concept pages on the documentation site: [addons](https://ika100.github.io/claude-platform/concepts/addons/), [secrets](https://ika100.github.io/claude-platform/concepts/secrets/), [guard rails](https://ika100.github.io/claude-platform/concepts/guard-rails/).
+
+---
+
+## Chapter 8 — Living with it
 
 | Situation | What to do |
 |---|---|
@@ -198,6 +214,8 @@ Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`
 | New backend language/framework | `docs/templates.md` — add a shape; CI enforces the checklist |
 | Repo existed before the platform | `docs/ADOPTING.md` (migration guides per shape) |
 | Something broke in a recipe | fix `devbox.json` — never bypass it with raw `pnpm`/`mvn`/`go`/`uv` |
+| Setup looks wrong | `/shared:doctor` (tools, `gh` scopes, Docker, kube context, plugin versions) and `/shared:status` (what runs where) |
+| A platform template, script or command misbehaves | `/shared:report-issue` drafts a GitHub issue with diagnostics and secrets removed; it is filed only after you approve it (issues are public) |
 
 ---
 
@@ -219,10 +237,11 @@ Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`
 
 ## Honest limits to mention when presenting
 
-- Plugin commands are Claude prompts, not scripts: they follow the documented flow but ask you before pushing or opening PRs.
-- Cross-repo work is **plan-only** in v1: you run `/svc:build-feature --from-plan` in each repo yourself.
+- The deterministic work (`new-service`, `update-service`, `compose`, `promote`, `addon`, `secret`, `doctor`, `status`) is a tested script (`cplat`) with a preview; the slash commands that call it, and the agent pipelines (`/svc:*`), are Claude prompts: they follow the documented flow and ask before pushing or opening PRs, but their wording is not deterministic.
+- Cross-repo work is **plan-only**: `/app:build-feature` produces a validated plan; you run `/svc:build-feature --from-plan` in each repo yourself.
 - The cluster itself, ArgoCD installation and its repo/registry credentials are outside the platform; the only manual cluster step is `devbox run bootstrap` once (Chapter 1).
 - Skeleton updates overwrite customised skeleton files by design; the review branch is where you keep or restore your changes.
+- Operators (External Secrets, CloudNativePG, Kyverno) are installed by `cluster-up` on the local cluster only; real clusters need them installed by their owner. The Postgres addon has no backups, point-in-time recovery or pooling.
 
 ## Where to read more
 

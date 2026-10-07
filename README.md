@@ -2,12 +2,14 @@
 
 [![CI](https://github.com/ika100/claude-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ika100/claude-platform/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-ika100.github.io-4f46e5)](https://ika100.github.io/claude-platform/)
 [![Release](https://img.shields.io/github/v/release/ika100/claude-platform)](https://github.com/ika100/claude-platform/releases)
 
 **Claude Code agents, slash commands and Copier templates that take a product from "new repo" to "running in Kubernetes via GitOps".**
 
 You describe what you want in Claude Code; the platform scaffolds the repos (Python, Java, Go and Next.js services, plus a GitOps repo), builds and publishes multi-arch images, and renders every Kubernetes manifest from one declarative file in the GitOps repo. Secrets, a Postgres addon, OpenTelemetry observability and Kyverno guard rails are one declaration each; promotion between environments is a reviewed pull request. Everything that can be code is a tested script (`cplat`), and agents only orchestrate it.
 
+- **Documentation site:** <https://ika100.github.io/claude-platform/> has the vision, the problem statement, client value, usage scenarios and the full user documentation with search.
 - **Start here:** [docs/USER-JOURNEY.md](docs/USER-JOURNEY.md) (end-to-end walk-through) and [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) (diagrams).
 - **Needs:** [Claude Code](https://claude.com/claude-code), `git`, `gh`, `uv`, [devbox](https://www.jetify.com/devbox) and Docker for local clusters; run `/shared:doctor` to check.
 - **Status:** used end to end on a real test application; see the [changelog](docs/CHANGELOG.md) and [ADRs](docs/adr).

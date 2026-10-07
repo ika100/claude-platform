@@ -1,0 +1,113 @@
+---
+title: "From a new repo to Kubernetes via GitOps"
+description: "Claude Code agents, slash commands and Copier templates that take a product from a new repo to Kubernetes via GitOps. Secrets, Postgres, OpenTelemetry and Kyverno guard rails are one declaration each."
+template: splash
+hero:
+  title: From a new repo to Kubernetes, declared once.
+  tagline: Claude Code agents, slash commands and templates that scaffold your services, render every Kubernetes manifest from one file, and promote releases through reviewed pull requests, with secure defaults you do not have to remember.
+  actions:
+    - text: Get started
+      link: /claude-platform/get-started/
+      icon: right-arrow
+    - text: Why it exists
+      link: /claude-platform/problem/
+      variant: secondary
+    - text: View on GitHub
+      link: https://github.com/ika100/claude-platform
+      variant: minimal
+      icon: external
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Platform glue should not cost a small team months
+
+<CardGrid>
+  <Card title="The problem" icon="warning">
+    Every service needs CI, a hardened Dockerfile, Kubernetes manifests, secrets, observability, policy and a promotion path. Small teams rebuild it per repo, and LLM agents that improvise it make it inconsistent faster. [Read the problem statement](/claude-platform/problem/).
+  </Card>
+  <Card title="The approach" icon="rocket">
+    Opinionated templates and a tested CLI do the deterministic work; Claude Code agents orchestrate it and ask before anything outward-facing. The GitOps repo owns every manifest, rendered from one declarative file. [Read the vision](/claude-platform/vision/).
+  </Card>
+  <Card title="The value" icon="star">
+    One slash command creates a repo that already builds, scans and publishes images. Adding Postgres, secrets or observability is one declaration. Promotion is a pull request you can review. [See the client value](/claude-platform/value/).
+  </Card>
+</CardGrid>
+
+## One declaration, a running stack
+
+<div class="split">
+<div>
+
+```yaml title="applications/shop/services.yaml"
+# abbreviated: /gitops:compose fills in port, probes, user and resources from the shape's defaults
+services:
+  - name: shop-api
+    shape: service-java
+    image: ghcr.io/acme/shop-api
+    uses: [postgres]
+    secrets:
+      - name: shop-api-auth
+        generate: [JWT_KEY]
+    environments: [dev, staging]
+  - name: shop-web
+    shape: web-nextjs
+    image: ghcr.io/acme/shop-web
+    env: { API_URL: "http://shop-api" }
+    expose: { host: shop }
+```
+
+</div>
+<div>
+
+From that file the platform renders, per environment: Deployments with numeric non-root users and read-only filesystems, Services, Gateway API routes, an `ExternalSecret` that creates the JWT key in the cluster, a CloudNativePG database whose connection string reaches `shop-api` as `DATABASE_URL`, an OpenTelemetry collector, and Kyverno policies that check all of it. ArgoCD syncs the result. Nothing is applied by hand, and no secret value touches git.
+
+[How it works](/claude-platform/guides/how-it-works/) · [Configuration reference](/claude-platform/reference/configuration/)
+
+</div>
+</div>
+
+## What you get
+
+<CardGrid>
+  <Card title="Scaffold any shape" icon="document">
+    `/shared:new-service` creates Python, Java, Go and Next.js services, libraries and the GitOps repo from tested templates, with CI, Dockerfile, devbox recipes and agent instructions. [Shapes](/claude-platform/reference/shapes/)
+  </Card>
+  <Card title="Agent pipeline" icon="random">
+    `/svc:build-feature` runs product manager, architect, coders, tester, security and a pull request, with the right agents for each shape. [Agents model](/claude-platform/guides/agents/)
+  </Card>
+  <Card title="GitOps that is generated" icon="setting">
+    `/gitops:compose` edits one registry; `render.py` writes every manifest. `/gitops:promote` pins verified image tags per environment. [Concepts](/claude-platform/concepts/)
+  </Card>
+  <Card title="Secrets without git" icon="approve-check">
+    External Secrets Operator creates and reads secrets in the cluster; generated passwords never leave it. [Secrets](/claude-platform/concepts/secrets/)
+  </Card>
+  <Card title="Addons and observability" icon="seti:db">
+    Postgres via CloudNativePG; OpenTelemetry collector with optional Grafana dev stack. [Addons](/claude-platform/concepts/addons/)
+  </Card>
+  <Card title="Guard rails" icon="seti:lock">
+    Kyverno policies for the platform's own conventions, checked before merge; pinned Actions, scanned images and SBOMs. [Guard rails](/claude-platform/concepts/guard-rails/)
+  </Card>
+</CardGrid>
+
+## Measured, not promised
+
+<ul class="stats">
+  <li><strong>12</strong><span>defects found by running the real chain end to end, each now a regression test or contract check</span></li>
+  <li><strong>9 → 3 min</strong><span>multi-arch Next.js image build (native runners instead of QEMU)</span></li>
+  <li><strong>−28 %</strong><span>always-on prompt tokens after tightening agent descriptions</span></li>
+  <li><strong>≈ 1m40s</strong><span>from no cluster at all to a local one with ArgoCD and every app healthy</span></li>
+</ul>
+
+The numbers come from the platform's own test application and are listed with their method on the [baselines page](/claude-platform/reference/baselines/). Limits are stated plainly on the [client value page](/claude-platform/value/#honest-limits).
+
+## Pick a scenario
+
+<CardGrid>
+  <LinkCard title="Ship a product from zero" description="GitOps repo, services, first environment." href="/claude-platform/scenarios/ship-a-product/" />
+  <LinkCard title="Promote to production safely" description="Verified tags, one pull request per move." href="/claude-platform/scenarios/promote-safely/" />
+  <LinkCard title="Add Postgres, secrets, observability" description="Three declarations instead of three projects." href="/claude-platform/scenarios/addons-secrets-observability/" />
+  <LinkCard title="Adopt an existing repo" description="Bring what you have onto the platform." href="/claude-platform/scenarios/adopt-existing/" />
+  <LinkCard title="Build a feature with agents" description="From a request to a tested pull request." href="/claude-platform/scenarios/build-a-feature/" />
+  <LinkCard title="Harden for an audit" description="Show how supply chain and runtime are controlled." href="/claude-platform/scenarios/harden-for-audit/" />
+</CardGrid>

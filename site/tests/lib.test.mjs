@@ -1,0 +1,52 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { convertWikiLinks, firstHeading, rewriteLinks, splitDescription, stripFirstHeading, withFrontMatter } from '../scripts/lib.mjs';
+
+const BASE = '/claude-platform';
+const ctx = (pages = {}, files = {}) => ({ pageFor: (p) => pages[p], exists: (p) => files[p] ?? null, base: BASE });
+
+test('links to synced pages become site paths and keep their anchor', () => {
+  const { text, unresolved } = rewriteLinks('See [adopting](ADOPTING.md#troubleshooting).', 'docs/USER-JOURNEY.md', ctx({ 'docs/ADOPTING.md': 'guides/adopting' }));
+  assert.equal(text, 'See [adopting](/claude-platform/guides/adopting/#troubleshooting).');
+  assert.deepEqual(unresolved, []);
+});
+
+test('links outside docs resolve relative to the source file and point at GitHub', () => {
+  const { text } = rewriteLinks('[readme](../README.md) and [templates](../templates/web-nextjs/)', 'docs/HOW-IT-WORKS.md', ctx({}, { 'README.md': 'file', 'templates/web-nextjs': 'dir' }));
+  assert.match(text, /\(https:\/\/github\.com\/ika100\/claude-platform\/blob\/main\/README\.md\)/);
+  assert.match(text, /\(https:\/\/github\.com\/ika100\/claude-platform\/tree\/main\/templates\/web-nextjs\)/);
+});
+
+test('external, mailto, anchor and already-final site links are untouched', () => {
+  const src = '[a](https://example.com) [b](mailto:x@y.z) [c](#here) [d](/claude-platform/guides/x/)';
+  assert.equal(rewriteLinks(src, 'docs/a.md', ctx()).text, src);
+});
+
+test('code fences and inline code are never rewritten', () => {
+  const src = 'Use `[x](missing.md)` here.\n\n```md\n[y](also-missing.md)\n```\n';
+  const { text, unresolved } = rewriteLinks(src, 'docs/a.md', ctx());
+  assert.equal(text, src);
+  assert.deepEqual(unresolved, []);
+});
+
+test('a link to nothing is reported, not silently kept', () => {
+  const { unresolved } = rewriteLinks('[x](nope.md)', 'docs/a.md', ctx());
+  assert.deepEqual(unresolved, ['docs/a.md: nope.md']);
+});
+
+test('wiki links link to known pages and fall back to plain text', () => {
+  const out = convertWikiLinks('See [[ARCHITECTURE]] and [[Unknown]].', (n) => (n === 'ARCHITECTURE' ? '/claude-platform/guides/architecture/' : null));
+  assert.equal(out, 'See [ARCHITECTURE](/claude-platform/guides/architecture/) and Unknown.');
+});
+
+test('front matter quotes titles safely and the first heading is stripped', () => {
+  assert.equal(firstHeading('intro\n# ADR-1: "Quoted": title\n'), 'ADR-1: "Quoted": title');
+  assert.equal(stripFirstHeading('# Title\n\nBody'), 'Body');
+  const fm = withFrontMatter('Body', { title: 'A: "b"', description: 'd', order: 3, editUrl: false });
+  assert.match(fm, /^---\ntitle: "A: \\"b\\""\ndescription: "d"\nsidebar:\n {2}order: 3\neditUrl: false\n---\nBody$/);
+});
+
+test('command descriptions split into summary and usage', () => {
+  assert.deepEqual(splitDescription('Does a thing. Usage: /x:y <a>'), { summary: 'Does a thing.', usage: '/x:y <a>' });
+  assert.deepEqual(splitDescription('No usage here'), { summary: 'No usage here', usage: '' });
+});

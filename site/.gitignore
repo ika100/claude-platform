@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.astro/
+# generated from docs/, plugins/, shapes.yml at build time (npm run sync); never edit or commit these
+src/content/docs/guides/
+src/content/docs/reference/
+src/content/docs/community/
+src/content/docs/vision/design-history.md
+src/content/docs/vision/end-to-end-scenario.md
