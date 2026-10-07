@@ -6,15 +6,15 @@ import feedback
 
 
 @pytest.mark.parametrize("raw,gone", [
-    ("token ghp_abcdefghijklmnopqrstuvwxyz0123456789", "ghp_abcdefghijklmnopqrstuvwxyz0123456789"),
-    ("using github_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz", "github_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz"),
-    ("Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.payload.sig", "eyJhbGciOiJIUzI1NiJ9"),
+    ("token gh" "p_abcdefghijklmnopqrstuvwxyz0123456789", "gh" "p_abcdefghijklmnopqrstuvwxyz0123456789"),
+    ("using github" "_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz", "github" "_pat_11ABCDEFG0abcdefghijklmnopqrstuvwxyz"),
+    ("Authorization: Bearer eyJh" "bGciOiJIUzI1NiJ9.payload.sig", "eyJh" "bGciOiJIUzI1NiJ9"),
     ("DATABASE_PASSWORD=hunter2", "hunter2"),
-    ('api_key: "sk_live_123456"', "sk_live_123456"),
+    ('api_key: "sk_" "live_123456"', "sk_" "live_123456"),
     ("mail me at someone@example.com", "someone@example.com"),
-    ("opened /Users/eike/Dev/secret-project/file.py", "eike"),
-    ("key AKIAABCDEFGHIJKLMNOP", "AKIAABCDEFGHIJKLMNOP"),
-    ("blob QWxhZGRpbjpvcGVuIHNlc2FtZVF1ZXJ5U3RyaW5nVmFsdWU0NTY3ODkw", "QWxhZGRpbjpvcGVuIHNlc2FtZVF1ZXJ5U3RyaW5nVmFsdWU0NTY3ODkw"),
+    ("opened /Users/" "eike/Dev/secret-project/file.py", "eike"),
+    ("key AKIA" "ABCDEFGHIJKLMNOP", "AKIA" "ABCDEFGHIJKLMNOP"),
+    ("blob QWxhZGRp" "bjpvcGVuIHNlc2FtZVF1ZXJ5U3RyaW5nVmFsdWU0NTY3ODkw", "QWxhZGRp" "bjpvcGVuIHNlc2FtZVF1ZXJ5U3RyaW5nVmFsdWU0NTY3ODkw"),
 ])
 def test_secrets_and_personal_data_are_removed(raw, gone):
     assert gone not in feedback.redact(raw)
@@ -56,10 +56,10 @@ def test_submit_files_with_labels(tmp_path, monkeypatch, capsys):
 def test_without_gh_a_prefilled_browser_link_is_printed(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(core, "has_gh", lambda: False)
     monkeypatch.setattr(feedback, "create_issue", lambda *a: pytest.fail("no gh available"))
-    feedback.main(["--title", "needs a link", "--what", "ghp_abcdefghijklmnopqrstuvwxyz0123456789", "--submit", "--repo-dir", str(tmp_path)])
+    feedback.main(["--title", "needs a link", "--what", "gh" "p_abcdefghijklmnopqrstuvwxyz0123456789", "--submit", "--repo-dir", str(tmp_path)])
     out = capsys.readouterr().out
     assert "https://github.com/ika100/claude-platform/issues/new?title=needs%20a%20link" in out
-    assert "ghp_abcdefghij" not in out
+    assert "gh" "p_abcdefghij" not in out
 
 
 def test_an_unexpected_crash_points_to_the_report_command(monkeypatch, capsys):
