@@ -6,6 +6,17 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-10-07
+
+Everything the GitOps repo needs around your services, still declared in one place and rendered by `render.py`: secrets, a Postgres addon, OpenTelemetry observability, Kyverno guard rails, and a hardened CI supply chain. No breaking changes.
+
+### Upgrading from 2.0.x
+
+- **Generated repos**: run `/shared:update-service` (gitops-app: new `render.py`, `local-cluster.sh`, `check-policies.sh`; Python services: standard OpenTelemetry variables; all service/web repos: SHA-pinned actions, scan + SBOM, Dependabot). Nothing changes behaviour until you use a feature.
+- **New plugin commands** (restart Claude Code after `claude plugin update`): `/gitops:secret`, `/gitops:addon`; `/gitops:compose` gains `--generate`, `--secret`, `--uses`.
+- **Cluster prerequisites only for features you turn on**: External Secrets Operator (`secrets:`), CloudNativePG (`addons.postgres`), Kyverno (`policies:`); `devbox run cluster-up` installs them locally, real clusters need them installed by their owner. OpenTelemetry needs no operator.
+- Local credentials: `cluster-up` accepts `REPO_TOKEN` and `PULL_TOKEN` for least-privilege cluster credentials.
+
 ### Kyverno guard rails (Phase G, slice 6, ADR-022)
 
 - **`policies:` in `app.yaml`** (opt-in) renders a namespaced CEL `NamespacedValidatingPolicy` per environment with the platform's conventions (numeric non-root, read-only filesystem, no escalation, dropped capabilities, no privileged/host access, requests + memory limit, `part-of` label, allowed registries, no `:latest` outside dev). Audit in dev/staging and Enforce in prod by default; per environment `Audit | Enforce | Off`.
