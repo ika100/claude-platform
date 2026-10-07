@@ -43,6 +43,7 @@ UPDATERS: dict[str, dict] = {
     },
     "service-go": {
         "files": ["go.mod", "go.sum"],
+        "atomic": True,           # go.mod and go.sum belong together: apply both or neither
         "commands": [["go", "get", "-u", "./..."], ["go", "mod", "tidy"]],
     },
 }
@@ -96,6 +97,7 @@ def bump(name: str, template_dir: Path, copier: list[str], run=subprocess.run) -
             if res.returncode != 0:
                 skipped.append(f"{' '.join(cmd[:3])} failed: {(res.stderr or res.stdout).strip()[-200:]}")
         updated: dict[str, str] = {}
+        originals: dict[Path, str] = {}
         for rel, old in before.items():
             new = (project / rel).read_text()
             if new == old:
@@ -115,8 +117,13 @@ def bump(name: str, template_dir: Path, copier: list[str], run=subprocess.run) -
             skipped += [f"{rel}: {n}" for n in notes]
             if result != text:
                 updated[rel] = result
+                originals[src] = text
                 src.write_text(result)
                 changed.append(str(src.relative_to(template_dir.parent.parent)))
+        if spec.get("atomic") and updated and skipped:
+            for src, text in originals.items():
+                src.write_text(text)
+            return [], skipped + [f"rolled back: {name} is all-or-nothing and part of the update could not be applied"]
         if updated:   # the re-render must reproduce the bumped manifests
             verify = Path(tmp) / "verify"
             render(template_dir, verify, copier)

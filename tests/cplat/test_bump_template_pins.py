@@ -71,3 +71,21 @@ def test_every_configured_manifest_exists_in_its_template():
 def test_cli_rejects_unknown_templates(capsys):
     assert b.main(["nope"]) == 2
     assert "unknown template" in capsys.readouterr().err
+
+
+def test_go_is_all_or_nothing_when_part_of_the_update_cannot_be_applied(tmp_path):
+    """go.sum.jinja has Jinja, so go.mod must not be bumped alone (it would not build)."""
+    dest = tmp_path / "templates" / "service-go"
+    shutil.copytree(ROOT / "templates" / "service-go", dest)
+    original = (dest / "go.mod.jinja").read_text()
+
+    def fake_go(cmd, cwd, **_):
+        mod = Path(cwd) / "go.mod"
+        mod.write_text(mod.read_text().replace("v0.6.2", "v0.6.3"))
+        (Path(cwd) / "go.sum").write_text((Path(cwd) / "go.sum").read_text() + "x v1 h1:abc=\n")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    changed, skipped = b.bump("service-go", dest, core.find_copier(), run=fake_go)
+    assert changed == []
+    assert (dest / "go.mod.jinja").read_text() == original
+    assert any("rolled back" in s for s in skipped)
