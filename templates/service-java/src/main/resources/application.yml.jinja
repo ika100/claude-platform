@@ -1,6 +1,20 @@
 spring:
   application:
     name: {{ project_name }}
+{%- if needs_database %}
+  # Connection settings come from the platform's postgres addon (PGHOST, PGPORT, PGDATABASE, PGUSER, PGPASSWORD);
+  # the defaults match `devbox run db-up` for local development.
+  datasource:
+    url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:{{ project_name | replace('-', '_') }}}
+    username: ${PGUSER:app}
+    password: ${PGPASSWORD:dev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate           # the schema belongs to Flyway (src/main/resources/db/migration)
+  flyway:
+    enabled: true
+{%- endif %}
 
 server:
   port: ${PORT:{{ port }}}
@@ -11,6 +25,11 @@ management:
     health:
       probes:
         enabled: true            # /actuator/health/liveness and /actuator/health/readiness
+{%- if needs_database %}
+      group:
+        readiness:
+          include: readinessState,db   # not ready while the database is unreachable
+{%- endif %}
   endpoints:
     web:
       exposure:

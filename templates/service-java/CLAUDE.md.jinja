@@ -67,6 +67,9 @@ Branch prefixes: `feature/`, `fix/`, `chore/`, `docs/`, `refactor/`, `release/`.
 - **Formatting:** google-java-format via Spotless — run `devbox run lint-fix`, never hand-format. Checkstyle enforces unused/star imports, naming, and Javadoc on public types and non-trivial public methods.
 - **Config:** `application.yml` with environment-variable placeholders (`${PORT:{{ port }}}`); see `docs/env-vars.md`. No secrets in the repo.
 - **Probes:** `/actuator/health/liveness` and `/actuator/health/readiness` must keep responding.
+{%- if needs_database %}
+- **Database:** PostgreSQL through Spring Data JPA; the schema belongs to **Flyway** (`src/main/resources/db/migration/V<n>__<what>.sql`, never edit a released migration) and Hibernate only validates it (`ddl-auto: validate`). Connection settings are the `PG*` variables the platform's postgres addon injects (`docs/env-vars.md`); locally `devbox run db-up` starts a matching PostgreSQL. Integration tests use Testcontainers (`TestcontainersConfiguration`, Docker required). Readiness includes the database.
+{%- endif %}
 {%- if needs_observability %}
 - **Observability:** Micrometer → `/actuator/prometheus` (every metric tagged `service`); the OpenTelemetry Java agent is baked into the image and **disabled** (`OTEL_SDK_DISABLED=true`) until you set it to `false` and provide `OTEL_EXPORTER_OTLP_ENDPOINT`.
 {%- endif %}

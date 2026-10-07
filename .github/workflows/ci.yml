@@ -353,13 +353,16 @@ jobs:
           docker logs smoke; exit 1
 
   smoke-test-service-java:
-    name: smoke-test service-java template
+    name: smoke-test service-java template (obs=${{ matrix.observability }}, db=${{ matrix.database }})
     needs: changes
     if: needs.changes.outputs.java == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        observability: [true, false]
+        include:
+          - {observability: true, database: false}
+          - {observability: false, database: false}
+          - {observability: true, database: true}     # PostgreSQL support: JPA, Flyway, Testcontainers tests
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
@@ -372,7 +375,7 @@ jobs:
       - name: Generate test project
         run: |
           copier copy ./templates/service-java /tmp/test-java --defaults --trust --skip-tasks \
-            --data project_name=test-java --data needs_observability=${{ matrix.observability }}
+            --data project_name=test-java --data needs_observability=${{ matrix.observability }} --data needs_database=${{ matrix.database }}
       - name: Confirm key files exist
         run: |
           for f in devbox.json pom.xml Dockerfile config/checkstyle.xml .claude/settings.json .github/workflows/ci.yml \
@@ -393,7 +396,16 @@ jobs:
         working-directory: /tmp/test-java
         run: |
           docker build -t smoke:java .
-          docker run -d --name smoke --read-only --tmpfs /tmp -p 8080:8080 -e OTEL_SDK_DISABLED=true smoke:java
+          db_env=""
+          if [ "${{ matrix.database }}" = true ]; then
+            # readiness includes the database: give the image a real PostgreSQL, wired like the platform's postgres addon does
+            docker network create smoke-net
+            docker run -d --name smoke-db --network smoke-net -e POSTGRES_USER=app -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=test_java postgres:17
+            for _ in $(seq 1 30); do docker exec smoke-db pg_isready -U app -d test_java && break; sleep 2; done
+            db_env="--network smoke-net -e PGHOST=smoke-db -e PGPORT=5432 -e PGDATABASE=test_java -e PGUSER=app -e PGPASSWORD=dev"
+          fi
+          # shellcheck disable=SC2086
+          docker run -d --name smoke --read-only --tmpfs /tmp -p 8080:8080 -e OTEL_SDK_DISABLED=true $db_env smoke:java
           for _ in $(seq 1 40); do curl -sf localhost:8080/actuator/health/readiness && exit 0; sleep 3; done
           docker logs smoke; exit 1
 

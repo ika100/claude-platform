@@ -14,10 +14,16 @@ import org.springframework.boot.test.autoconfigure.actuate.observability.AutoCon
 {%- endif %}
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+{%- if needs_database %}
+import org.springframework.context.annotation.Import;
+{%- endif %}
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
+{%- if needs_database %}
+@Import(TestcontainersConfiguration.class)
+{%- endif %}
 {%- if needs_observability %}
 // Test slices disable metric exporters by default; enable them to scrape /actuator/prometheus.
 @AutoConfigureObservability
