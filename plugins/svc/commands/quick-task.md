@@ -125,9 +125,10 @@ After the tester passes:
 
    - [x] `devbox run quality` passes (ruff + mypy)
    - [x] `devbox run test` passes with coverage ≥ 80%
-   - [ ] `devbox run security` passes (no CRITICAL findings)
    - [x] No secrets, credentials, or API keys committed
-   - [ ] Documentation updated if public-facing behaviour changed
+   - [ ] Docs: <tick only if public-facing behaviour changed AND the docs were updated; otherwise write "n/a, no public-facing change">
+
+   Not run by quick-task: `devbox run security` (use `/shared:check-quality` for a full audit before merging risky changes).
    EOF
    )"
    ```
@@ -164,3 +165,5 @@ After the tester passes:
 - **Commit at Phase 3, not before.** The coder leaves the working tree dirty; Phase 3 does the single commit before pushing.
 - **No deployment, no security scan, no PRD.** Those are `/svc:build-feature` territory.
 - **Every shell command goes through `devbox run`.**
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

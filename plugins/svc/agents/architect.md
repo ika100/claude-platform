@@ -124,3 +124,5 @@ The `/svc:build-feature` orchestrator uses this metadata to:
 4. Merge the resulting branches back onto `main` sequentially with `devbox run quality` gating each merge.
 
 If you produce a plan without the metadata block, the orchestrator must fall back to running everything sequentially. **Always emit the metadata.**
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

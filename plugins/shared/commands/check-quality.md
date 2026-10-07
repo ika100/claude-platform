@@ -63,3 +63,5 @@ Date: <YYYY-MM-DD>
 - This command is **read-only** — do not fix violations, install packages, or modify files.
 - If a tool is not installed, note it in the report as a gap but do not abort the other checks.
 - The security scan report file (`docs/security/scan-<date>.md`) is the one exception — the security agent creates that as its normal output.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

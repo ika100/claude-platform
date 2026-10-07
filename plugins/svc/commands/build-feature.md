@@ -304,3 +304,5 @@ Print `## Phase 7 complete — PR opened: <URL>`.
 - **Stay on `$FEATURE_BRANCH`** for orchestration. Only the parallel coder subagents leave it, and only into isolated worktrees.
 - **Phase 4 fan-out is the default.** Do not serialize quality → tester → security unless one of them needs to gate on another's output — in which case, document the dependency in the orchestrator output.
 - **No `--no-verify`, no `--no-gpg-sign`** — let the user's hooks run.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

@@ -27,7 +27,7 @@ _exclude:
   - "{% if not needs_observability %}internal/server/metrics.go{% endif %}"
 
 _tasks:
-  - "git init -q"
+  - "git init -q -b main"
   - "devbox install"
   - "devbox run -- go mod tidy"
   - "git add -A && git -c user.email=bootstrap@ika100 -c user.name=bootstrap commit -q -m 'chore: bootstrap from service-go template'"

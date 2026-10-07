@@ -75,3 +75,5 @@ Maintain `docs/migrations/runbook.md` with: apply/rollback commands, migration h
 - **Always flag destructive operations** (`DROP TABLE`, `DROP COLUMN`, `ALTER COLUMN ... NOT NULL` on data-bearing tables) before proceeding.
 - **Migration scripts must be committed** before running in any shared environment.
 - **`DATABASE_URL` is required.** The templated `env.py` raises if it's missing — surface this clearly to the user when troubleshooting.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

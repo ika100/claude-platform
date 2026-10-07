@@ -1,0 +1,29 @@
+name: Bug report
+description: A template, script, command or agent of the platform misbehaved
+labels: [feedback, bug]
+body:
+  - type: markdown
+    attributes:
+      value: "Tip: `/shared:report-issue` in Claude Code fills this in for you (versions, OS, tools) and removes secrets."
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, what you got.
+    validations: {required: true}
+  - type: input
+    id: command
+    attributes:
+      label: Command or step
+      placeholder: /gitops:compose add todo-api
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Error text. Remove secrets first.
+      render: shell
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: Output of `/shared:doctor` is ideal.

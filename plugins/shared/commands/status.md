@@ -9,3 +9,5 @@ P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -
 ```
 
 Pass `--context k3d-<app>-local` (or the user's cluster context) when they want the Argo column. Show the table verbatim, then add at most three lines: anything not `ok`/`Synced/Healthy`, whether staging/prod lag behind dev, and the one command that would fix the most obvious problem. Read-only: never change anything.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

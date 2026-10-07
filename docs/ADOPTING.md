@@ -159,6 +159,12 @@ v2 moves every Kubernetes manifest into the product's gitops-app repo (ADR-017).
 
 What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo credentials for service repos, `deploy`/`deploy-check` recipes and the `k3d`/`kubectl`/`k9s` packages in service repos, per-service `overlays/` and PrometheusRule files (alerting is a gitops-side follow-up).
 
+## Troubleshooting
+
+- **`403 Forbidden` when CI pushes the image to GHCR.** The package must be linked to the repository. Generated Dockerfiles carry `org.opencontainers.image.source`, which links a new package automatically on its first push. If the package already exists without a link (created by hand or by an older template), open `https://github.com/users/<user>/packages/container/<package>/settings` (organisations: the org's package settings), choose **Manage Actions access**, add the repository with role **Write**.
+- **`ImagePullBackOff` in the local cluster.** `devbox run cluster-up` creates the `ghcr-pull` secret from your `gh` login; the token needs `read:packages` (`gh auth refresh -s read:packages`, `/shared:doctor` checks it). Use `PULL_TOKEN` for a narrower token.
+- **Something else looks like a platform bug.** Run `/shared:report-issue` (see the README).
+
 ## What you get after adoption
 
 - Slash commands: `/svc:plan-feature`, `/svc:build-feature`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:build-feature`, `/app:plans`.

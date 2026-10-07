@@ -25,3 +25,5 @@ The template already ships: `Dockerfile` (Maven builder on the native platform â
 - No plaintext secrets in the image, the repo or CI logs.
 - Image tags follow the template's scheme (`1.2.3`, `1.2`, `1`, `latest`, `sha-<7>`); do not invent others.
 - Never `kubectl apply`.
+
+> If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

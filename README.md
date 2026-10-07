@@ -99,8 +99,13 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/svc:release` | svc | Quality gate → test gate → security gate → version bump → tag → close issues |
 | `/gitops:promote <svc...> <from> <to> [version]` | gitops | Pin service versions in an environment overlay (platform or gitops-app repo), open one PR |
 | `/gitops:compose add\|remove <svc...>` | gitops | gitops-app repos: declare which services make up the application |
+| `/gitops:addon add\|remove\|list <postgres\|observability>` | gitops | Backing services and observability for the application (CloudNativePG, OpenTelemetry collector, optional Grafana dev stack) |
+| `/gitops:secret set\|list …` | gitops | Values of store-backed secrets in the local cluster (generated secrets need nothing) |
 | `/app:build-feature <desc>` | app | gitops-app repos: plan a feature across repos (plan-only), topo-sorted |
 | `/app:plans [list\|show\|start\|done\|abandon]` | app | Multi-repo plan lifecycle |
+| `/shared:doctor` | shared | Preflight: tools, `gh` scopes, Docker, kube context, plugin versions, repo platform version, with a fix per problem |
+| `/shared:status` | shared | One table for a gitops-app: image pins per environment, service CI, Argo sync/health, addons |
+| `/shared:report-issue [what]` | shared | Draft a platform issue with diagnostics (secrets removed) and file it after your OK |
 | `/shared:check-quality` | shared | Read-only quality + security audit |
 | `/shared:update-service [--ref <tag>]` | shared | Pull the latest skeleton (CI, devbox, Dockerfile, CLAUDE.md…) into an existing repo on a review branch |
 | `/shared:new-service <name>` | shared | Bootstrap a new repo of any registered shape (`shapes.yml`; default `service-python`, `--type <shape>` to choose) |
@@ -120,6 +125,10 @@ The marketplace is published as `ika100/claude-platform` and installs as `ika100
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): how to set up, which checks to run, PR rules. [Code of Conduct](CODE_OF_CONDUCT.md).
 - [SECURITY.md](SECURITY.md): report vulnerabilities privately. [SUPPORT.md](SUPPORT.md): where to ask questions.
+
+## Reporting problems
+
+If something in a template, script, command or agent misbehaves, run **`/shared:report-issue`** in Claude Code. It drafts a GitHub issue with your platform and plugin versions, OS, tool availability and the error output, removes tokens, e-mail addresses and home-directory names, shows you the draft and files it only after your OK (without `gh` it prints a prefilled link). The agents suggest it themselves when a step fails for a platform reason. You can also open an issue by hand: [new issue](https://github.com/ika100/claude-platform/issues/new/choose).
 
 ## License
 
