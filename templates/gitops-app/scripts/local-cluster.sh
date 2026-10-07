@@ -5,6 +5,7 @@
 #
 #   local-cluster.sh up      create (or reuse) the cluster, install the Gateway API (+ ArgoCD, credentials, root app)
 #   local-cluster.sh down    delete the cluster (and its registry)
+#   local-cluster.sh ui      open k9s on the cluster, in the <app>-dev namespace (extra arguments go to k9s)
 #
 # Environment:
 #   LOCAL_CLUSTER        cluster name (default <app>-local)
@@ -336,6 +337,7 @@ Cluster ${ctx} is ready. Watch it converge:
   kubectl --context ${ctx} -n argocd get applications
   kubectl --context ${ctx} -n ${app}-dev get pods
 ${urls}Or port-forward: kubectl --context ${ctx} -n ${app}-dev port-forward svc/<service> 8080:80
+Inspect it:     devbox run cluster-ui   (k9s)
 Remove it:      devbox run cluster-down
 MSG
     else
@@ -343,8 +345,17 @@ MSG
       if [ -n "$registry_port" ]; then echo "Registry: push to localhost:${registry_port}/<image>; pods pull k3d-${registry}:${registry_port}/<image>"; fi
     fi
     ;;
+  ui)
+    if ! k get ns >/dev/null 2>&1; then
+      echo "ERROR: cluster ${ctx} is not running" >&2
+      echo "  fix: devbox run cluster-up" >&2
+      exit 1
+    fi
+    shift
+    exec k9s --context "$ctx" -n "${app}-dev" "$@"
+    ;;
   *)
-    echo "usage: $0 up|down" >&2
+    echo "usage: $0 up|down|ui" >&2
     exit 2
     ;;
 esac

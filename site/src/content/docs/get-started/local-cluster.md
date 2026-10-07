@@ -7,6 +7,7 @@ In the GitOps repository:
 
 ```bash
 devbox run cluster-up      # about 2 minutes the first time
+devbox run cluster-ui      # opens k9s on the cluster (namespace <app>-dev)
 devbox run cluster-down    # removes the cluster and its registry
 ```
 
