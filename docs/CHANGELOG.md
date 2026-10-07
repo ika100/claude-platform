@@ -6,6 +6,8 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **Spec-driven bootstrap** ([ADR-024](adr/024-spec-driven-bootstrap.md), [STORY-034](backlog.md); svc 2.2.0, shared 0.8.1): creating a service, library, web app or product now leads into planning. The *Next* steps of `/shared:new-service` and `/shared:new-app` start with `/svc:plan-feature "<description>"` (gitops-app and products: `/app:build-feature`). New `/svc:build-feature --plan <path>` builds a reviewed plan without planning again (validates the YAML block, the shape and the story ids). Stories are `STORY-NNN`, plans list `stories:`, the PR names them. Every template seeds `docs/backlog.md` and `docs/plan/` (project-owned) and a `### Spec first` section in `CLAUDE.md`; `shapes.py check` requires both. Existing repos get the `CLAUDE.md` rule with `/shared:update-service`.
+
 - **`/shared:new-app <app.yml>`** (shared plugin 0.8.0, `cplat new-app`, [STORY-033](backlog.md)): creates the gitops-app repo and every component repo of a product from a manifest (`app`, optional `org`/`visibility`, `components` with `name`, `description`, `shape`, optional `data`), then opens one `compose add` pull request for the deployable ones. Each repo goes through the same code as `/shared:new-service`. Creation order is computed (gitops-app, libraries, services, web), validation and `gh repo view` checks run before anything is created (also in `--dry-run`), a failure midway lists the repos that exist and `--resume` continues; nothing is rolled back. Replaces the 6 `new-service` + 4 `compose` commands of the end-to-end scenario.
 
 ## [3.2.0] — 2026-10-07

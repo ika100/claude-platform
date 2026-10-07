@@ -71,6 +71,10 @@ Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `app` (
 | Plan a feature across repos | `/app:build-feature <description>` |
 | List / inspect / close plans | `/app:plans list\|show\|start\|done\|abandon` |
 
+### Spec first
+
+A feature starts with a spec, not code: run `/app:build-feature <description>`, review `docs/plan/<slug>.md`, then build each repo from it with `/svc:build-feature --from-plan` (or `/app:run-plan <slug>` for every repo that is ready). Each repo's PR cites its story ids (`STORY-NNN`).
+
 ## Conventions
 
 - Branches: `compose/<slug>`, `promote/<slug>`, `feature/<slug>`, `chore/<slug>`. Never commit to `main` directly.

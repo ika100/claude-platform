@@ -13,6 +13,8 @@ _skip_if_exists:
   - src/**
   - tests/**
   - docs/adr/**
+  - docs/backlog.md
+  - docs/plan/**
 
 _tasks:
   - "git init -q -b main"

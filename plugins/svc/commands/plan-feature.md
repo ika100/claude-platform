@@ -20,14 +20,14 @@ Before starting planning work:
 
 ## Phase 1 — Product Definition
 
-Use the **product-manager** agent to produce user stories and acceptance criteria for the feature. Save to `docs/backlog.md`.
+Use the **product-manager** agent to produce user stories and acceptance criteria for the feature. Save to `docs/backlog.md` (append; ids `STORY-NNN` continue the highest existing id).
 
 ---
 
 ## Phase 2 — Architecture
 
 Use the **architect** agent to produce:
-1. An implementation plan (numbered task list) saved to `docs/plan/<feature-slug>.md`
+1. An implementation plan (numbered task list) saved to `docs/plan/<feature-slug>.md`, whose metadata lists the story ids from Phase 1 as `stories: [STORY-NNN, ...]`
 2. Any relevant ADRs in `docs/adr/`
 
 ---
@@ -49,7 +49,7 @@ Print a summary:
 ### Acceptance criteria
 - [ ] ...
 
-Run `/svc:build-feature <feature>` to execute the plan, or review the docs first.
+Review the stories and the plan, then run `/svc:build-feature --plan docs/plan/<slug>.md` to build exactly this plan.
 ```
 
 > If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

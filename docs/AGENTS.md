@@ -110,6 +110,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
                      user stories        implementation plan
                      (docs/backlog.md)   (docs/plan/<slug>.md, YAML metadata)
 
+/svc:build-feature --plan <plan> ──► skips the two phases above and builds the reviewed plan (ADR-024)
 /svc:build-feature ──►  [above] ──►  coders ║parallel║  ──►  merge+quality  ──►  tester  ──►  security  ──►  deployment
                                        │   (1 worktree per task)   │              │             │               │
                                        ▼                           ▼              ▼             ▼               ▼

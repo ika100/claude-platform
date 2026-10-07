@@ -20,6 +20,8 @@ _skip_if_exists:
   - config/**
   - .trivyignore
   - docs/adr/**
+  - docs/backlog.md
+  - docs/plan/**
   - docs/env-vars.md
 
 _exclude:

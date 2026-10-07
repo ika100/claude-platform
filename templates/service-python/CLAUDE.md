@@ -56,12 +56,16 @@ Read the platform's `docs/AGENTS.md` for the full orchestration model.
 
 | Task | Command |
 |---|---|
-| Plan a feature, no code | `/svc:plan-feature <description>` |
-| Build a feature end-to-end | `/svc:build-feature <description>` |
+| Plan a feature, no code (first step) | `/svc:plan-feature <description>` |
+| Build the approved plan | `/svc:build-feature --plan docs/plan/<slug>.md` |
 | Small change | `/svc:quick-task <description>` |
 | Fix a bug | `/svc:fix-bug <description or error>` |
 | Read-only quality + security audit | `/shared:check-quality` |
 | Release | `/svc:release` |
+
+### Spec first
+
+A feature starts with a spec, not code: run `/svc:plan-feature <description>`, review the stories in `docs/backlog.md` and the plan in `docs/plan/<slug>.md`, then build it with `/svc:build-feature --plan docs/plan/<slug>.md`. The PR cites the story ids (`STORY-NNN`). Small changes (`/svc:quick-task`) and bug fixes (`/svc:fix-bug`) are exempt.
 
 ## Feature Branch Workflow
 

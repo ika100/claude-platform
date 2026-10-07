@@ -108,8 +108,8 @@ You can start immediately after Chapter 1: the feature branch is cut from the bo
 In `taskboard-api`, inside Claude Code:
 
 ```
-/svc:plan-feature "ping endpoint"           # optional: stories + plan only, no code
-/svc:build-feature "ping endpoint"          # the full pipeline
+/svc:plan-feature "ping endpoint"           # stories in docs/backlog.md + a plan in docs/plan/; no code. Review both.
+/svc:build-feature --plan docs/plan/ping-endpoint.md   # builds exactly that plan
 ```
 
 What `/svc:build-feature` does (you watch phase headers, you are only asked before pushing):
@@ -230,7 +230,7 @@ Everything here is a declaration in the GitOps repo; `render.py` turns it into m
 /shared:new-service taskboard-api  Task API --app me/taskboard
 /shared:new-service taskboard-web  Frontend --web --app me/taskboard
 
-(in each service)   /svc:build-feature "first feature"      → PR → merge → image pushed
+(in each service)   /svc:plan-feature "first feature" → review → /svc:build-feature --plan docs/plan/<slug>.md  → PR → merge → image pushed
 (in taskboard)      /gitops:compose add taskboard-api taskboard-web
                     /gitops:promote taskboard-api taskboard-web dev staging
 (in each service)   /svc:release                              → vX.Y.Z → semver image

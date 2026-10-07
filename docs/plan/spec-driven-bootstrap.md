@@ -3,7 +3,7 @@ plan_id: spec-driven-bootstrap
 shape: none   # the platform repo itself; not a key in shapes.yml
 summary: New services, libraries, web apps and products start with plan-feature, and build-feature consumes the approved plan, so spec and code stay tied
 story: STORY-034
-status: draft
+status: implemented   # t1-t6 done on branch feature/spec-driven-bootstrap; seed backlog.md is a plain file (no .jinja needed)
 tasks:
   - id: t1
     title: Seed docs/backlog.md and docs/plan/ in every template

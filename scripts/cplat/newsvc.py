@@ -135,11 +135,14 @@ def plan(req: dict) -> Report:
 
 def _next_steps(req: dict) -> list[str]:
     n, shape = req["name"], req["shape"]
+    desc = (req.get("description") or "<your first feature>").replace('"', "'")
     if shape == "gitops-app":
         return [f"cd {n} && devbox shell", "devbox run quality", f"/gitops:compose add <service>  (after the services exist)",
+                '/app:build-feature "<first feature of the product>"   # spec first: a reviewed plan across the repos, then /app:run-plan <slug>',
                 "devbox run cluster-up   # local k3d + ArgoCD (needs Docker)"]
     return [f"cd {n} && devbox shell", "devbox run quality && devbox run test",
-            "/svc:build-feature <your first feature>   # starts its own feature branch right away; the bootstrap CI runs in parallel, do not wait for it"]
+            f'/svc:plan-feature "{desc}"   # spec first: stories in docs/backlog.md and a plan in docs/plan/; review both',
+            "/svc:build-feature --plan docs/plan/<slug>.md   # builds the approved plan on its own feature branch right away; the bootstrap CI runs in parallel, do not wait for it"]
 
 
 def execute(req: dict) -> Report:

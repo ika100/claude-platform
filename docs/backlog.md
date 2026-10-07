@@ -401,7 +401,7 @@ components:
 - [ ] Interactive mode is out of scope for this story.
 
 #### STORY-034: Every new repo and app starts spec-first
-**Status:** planned · **Priority:** P0 · **Source:** user request 2026-10-07 · **Plan:** [plan/spec-driven-bootstrap.md](plan/spec-driven-bootstrap.md)
+**Status:** done · **Priority:** P0 · **Source:** user request 2026-10-07 · **Plan:** [plan/spec-driven-bootstrap.md](plan/spec-driven-bootstrap.md) · **ADR:** [024](adr/024-spec-driven-bootstrap.md)
 
 As a founder, I want creating a service, library, web app or whole product to lead into `plan-feature` and then `build-feature`, so that every feature has a reviewed story and plan before code, and the repo always holds the artifacts (`docs/backlog.md`, `docs/plan/<slug>.md`) that tie the code to its spec.
 
