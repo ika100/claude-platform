@@ -3,7 +3,7 @@ plan_id: issue-triage
 shape: none   # the platform repo itself; not a key in shapes.yml
 summary: /shared:triage reads new issues, discusses gaps with the user, and routes each to backlog, quick-task, fix-bug or a reply
 story: STORY-035
-status: draft
+status: implemented   # t1-t5 done on branch feature/issue-triage
 tasks:
   - id: t1
     title: cplat triage (list, show, setup-labels, apply) with tests

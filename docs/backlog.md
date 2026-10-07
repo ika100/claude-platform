@@ -416,7 +416,7 @@ As a founder, I want creating a service, library, web app or whole product to le
 - [ ] Tests cover the bootstrap output of each shape, the templates' seed files and rule, and the plan validation of `--plan`.
 
 #### STORY-035: Triage new issues with the user and route them
-**Status:** planned · **Priority:** P1 · **Source:** user request 2026-10-07 · **Plan:** [plan/issue-triage.md](plan/issue-triage.md)
+**Status:** done · **Priority:** P1 · **Source:** user request 2026-10-07 · **Plan:** [plan/issue-triage.md](plan/issue-triage.md) · **ADR:** [025](adr/025-issue-triage.md)
 
 As a maintainer of a repo built on the platform (or of the platform itself), I want `/shared:triage` to read new GitHub issues, discuss unclear ones with me, and route each to the right path (backlog story, quick task, bug fix, or a reply), so that issues become tracked work with the right amount of process instead of piling up.
 

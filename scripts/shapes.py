@@ -119,6 +119,9 @@ def check_contract(shapes: list[dict]) -> list[str]:
             errs.append(f"{sid}: CLAUDE.md has no '### Spec first' section (ADR-024)")
         if not (tdir / "docs" / "plan").is_dir():
             errs.append(f"{sid}: template has no docs/plan/ (ADR-024)")
+        for form in ("bug_report.yml", "feature_request.yml", "config.yml"):
+            if not (tdir / ".github" / "ISSUE_TEMPLATE" / form).is_file():
+                errs.append(f"{sid}: template has no .github/ISSUE_TEMPLATE/{form} (ADR-025)")
         if sid != "gitops-app" and not (tdir / "docs" / "backlog.md").is_file():
             errs.append(f"{sid}: template has no docs/backlog.md (ADR-024)")
         settings = _template_file(tdir / ".claude", "settings.json")

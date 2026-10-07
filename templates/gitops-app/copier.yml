@@ -15,6 +15,7 @@ _answers_file: .copier-answers.yml
 
 # Project-owned once generated: /shared:update-service must not overwrite these.
 _skip_if_exists:
+  - .github/ISSUE_TEMPLATE/**
   - applications/**/services.yaml
   - applications/**/overlays/**
   - applications/**/applicationset.yaml
