@@ -200,7 +200,7 @@ jobs:
         run: |
           docker build -t smoke:web .
           docker run -d --name smoke --read-only --tmpfs /tmp --tmpfs /app/.next/cache -p 3000:3000 smoke:web
-          for i in $(seq 1 30); do curl -sf localhost:3000/api/health && exit 0; sleep 2; done
+          for _ in $(seq 1 30); do curl -sf localhost:3000/api/health && exit 0; sleep 2; done
           docker logs smoke; exit 1
       - name: Variant — e2e on, observability off
         run: |
@@ -264,7 +264,7 @@ jobs:
         run: |
           docker build --build-arg VERSION=v0.0.0 -t smoke:go .
           docker run -d --name smoke --read-only -p 8080:8080 smoke:go
-          for i in $(seq 1 20); do curl -sf localhost:8080/health && exit 0; sleep 2; done
+          for _ in $(seq 1 20); do curl -sf localhost:8080/health && exit 0; sleep 2; done
           docker logs smoke; exit 1
 
   smoke-test-service-java:
@@ -307,7 +307,7 @@ jobs:
         run: |
           docker build -t smoke:java .
           docker run -d --name smoke --read-only --tmpfs /tmp -p 8080:8080 -e OTEL_SDK_DISABLED=true smoke:java
-          for i in $(seq 1 40); do curl -sf localhost:8080/actuator/health/readiness && exit 0; sleep 3; done
+          for _ in $(seq 1 40); do curl -sf localhost:8080/actuator/health/readiness && exit 0; sleep 3; done
           docker logs smoke; exit 1
 
   pr-title:
