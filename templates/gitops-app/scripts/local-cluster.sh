@@ -124,6 +124,7 @@ YAML
       urls="${urls}Exposed:        http://${host}:${port}/   (once the workloads are running)\n"
     done
     urls=$(printf '%b' "$urls")
+    if [ -n "$urls" ]; then urls="${urls}"$'\n'; fi   # command substitution strips the trailing newline
 
     if [ "$with_argo" = 1 ]; then
       echo "Applying the root Application"
