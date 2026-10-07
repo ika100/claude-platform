@@ -139,9 +139,9 @@ echo "ok   postgres reachable with the generated credentials; e2e-api consumes D
 
 step "OpenTelemetry: services are wired to the collector, telemetry reaches it"
 kc get deploy e2e-api -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="OTEL_EXPORTER_OTLP_ENDPOINT")].value}' | grep -q "http://otel-collector:4318" || fail "e2e-api has no OTEL endpoint"
-code=$(kc run otlp-push --rm -i --restart=Never --image=curlimages/curl:8.10.1 --command -- curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+code=$(kc run otlp-push --rm -i --restart=Never --image=curlimages/curl:8.10.1 --command -- curl -s -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
   -d '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"e2e-probe"}}]},"scopeSpans":[{"spans":[{"traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331","name":"probe","kind":1,"startTimeUnixNano":"1700000000000000000","endTimeUnixNano":"1700000001000000000"}]}]}]}' \
-  http://otel-collector:4318/v1/traces 2>/dev/null | head -1)
+  http://otel-collector:4318/v1/traces 2>/dev/null | grep -oE '^[0-9]{3}' | head -1)
 [ "$code" = 200 ] || fail "the collector rejected an OTLP/HTTP trace (HTTP $code)"
 for _ in $(seq 1 30); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Traces' && break; sleep 2; done
 kc logs deploy/otel-collector | grep -q 'info	Traces' || fail "the pushed trace never reached the collector pipeline"
