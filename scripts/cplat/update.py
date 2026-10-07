@@ -49,8 +49,16 @@ def resolve(argv: list[str]) -> dict:
             "dry_run": ns.dry_run, "json": ns.json}
 
 
-def branch_name() -> str:
-    return "chore/platform-update-" + datetime.date.today().strftime("%Y%m%d")
+def branch_name(repo: Path | None = None) -> str:
+    """chore/platform-update-YYYYMMDD, with -2, -3, … when that branch already exists (a second update the same day)."""
+    base = "chore/platform-update-" + datetime.date.today().strftime("%Y%m%d")
+    if repo is None:
+        return base
+    taken = set(run(["git", "branch", "--list", "--format=%(refname:short)", base + "*"], cwd=repo).stdout.split())
+    name, n = base, 2
+    while name in taken:
+        name, n = f"{base}-{n}", n + 1
+    return name
 
 
 def plan(req: dict) -> Report:
@@ -58,7 +66,7 @@ def plan(req: dict) -> Report:
     r = Report(title=f"Update {req['repo'].name} ({req['shape']}) from platform {was} → {req['new']}")
     cur = run(["git", "symbolic-ref", "--short", "HEAD"], cwd=req["repo"], check=False).stdout.strip()
     if cur in ("main", "master"):
-        r.will_do.append(f"create review branch {branch_name()}")
+        r.will_do.append(f"create review branch {branch_name(req['repo'])}")
     r.will_do.append(f"re-apply templates/{req['template']} with the repo's recorded answers" + (f" plus {', '.join(req['data'])}" if req["data"] else ""))
     r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, devbox.json, CLAUDE.md, …); project-owned files are never touched")
     if req["migrate"]:
@@ -72,9 +80,10 @@ def execute(req: dict) -> Report:
     repo: Path = req["repo"]
     r = plan(req)
     cur = run(["git", "symbolic-ref", "--short", "HEAD"], cwd=repo).stdout.strip()
+    branch = branch_name(repo)
     if cur in ("main", "master"):
-        run(["git", "checkout", "-q", "-b", branch_name()], cwd=repo)
-        r.did.append(f"created branch {branch_name()}")
+        run(["git", "checkout", "-q", "-b", branch], cwd=repo)
+        r.did.append(f"created branch {branch}")
     before = (repo / ".copier-answers.yml").read_text()
 
     cmd = [*core.find_copier(), "copy", str(PLATFORM_ROOT / "templates" / req["template"]), ".", "--data-file", ".copier-answers.yml",
@@ -96,12 +105,12 @@ def execute(req: dict) -> Report:
     if not changed:
         if cur in ("main", "master"):  # do not leave an empty review branch behind
             run(["git", "checkout", "-q", cur], cwd=repo)
-            run(["git", "branch", "-D", branch_name()], cwd=repo)
+            run(["git", "branch", "-D", branch], cwd=repo)
         r.did.append(f"already up to date with platform {req['new']} — nothing changed")
         return r
     run(["git", "add", "-A"], cwd=repo)
     run(["git", *core.git_identity(repo), "commit", "-q", "-m", f"chore: update skeleton from platform {req['new']}"], cwd=repo)
-    r.did.append(f"re-applied the template; {len(changed)} file(s) changed, committed on {branch_name() if cur in ('main','master') else cur}")
+    r.did.append(f"re-applied the template; {len(changed)} file(s) changed, committed on {branch if cur in ('main','master') else cur}")
     notes = core.changelog_between(req["old"], req["new"])
     r.data = {"changed": changed, "modified": modified, "new_answers": new_keys, "changelog": notes}
     if modified:
@@ -111,7 +120,7 @@ def execute(req: dict) -> Report:
     if notes:
         r.next_steps.append("platform changes since your version are in docs/CHANGELOG.md of claude-platform (see changelog in --json output)")
     r.next_steps.append("run the repo's checks: devbox run quality && devbox run test-fast, then push the branch and open a PR")
-    r.undo.append(f"git checkout {cur} && git branch -D {branch_name()}" if cur in ("main", "master") else "git reset --hard HEAD~1")
+    r.undo.append(f"git checkout {cur} && git branch -D {branch}" if cur in ("main", "master") else "git reset --hard HEAD~1")
     return r
 
 

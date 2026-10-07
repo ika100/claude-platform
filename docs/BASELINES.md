@@ -17,8 +17,8 @@ Measured on the todo end-to-end run (2026-10-06/07, Apple silicon laptop, GitHub
 
 | Step | v1.1.1 | v2 target |
 |---|---|---|
-| Web image build, multi-arch via QEMU | ≈ 9 min | ≈ 3 min (native arm64 runner) |
-| Java image build (multi-arch, native builder stage) | ≈ 3 min | ≤ 3 min |
+| Web image build, multi-arch | ≈ 9 min (QEMU) | **≈ 3 min measured** (arm64 104 s ‖ amd64 155 s + 28 s manifest merge, native runners) |
+| Java image build (multi-arch) | ≈ 3 min | **≈ 2 min measured** (amd64 116 s ‖ arm64 121 s + 16 s) |
 | Generated CI job (quality/test/security) | 2–3 min each | −30 s (leaner devbox) |
 | `devbox run cluster-up` from scratch | ≈ 2.5 min | ≈ 2.5 min incl. Gateway API |
 | Platform CI (PR) | 3–4 min | ≤ 4 min incl. unit + e2e smoke |

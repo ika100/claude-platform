@@ -23,6 +23,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 - `shapes.yml` `runtime:` defaults per deployable shape (validated by `shapes.py check`).
 - `docs/adr/017-gitops-owns-manifests.md`; CI renders a fixture product and runs the label check, `kubectl kustomize` and kubeconform on the generated manifests; offline `validate` in generated gitops repos.
 
+### Faster / more stable CI
+
+- **Native multi-arch image builds**: the `docker` job is a matrix (amd64 on `ubuntu-latest`, arm64 on `ubuntu-24.04-arm`, verified available for private repos) that pushes by digest; `docker-publish` merges the digests into one manifest with the usual tags. PRs build amd64 only. Measured: web ≈ 9 → ≈ 3 min, Java ≈ 3 → ≈ 2 min (`docs/BASELINES.md`).
+- Docs-only pushes (`**.md`, `docs/**`, `.claude/**`) skip CI on branches (PRs and tags always run); `.github/dependabot.yml` in every service template (language ecosystem, Actions, Docker).
+- **`actionlint`** runs over the platform's workflows and every generated repo's workflows in CI (it caught a corrupted expression on its first run). `update-service` picks a unique branch name when one with today's date exists.
+
 ### Removed
 
 `SERVICE_REPOS_TOKEN` and Argo credentials for service repos (Argo reads only the gitops repo), `?ref=` handling, service-side `overlays/` and PrometheusRule files (alerting is a gitops-side follow-up).
