@@ -89,3 +89,10 @@ def test_go_is_all_or_nothing_when_part_of_the_update_cannot_be_applied(tmp_path
     assert changed == []
     assert (dest / "go.mod.jinja").read_text() == original
     assert any("rolled back" in s for s in skipped)
+
+
+def test_protected_lines_are_never_bumped():
+    old = '  "packageManager": "pnpm@11.22.0",\n  "x": "^1.0.0",\n'
+    new = '  "packageManager": "pnpm@11.28.5",\n  "x": "^1.0.1",\n'
+    out, skipped = b.copy_back(old, new, old)
+    assert '"pnpm@11.22.0"' in out and '"^1.0.1"' in out and skipped == []
