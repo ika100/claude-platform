@@ -11,7 +11,7 @@ flowchart LR
     A["agents<br/>coder, tester, …"]
   end
   S["scripts/cplat (tested Python)<br/>new-service · update-service · compose · promote · status · doctor"]
-  P[("claude-platform repo<br/>templates · shapes.yml · scripts")]
+  P[("sdlc-foundry repo<br/>templates · shapes.yml · scripts")]
   subgraph GH["GitHub"]
     SR["service repos<br/>(code + Dockerfile + CI)"]
     GR["gitops-app repo<br/>(services.yaml → manifests)"]
@@ -103,7 +103,7 @@ Add `policies: {}` to `app.yaml` and the platform renders Kyverno policies for e
 
 ## 6. Keep it current
 
-- Agents/commands: `claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.
+- Agents/commands: `claude plugin marketplace update sdlc-foundry && claude plugin update <name>@sdlc-foundry`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.
 - Skeleton (CI, Dockerfile, devbox recipes, CLAUDE.md): `/shared:update-service` re-applies the template on a review branch; project-owned files are never touched.
 - Overview: `/shared:status --context <kube-context>`; setup check: `/shared:doctor`.
 

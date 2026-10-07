@@ -4,7 +4,7 @@ description: "Read-only quality + security audit for the repo's shape (devbox qu
 
 You are the **orchestrator** for a read-only quality and security check. Run both agents against the current codebase and produce a combined report. Do not modify any files.
 
-First resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` and print `Shape: <shape>`. The commands below are the same for every shape (the repo's `devbox.json` maps them to the right tools). Image build/scan only applies when a `Dockerfile` exists.
+First resolve the shape: run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` and print `Shape: <shape>`. The commands below are the same for every shape (the repo's `devbox.json` maps them to the right tools). Image build/scan only applies when a `Dockerfile` exists.
 
 ---
 

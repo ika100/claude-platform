@@ -30,14 +30,14 @@ for (const plugin of plugins) {
   });
   commands += `\n## ${plugin} (version ${pluginMeta[plugin].version})\n\n${mdTableCell(pluginMeta[plugin].description).replace(/\\\|/g, '|')}\n\n| Command | What it does | Usage |\n|---|---|---|\n${rows.join('\n')}\n`;
 }
-write('commands.md', 'Slash commands', `All ${count} slash commands of the claude-platform plugins, generated from the plugin sources.`,
-  `These pages are generated from \`plugins/*/commands/*.md\`. Install the plugins with \`/plugin marketplace add ika100/claude-platform\` and \`/plugin install <name>@ika100-claude\`.\n${commands}`, 1);
+write('commands.md', 'Slash commands', `All ${count} slash commands of the sdlc-foundry plugins, generated from the plugin sources.`,
+  `These pages are generated from \`plugins/*/commands/*.md\`. Install the plugins with \`/plugin marketplace add ika100/sdlc-foundry\` and \`/plugin install <name>@sdlc-foundry\`.\n${commands}`, 1);
 
 // ---- shapes ----
 const shapes = YAML.parse(read('shapes.yml')).shapes;
 const shapeRows = shapes.map((s) => `| \`${s.id}\` | ${s.plugin} | \`templates/${s.template}\` | ${s.deployable ? 'yes' : 'no'} | ${s.default_stack ? mdTableCell(Object.values(s.default_stack).join(' / ')) : ''} | ${s.runtime ? `${s.runtime.port}; \`${s.runtime.probes.readiness}\`; \`${s.runtime.metrics ?? '-'}\`` : '-'} | ${s.status} |`);
 write('shapes.md', 'Shapes', 'The repository shapes the platform can create and operate, generated from shapes.yml.',
-  `A **shape** is a kind of repository. It decides which template creates it and which agents work on it. This table is generated from \`shapes.yml\`, the single source of truth.\n\n| Shape | Plugin | Template | Deployable | Default stack | Port; readiness probe; metrics path | Status |\n|---|---|---|---|---|---|---|\n${shapeRows.join('\n')}\n\nTo add a shape, follow [Adding a new shape](/claude-platform/guides/add-a-shape/).\n`, 2);
+  `A **shape** is a kind of repository. It decides which template creates it and which agents work on it. This table is generated from \`shapes.yml\`, the single source of truth.\n\n| Shape | Plugin | Template | Deployable | Default stack | Port; readiness probe; metrics path | Status |\n|---|---|---|---|---|---|---|\n${shapeRows.join('\n')}\n\nTo add a shape, follow [Adding a new shape](/sdlc-foundry/guides/add-a-shape/).\n`, 2);
 
 // ---- configuration ----
 const render = read('templates/gitops-app/scripts/render.py');

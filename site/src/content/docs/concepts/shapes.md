@@ -13,4 +13,4 @@ Every repository has a **shape**: `service-python`, `service-java`, `service-go`
 
 The orchestration commands (`/svc:build-feature` and friends) are the same for every shape; the shape is detected from the repository and the right agents are routed in. All shapes share the same `devbox run` recipes, so humans, CI and agents behave identically.
 
-The registry is `shapes.yml`, the single source of truth, validated by `scripts/shapes.py check`. See the generated [shapes table](/claude-platform/reference/shapes/) and [how to add one](/claude-platform/guides/add-a-shape/).
+The registry is `shapes.yml`, the single source of truth, validated by `scripts/shapes.py check`. See the generated [shapes table](/sdlc-foundry/reference/shapes/) and [how to add one](/sdlc-foundry/guides/add-a-shape/).

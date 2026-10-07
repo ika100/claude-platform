@@ -1,12 +1,12 @@
 version = 1
-SPDX-PackageName = "claude-platform"
-SPDX-PackageDownloadLocation = "https://github.com/ika100/claude-platform"
+SPDX-PackageName = "sdlc-foundry"
+SPDX-PackageDownloadLocation = "https://github.com/ika100/sdlc-foundry"
 
 # Everything is Apache-2.0 unless a more specific annotation below says otherwise (REUSE specification 3.x).
 [[annotations]]
 path = "**"
 precedence = "aggregate"
-SPDX-FileCopyrightText = "2026 Eike Hensler and claude-platform contributors"
+SPDX-FileCopyrightText = "2026 Eike Hensler and sdlc-foundry contributors"
 SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
@@ -18,5 +18,5 @@ SPDX-License-Identifier = "CC-BY-4.0"
 [[annotations]]
 path = "templates/web-nextjs/app/_components/icons.tsx"
 precedence = "override"
-SPDX-FileCopyrightText = ["2026 Eike Hensler and claude-platform contributors", "2026 Lucide Icons and Contributors"]
+SPDX-FileCopyrightText = ["2026 Eike Hensler and sdlc-foundry contributors", "2026 Lucide Icons and Contributors"]
 SPDX-License-Identifier = "Apache-2.0 AND ISC"

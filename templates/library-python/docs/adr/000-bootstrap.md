@@ -6,13 +6,13 @@ Accepted on bootstrap.
 
 ## Context
 
-`{{ project_name }}` was created from the `library-python` Copier template at `ika100/claude-platform`. This template encodes the library-flavored conventions:
+`{{ project_name }}` was created from the `library-python` Copier template at `ika100/sdlc-foundry`. This template encodes the library-flavored conventions:
 
 - Python {{ python_version }} via devbox
 - pytest with ≥80% coverage gate
 - ruff + mypy for quality
 - pip-audit + detect-secrets + bandit for security
-- Claude Code agents from `ika100-claude` (`svc` + `shared`)
+- Claude Code agents from `sdlc-foundry` (`svc` + `shared`)
 
 No HTTP server, no Dockerfile, no k8s — this is a library distributed as a wheel.
 

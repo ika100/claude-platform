@@ -33,7 +33,7 @@ By default `cluster-up` uses your `gh` login for ArgoCD and for the image pull s
 
 ## Options
 
-All environment variables (versions, `WITH_*` switches, ports, registry) are listed in the [configuration reference](/claude-platform/reference/configuration/#devbox-run-cluster-up-local-clustersh). Examples:
+All environment variables (versions, `WITH_*` switches, ports, registry) are listed in the [configuration reference](/sdlc-foundry/reference/configuration/#devbox-run-cluster-up-local-clustersh). Examples:
 
 ```bash
 LOCAL_HTTP_PORT=9090 devbox run cluster-up   # different host port

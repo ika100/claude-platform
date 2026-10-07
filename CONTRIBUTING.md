@@ -1,13 +1,13 @@
-# Contributing to claude-platform
+# Contributing to sdlc-foundry
 
-Thanks for helping. claude-platform is a marketplace of Claude Code plugins (agents and slash commands), Copier templates and a small tested CLI (`cplat`) that together take a product from "new repo" to "running in Kubernetes via GitOps". Changes here reach every repo generated from it, so we favour small, tested, well-explained pull requests.
+Thanks for helping. sdlc-foundry is a marketplace of Claude Code plugins (agents and slash commands), Copier templates and a small tested CLI (`cplat`) that together take a product from "new repo" to "running in Kubernetes via GitOps". Changes here reach every repo generated from it, so we favour small, tested, well-explained pull requests.
 
-By contributing you agree that your contribution is licensed under the [Apache License 2.0](LICENSE) (inbound = outbound; no CLA, no DCO sign-off required). Please read the [Code of Conduct](CODE_OF_CONDUCT.md).
+By contributing you agree that your contribution is licensed under the [Apache License 2.0](LICENSE) (inbound = outbound; no CLA) and that you have the right to submit it: sign your commits as described under [Sign your commits](#sign-your-commits-dco). Please read the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Ways to contribute
 
-- **Report a problem or an idea.** In Claude Code run `/shared:report-issue`: it drafts the issue with your versions and the error output and removes secrets before anything is sent. Or [open an issue](https://github.com/ika100/claude-platform/issues/new/choose) yourself.
-- **Ask a question or share a use case** in [Discussions](https://github.com/ika100/claude-platform/discussions).
+- **Report a problem or an idea.** In Claude Code run `/shared:report-issue`: it drafts the issue with your versions and the error output and removes secrets before anything is sent. Or [open an issue](https://github.com/ika100/sdlc-foundry/issues/new/choose) yourself.
+- **Ask a question or share a use case** in [Discussions](https://github.com/ika100/sdlc-foundry/discussions).
 - **Fix a bug, improve docs, add a template, agent or command** with a pull request (below). For anything larger than a fix, open an issue first so we can agree on the approach.
 - **Security issues** go through [SECURITY.md](SECURITY.md), not public issues.
 
@@ -30,7 +30,7 @@ Read [CLAUDE.md](CLAUDE.md) (conventions and "how to add X" recipes), [docs/AGEN
 You need `git`, [`uv`](https://docs.astral.sh/uv/) and `copier` (`uv tool install copier`). Docker, `kubectl` and `k3d` are only needed for the end-to-end test. [`devbox`](https://www.jetify.com/devbox) provides the same tools in one shell (`devbox shell`).
 
 ```bash
-git clone https://github.com/ika100/claude-platform && cd claude-platform
+git clone https://github.com/ika100/sdlc-foundry && cd sdlc-foundry
 ```
 
 ## Checks to run before you open a PR
@@ -51,10 +51,10 @@ CI runs the same checks plus a smoke test per template (generated repos must pas
 
 ## Documentation site
 
-The site at <https://ika100.github.io/claude-platform/> is built from `site/` (Astro Starlight). Narrative pages (vision, problem, value, scenarios, concepts, get started) live in `site/src/content/docs`; the guides, ADRs, changelog and community pages are **synced from the repository's Markdown** at build time, and the command, shape, configuration and CLI reference pages are **generated from the code**, so edit the source (`docs/`, `plugins/`, `shapes.yml`, `render.py`), not the copies. Preview locally:
+The site at <https://ika100.github.io/sdlc-foundry/> is built from `site/` (Astro Starlight). Narrative pages (vision, problem, value, scenarios, concepts, get started) live in `site/src/content/docs`; the guides, ADRs, changelog and community pages are **synced from the repository's Markdown** at build time, and the command, shape, configuration and CLI reference pages are **generated from the code**, so edit the source (`docs/`, `plugins/`, `shapes.yml`, `render.py`), not the copies. Preview locally:
 
 ```bash
-cd site && npm ci --ignore-scripts && npm run dev      # http://localhost:4321/claude-platform/
+cd site && npm ci --ignore-scripts && npm run dev      # http://localhost:4321/sdlc-foundry/
 npm test && npm run build                              # unit tests, then a full build that fails on a broken internal link
 ```
 
@@ -66,6 +66,17 @@ CI builds the site on pull requests that touch its inputs; merging to `main` pub
 - **AI-assisted contributions are welcome**, under the same rule: you are responsible for what you submit. Mention substantial AI assistance in the PR description and check generated code for copied snippets.
 - **Third-party material** (code, icons, fonts, text) needs its license text in `LICENSES/`, an entry in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and an override in `REUSE.toml`; `reuse lint` (in CI) enforces that every file has license and copyright information.
 - **Privacy.** Commit author names and e-mail addresses are public and permanent. Use your GitHub `@users.noreply.github.com` address if you do not want to publish a personal one.
+
+## Sign your commits (DCO)
+
+Every commit of a pull request needs a `Signed-off-by: Your Name <you@example.com>` line, which certifies the [Developer Certificate of Origin](https://developercertificate.org/): you wrote the change or otherwise have the right to submit it under this project's license. Git adds the line with `-s`:
+
+```bash
+git commit -s -m "feat(web): ..."          # new commits
+git rebase --signoff origin/main           # sign off the commits of an existing branch, then force-push your branch
+```
+
+The sign-off e-mail must be the commit's author or committer e-mail (use your GitHub `@users.noreply.github.com` address if you prefer). The `DCO sign-off` CI job (`scripts/check-dco.py`) checks every non-merge commit of the PR; bots such as Dependabot are exempt. Commits the maintainer makes with Claude Code are signed off by the maintainer, who reviews them.
 
 ## Pull request rules
 

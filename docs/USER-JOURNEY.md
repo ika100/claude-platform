@@ -10,7 +10,7 @@ A guided walk-through of the whole platform, told through one made-up product, *
 
 ```
                           ┌────────────────────────────┐
-                          │  ika100/claude-platform    │   one marketplace repo
+                          │  ika100/sdlc-foundry    │   one marketplace repo
                           │  plugins  +  templates     │
                           └──────────┬─────────────────┘
         /plugin install              │ /shared:new-service            /shared:update-service
@@ -48,8 +48,8 @@ Three ideas carry everything:
 Make the platform's commands available (once per machine/user, or pre-wired in each repo — step 1 of every new repo does that for you):
 
 ```
-/plugin marketplace add ika100/claude-platform
-/plugin install shared@ika100-claude
+/plugin marketplace add ika100/sdlc-foundry
+/plugin install shared@sdlc-foundry
 ```
 
 You can already create repos with just `shared`. Every generated repo enables the plugins it needs.
@@ -200,7 +200,7 @@ Everything here is a declaration in the GitOps repo; `render.py` turns it into m
 | Traces and metrics | `/gitops:addon add observability --ui lgtm` | An OpenTelemetry collector per environment, `OTEL_*` in every service, a local Grafana at `http://grafana.localhost:8088` |
 | Policy | add `policies: {}` to `app.yaml` | Kyverno policies per environment (Audit in dev and staging, Enforce in production) and an offline check in `devbox run validate` |
 
-`devbox run cluster-up` installs whichever operators these declarations need on your local cluster; on a real cluster they must be installed by its owner. Limits: the Postgres addon has no backups or pooling, observability ships no alert rules. Concept pages on the documentation site: [addons](https://ika100.github.io/claude-platform/concepts/addons/), [secrets](https://ika100.github.io/claude-platform/concepts/secrets/), [guard rails](https://ika100.github.io/claude-platform/concepts/guard-rails/).
+`devbox run cluster-up` installs whichever operators these declarations need on your local cluster; on a real cluster they must be installed by its owner. Limits: the Postgres addon has no backups or pooling, observability ships no alert rules. Concept pages on the documentation site: [addons](https://ika100.github.io/sdlc-foundry/concepts/addons/), [secrets](https://ika100.github.io/sdlc-foundry/concepts/secrets/), [guard rails](https://ika100.github.io/sdlc-foundry/concepts/guard-rails/).
 
 ---
 

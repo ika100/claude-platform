@@ -22,10 +22,10 @@ description: "Install the plugins, check your setup and create a first product i
 In Claude Code:
 
 ```text
-/plugin marketplace add ika100/claude-platform
-/plugin install shared@ika100-claude
-/plugin install svc@ika100-claude
-/plugin install gitops@ika100-claude
+/plugin marketplace add ika100/sdlc-foundry
+/plugin install shared@sdlc-foundry
+/plugin install svc@sdlc-foundry
+/plugin install gitops@sdlc-foundry
 ```
 
 Add `web`, `svc-java`, `svc-go` and `app` for the shapes you use. After installing or updating plugins, **restart Claude Code**: a running session keeps the old prompts.
@@ -46,16 +46,16 @@ It checks the tools above, `gh` scopes, Docker, your kube context (and warns whe
 /shared:new-service shop-web Storefront --web
 ```
 
-Each command shows what it will do and asks before anything outward-facing (creating the GitHub repository, pushing). The default shape is `service-python`; `--type` picks any registered [shape](/claude-platform/reference/shapes/).
+Each command shows what it will do and asks before anything outward-facing (creating the GitHub repository, pushing). The default shape is `service-python`; `--type` picks any registered [shape](/sdlc-foundry/reference/shapes/).
 
 ## 5. Build, compose, run
 
-1. In a service repository: `/svc:build-feature <what you want>` (or `/svc:quick-task` for a small change). See [Build a feature](/claude-platform/scenarios/build-a-feature/).
+1. In a service repository: `/svc:build-feature <what you want>` (or `/svc:quick-task` for a small change). See [Build a feature](/sdlc-foundry/scenarios/build-a-feature/).
 2. When CI has published the first image: `/gitops:compose add shop-api` in the GitOps repository, then merge the pull request.
-3. [Run it on your laptop](/claude-platform/get-started/local-cluster/).
+3. [Run it on your laptop](/sdlc-foundry/get-started/local-cluster/).
 
 ## Where to go next
 
-- The whole story with every command: [User journey](/claude-platform/guides/user-journey/).
-- Concepts in five minutes: [Concepts](/claude-platform/concepts/).
-- Something broke: [Troubleshooting](/claude-platform/guides/adopting/#troubleshooting) or `/shared:report-issue`.
+- The whole story with every command: [User journey](/sdlc-foundry/guides/user-journey/).
+- Concepts in five minutes: [Concepts](/sdlc-foundry/concepts/).
+- Something broke: [Troubleshooting](/sdlc-foundry/guides/adopting/#troubleshooting) or `/shared:report-issue`.

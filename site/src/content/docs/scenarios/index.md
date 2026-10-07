@@ -7,12 +7,12 @@ description: "Seven concrete situations, the commands you run and what you get, 
 
 | Scenario | Situation |
 |---|---|
-| [Ship a product from zero](/claude-platform/scenarios/ship-a-product/) | You have an idea and no repositories |
-| [Build a feature with the agent pipeline](/claude-platform/scenarios/build-a-feature/) | A service exists; you need a new capability |
-| [Promote to production safely](/claude-platform/scenarios/promote-safely/) | Dev works; staging and production must follow, reviewably |
-| [Add Postgres, secrets and observability](/claude-platform/scenarios/addons-secrets-observability/) | The service needs a database, credentials and telemetry |
-| [Adopt an existing repository](/claude-platform/scenarios/adopt-existing/) | You already have services and want the platform's flow |
-| [Harden for an audit](/claude-platform/scenarios/harden-for-audit/) | Someone asks how supply chain and runtime are controlled |
-| [Extend the platform](/claude-platform/scenarios/extend-the-platform/) | You need a language or addon the platform does not have |
+| [Ship a product from zero](/sdlc-foundry/scenarios/ship-a-product/) | You have an idea and no repositories |
+| [Build a feature with the agent pipeline](/sdlc-foundry/scenarios/build-a-feature/) | A service exists; you need a new capability |
+| [Promote to production safely](/sdlc-foundry/scenarios/promote-safely/) | Dev works; staging and production must follow, reviewably |
+| [Add Postgres, secrets and observability](/sdlc-foundry/scenarios/addons-secrets-observability/) | The service needs a database, credentials and telemetry |
+| [Adopt an existing repository](/sdlc-foundry/scenarios/adopt-existing/) | You already have services and want the platform's flow |
+| [Harden for an audit](/sdlc-foundry/scenarios/harden-for-audit/) | Someone asks how supply chain and runtime are controlled |
+| [Extend the platform](/sdlc-foundry/scenarios/extend-the-platform/) | You need a language or addon the platform does not have |
 
-All scenarios assume the [setup from "Get started"](/claude-platform/get-started/) and use the placeholder organisation `acme`.
+All scenarios assume the [setup from "Get started"](/sdlc-foundry/get-started/) and use the placeholder organisation `acme`.

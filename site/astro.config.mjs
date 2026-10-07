@@ -3,18 +3,18 @@ import { defineConfig } from 'astro/config';
 import starlightLinksValidator from 'starlight-links-validator';
 
 const description =
-  'Claude Code agents, slash commands and Copier templates that take a product from a new repo to Kubernetes via GitOps: secrets, Postgres, OpenTelemetry and Kyverno guard rails are one declaration each.';
+  'An agentic SDLC platform: Claude Code agents, slash commands and Copier templates that take a product from idea to Kubernetes via GitOps: secrets, Postgres, OpenTelemetry and Kyverno guard rails are one declaration each.';
 
 export default defineConfig({
   site: 'https://ika100.github.io',
-  base: '/claude-platform',
+  base: '/sdlc-foundry',
   trailingSlash: 'always',
   integrations: [
     starlight({
-      title: 'claude-platform',
+      title: 'sdlc-foundry',
       description,
       favicon: '/favicon.svg',
-      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/ika100/claude-platform' }],
+      social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/ika100/sdlc-foundry' }],
       customCss: ['./src/styles/custom.css'],
       components: { Footer: './src/components/Footer.astro' },
       lastUpdated: false,
@@ -27,7 +27,7 @@ export default defineConfig({
       plugins: [starlightLinksValidator({ errorOnRelativeLinks: false, errorOnInvalidHashes: false })],
       sidebar: [
         {
-          label: 'Why claude-platform',
+          label: 'Why sdlc-foundry',
           items: [
             { label: 'Vision', slug: 'vision' },
             { label: 'The problem', slug: 'problem' },

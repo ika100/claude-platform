@@ -20,7 +20,7 @@ from urllib.parse import quote
 import core
 from core import PlatformError, run
 
-REPO = os.environ.get("CPLAT_FEEDBACK_REPO", "ika100/claude-platform")
+REPO = os.environ.get("CPLAT_FEEDBACK_REPO", "ika100/sdlc-foundry")
 MAX_DETAIL_LINES = 80
 MAX_DETAIL_CHARS = 6000
 

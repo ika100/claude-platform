@@ -15,11 +15,11 @@ A shape is a registry entry plus a template plus a plugin:
 4. Add a sniff rule to `scripts/detect-shape.sh`.
 5. Run `uv run scripts/shapes.py check` (the contract: registry, templates, plugins and the requirements table agree) and add a smoke job.
 
-Step-by-step with the contract: [Adding a new shape](/claude-platform/guides/add-a-shape/).
+Step-by-step with the contract: [Adding a new shape](/sdlc-foundry/guides/add-a-shape/).
 
 ## A new addon
 
-Addons are declared in `app.yaml` and implement a **connection contract** (the Secret and environment variables services receive). Add an entry to the `ADDONS` table in `templates/gitops-app/scripts/render.py` plus a manifest function, tests in `tests/cplat`, and an ADR. Services never learn the implementation, so it can later be swapped (a spike evaluated kro this way; see [ADR-020](/claude-platform/reference/adr/020/)).
+Addons are declared in `app.yaml` and implement a **connection contract** (the Secret and environment variables services receive). Add an entry to the `ADDONS` table in `templates/gitops-app/scripts/render.py` plus a manifest function, tests in `tests/cplat`, and an ADR. Services never learn the implementation, so it can later be swapped (a spike evaluated kro this way; see [ADR-020](/sdlc-foundry/reference/adr/020/)).
 
 ## An agent or command
 
@@ -27,4 +27,4 @@ Write `plugins/<name>/agents/<agent>.md` or `commands/<command>.md` with front m
 
 ## Contribute it back
 
-Follow [Contributing](/claude-platform/community/contributing/): conventional commit titles, tests, a changelog line and an ADR for design changes. CI runs the registry contract, every template smoke test and the end-to-end test.
+Follow [Contributing](/sdlc-foundry/community/contributing/): conventional commit titles, tests, a changelog line and an ADR for design changes. CI runs the registry contract, every template smoke test and the end-to-end test.

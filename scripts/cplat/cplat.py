@@ -2,7 +2,7 @@
 # /// script
 # dependencies = ["pyyaml", "ruamel.yaml"]
 # ///
-"""cplat — deterministic implementation of the claude-platform commands.
+"""cplat — deterministic implementation of the sdlc-foundry commands.
 
 The slash commands (plugins/*/commands/*.md) are thin: they run this script with --dry-run, show the plan to the user,
 and run it for real. Everything that can be code is code (and has tests in tests/cplat).

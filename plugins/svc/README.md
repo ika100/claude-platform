@@ -42,8 +42,8 @@ Enable both plugins via `.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "svc@ika100-claude": true,
-    "shared@ika100-claude": true
+    "svc@sdlc-foundry": true,
+    "shared@sdlc-foundry": true
   }
 }
 ```

@@ -11,8 +11,8 @@ import core
 import newsvc
 import promote
 
-JAVA_ANSWERS = "_src_path: gh:ika100/claude-platform/templates/service-java\nport: 8080\n"
-WEB_ANSWERS = "_src_path: gh:ika100/claude-platform/templates/web-nextjs\nport: 3000\n"
+JAVA_ANSWERS = "_src_path: gh:ika100/sdlc-foundry/templates/service-java\nport: 8080\n"
+WEB_ANSWERS = "_src_path: gh:ika100/sdlc-foundry/templates/web-nextjs\nport: 3000\n"
 OLD_K8S = """
 apiVersion: apps/v1
 kind: Deployment

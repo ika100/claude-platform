@@ -1,4 +1,4 @@
-# shapes.yml — canonical shape registry for ika100-claude (ADR-015).
+# shapes.yml — canonical shape registry for sdlc-foundry (ADR-015).
 #
 # Adding a shape: add an entry here, a template under templates/<template>/, a plugin
 # under plugins/<plugin>/, and a matching sniff rule in scripts/detect-shape.sh.

@@ -420,10 +420,25 @@ jobs:
         working-directory: site
         run: npm run build
 
+  dco:
+    name: DCO sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: every commit of the pull request is signed off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/check-dco.py
+
   pr-title:
     name: pr-title (conventional commits)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Dependabot's grouped titles ("bump the all group across 1 directory with N updates") exceed the subject limit
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
     steps:
       - name: Validate PR title
         env:
@@ -442,7 +457,7 @@ jobs:
   ci-success:
     name: ci-success
     if: always()
-    needs: [changes, validate-manifests, validate-shapes, platform-tests, smoke-test-templates, smoke-test-gitops-app, smoke-test-web-nextjs, smoke-test-service-go, smoke-test-service-java, site, pr-title]
+    needs: [changes, validate-manifests, validate-shapes, platform-tests, smoke-test-templates, smoke-test-gitops-app, smoke-test-web-nextjs, smoke-test-service-go, smoke-test-service-java, site, dco, pr-title]
     runs-on: ubuntu-latest
     steps:
       - name: every needed job passed or was skipped

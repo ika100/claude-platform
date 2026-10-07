@@ -45,10 +45,10 @@ Canonical `devbox run` scripts (configured in `devbox.json`):
 
 ## Claude Code agents
 
-Agents and slash commands come from the [`ika100/claude-platform`](https://github.com/ika100/claude-platform) marketplace. The plugins are enabled in `.claude/settings.json`:
+Agents and slash commands come from the [`ika100/sdlc-foundry`](https://github.com/ika100/sdlc-foundry) marketplace. The plugins are enabled in `.claude/settings.json`:
 
-- `svc@ika100-claude` — multi-agent pipeline (product-manager, architect, coder, tester, migrations, observability, release, deployment)
-- `shared@ika100-claude` — quality, security, and the `/shared:new-service` bootstrap command
+- `svc@sdlc-foundry` — multi-agent pipeline (product-manager, architect, coder, tester, migrations, observability, release, deployment)
+- `shared@sdlc-foundry` — quality, security, and the `/shared:new-service` bootstrap command
 
 Read the platform's `docs/AGENTS.md` for the full orchestration model.
 

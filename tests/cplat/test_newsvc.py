@@ -80,7 +80,7 @@ def test_real_local_render_of_each_shape(tmp_path):
         newsvc.main([name, "desc", "--type", shape, "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme", "--app", "acme/app-gitops"])
         repo = tmp_path / name
         answers = (repo / ".copier-answers.yml").read_text()
-        assert f"_src_path: gh:ika100/claude-platform/templates/{shape}" in answers  # stable, not a temp path
+        assert f"_src_path: gh:ika100/sdlc-foundry/templates/{shape}" in answers  # stable, not a temp path
         assert core.read_stamp(repo)["shape"] == shape
         log = subprocess.run(["git", "log", "--format=%s"], cwd=repo, text=True, capture_output=True).stdout.splitlines()
         assert log == [f"chore: bootstrap from {shape} template"]

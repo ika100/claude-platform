@@ -1,7 +1,7 @@
 // Pure helpers for the docs sync (unit-tested in tests/). No file-system access here.
 import path from 'node:path';
 
-export const REPO_URL = 'https://github.com/ika100/claude-platform';
+export const REPO_URL = 'https://github.com/ika100/sdlc-foundry';
 
 /** Split text into fenced code blocks and prose so link rewriting never touches code. */
 function mapProse(markdown, fn) {

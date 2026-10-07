@@ -1,6 +1,6 @@
 ---
 title: "Vision"
-description: "Where claude-platform is going and the principles that decide what it will and will not do."
+description: "Where sdlc-foundry is going and the principles that decide what it will and will not do."
 ---
 
 <p class="lead">A small team should be able to run a product the way a platform team would run it, without hiring a platform team.</p>
@@ -11,11 +11,11 @@ You describe a product in a few sentences and a handful of declarations. The pla
 
 ## Principles
 
-1. **Declare once, derive the rest.** The GitOps repository owns every manifest and generates them from `services.yaml` and `app.yaml`. A service repository ships only an image. Anything you can derive you should not hand-write ([ADR-017](/claude-platform/reference/adr/017/)).
-2. **Scripts do the work, agents orchestrate.** Everything that can be code is a tested script (`cplat`) with a preview and a machine-readable result. Agents decide *what* to do and ask before outward-facing actions: pushes, pull requests, repository creation, anything that touches a cluster ([ADR-012](/claude-platform/reference/adr/012/)).
-3. **Secure by default, checked before merge.** Non-root numeric users, read-only filesystems, dropped capabilities, SHA-pinned CI actions, scanned images with an SBOM, secrets created in the cluster, policies evaluated in your pull request ([ADR-018](/claude-platform/reference/adr/018/), [019](/claude-platform/reference/adr/019/), [022](/claude-platform/reference/adr/022/)).
-4. **Vendor-neutral where it counts.** OpenTelemetry for telemetry, Gateway API for ingress, standard Kubernetes for everything, a contract in front of every addon so the implementation can change without touching your services ([ADR-020](/claude-platform/reference/adr/020/), [021](/claude-platform/reference/adr/021/)).
-5. **Honest about limits.** The platform states what it does not do (see [client value](/claude-platform/value/#honest-limits)) and measures what it claims.
+1. **Declare once, derive the rest.** The GitOps repository owns every manifest and generates them from `services.yaml` and `app.yaml`. A service repository ships only an image. Anything you can derive you should not hand-write ([ADR-017](/sdlc-foundry/reference/adr/017/)).
+2. **Scripts do the work, agents orchestrate.** Everything that can be code is a tested script (`cplat`) with a preview and a machine-readable result. Agents decide *what* to do and ask before outward-facing actions: pushes, pull requests, repository creation, anything that touches a cluster ([ADR-012](/sdlc-foundry/reference/adr/012/)).
+3. **Secure by default, checked before merge.** Non-root numeric users, read-only filesystems, dropped capabilities, SHA-pinned CI actions, scanned images with an SBOM, secrets created in the cluster, policies evaluated in your pull request ([ADR-018](/sdlc-foundry/reference/adr/018/), [019](/sdlc-foundry/reference/adr/019/), [022](/sdlc-foundry/reference/adr/022/)).
+4. **Vendor-neutral where it counts.** OpenTelemetry for telemetry, Gateway API for ingress, standard Kubernetes for everything, a contract in front of every addon so the implementation can change without touching your services ([ADR-020](/sdlc-foundry/reference/adr/020/), [021](/sdlc-foundry/reference/adr/021/)).
+5. **Honest about limits.** The platform states what it does not do (see [client value](/sdlc-foundry/value/#honest-limits)) and measures what it claims.
 6. **One path for humans, CI and agents.** `devbox run <recipe>` is the only way anything runs, so the three behave identically.
 
 ## What it is not
@@ -35,8 +35,8 @@ You describe a product in a few sentences and a handful of declarations. The pla
 | Next | Real multi-environment and multi-cluster guidance, OpenTelemetry SDK for Go services, more shapes through the documented extension contract, release automation |
 | Later, if asked | Backups and pooling for the Postgres addon, per-framework alert rules, additional UI stacks for observability |
 
-The roadmap is a direction, not a promise; priorities follow what real users report through [issues](https://github.com/ika100/claude-platform/issues).
+The roadmap is a direction, not a promise; priorities follow what real users report through [issues](https://github.com/ika100/sdlc-foundry/issues).
 
 ## Where this came from
 
-The original product requirements are kept as [design history](/claude-platform/vision/design-history/); the platform's first end-to-end run is described in the [end-to-end scenario](/claude-platform/vision/end-to-end-scenario/). The decisions since then are the [ADRs](/claude-platform/reference/adr/).
+The original product requirements are kept as [design history](/sdlc-foundry/vision/design-history/); the platform's first end-to-end run is described in the [end-to-end scenario](/sdlc-foundry/vision/end-to-end-scenario/). The decisions since then are the [ADRs](/sdlc-foundry/reference/adr/).

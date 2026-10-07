@@ -1,13 +1,13 @@
 {
   "name": "svc-java",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Agents for Java service repos (Spring Boot 3, Maven, JDK 21, distroless): coder, tester, deployment, observability, and release. Used by the /svc:* orchestrators when the repo shape is service-java. Requires devbox recipes from the service-java Copier template.",
   "author": {
     "name": "Eike Hensler",
     "email": "eike.hensler@gmail.com"
   },
-  "homepage": "https://github.com/ika100/claude-platform",
-  "repository": "https://github.com/ika100/claude-platform",
+  "homepage": "https://github.com/ika100/sdlc-foundry",
+  "repository": "https://github.com/ika100/sdlc-foundry",
   "license": "Apache-2.0",
   "keywords": ["java", "spring-boot", "maven", "devbox", "k8s", "agents"]
 }

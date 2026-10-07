@@ -1,6 +1,6 @@
 ---
 title: "Client value"
-description: "What claude-platform gives you, by role, with the measured evidence and the honest limits."
+description: "What sdlc-foundry gives you, by role, with the measured evidence and the honest limits."
 ---
 
 <p class="lead">Fewer decisions to remember, fewer places for mistakes to hide, and every outward step reviewable.</p>
@@ -30,12 +30,12 @@ description: "What claude-platform gives you, by role, with the measured evidenc
 
 | Control | What the platform does | Evidence |
 |---|---|---|
-| Secrets | Created in the cluster by External Secrets Operator; never stored in git | [ADR-018](/claude-platform/reference/adr/018/) |
-| Supply chain | CI actions pinned by commit SHA, least-privilege tokens, Trivy image scan that blocks release builds, CycloneDX SBOM per architecture | [ADR-019](/claude-platform/reference/adr/019/) |
-| Runtime hardening | Numeric non-root user, read-only filesystem, no privilege escalation, capabilities dropped | Generated manifests, [ADR-017](/claude-platform/reference/adr/017/) |
-| Guard rails | Kyverno policies evaluated offline in your pull request and enforced in the cluster | [ADR-022](/claude-platform/reference/adr/022/) |
-| Change control | Promotion and composition happen through reviewed pull requests; a protected `main` | [Promote safely](/claude-platform/scenarios/promote-safely/) |
-| Licenses | REUSE-compliant repository, third-party notices, SBOMs for generated images | [Third-party notices](/claude-platform/community/third-party-notices/) |
+| Secrets | Created in the cluster by External Secrets Operator; never stored in git | [ADR-018](/sdlc-foundry/reference/adr/018/) |
+| Supply chain | CI actions pinned by commit SHA, least-privilege tokens, Trivy image scan that blocks release builds, CycloneDX SBOM per architecture | [ADR-019](/sdlc-foundry/reference/adr/019/) |
+| Runtime hardening | Numeric non-root user, read-only filesystem, no privilege escalation, capabilities dropped | Generated manifests, [ADR-017](/sdlc-foundry/reference/adr/017/) |
+| Guard rails | Kyverno policies evaluated offline in your pull request and enforced in the cluster | [ADR-022](/sdlc-foundry/reference/adr/022/) |
+| Change control | Promotion and composition happen through reviewed pull requests; a protected `main` | [Promote safely](/sdlc-foundry/scenarios/promote-safely/) |
+| Licenses | REUSE-compliant repository, third-party notices, SBOMs for generated images | [Third-party notices](/sdlc-foundry/community/third-party-notices/) |
 
 This supports an audit; it is not a certification. You remain responsible for your own controls.
 
@@ -49,10 +49,10 @@ This supports an audit; it is not a certification. You remain responsible for yo
 
 | Claim | Number | Source |
 |---|---|---|
-| Defects found by running the real chain, each now guarded | 12 | [Changelog 1.1.1](/claude-platform/reference/changelog/) |
-| Multi-arch Next.js image build | about 9 min to about 3 min | [Baselines](/claude-platform/reference/baselines/) |
-| Multi-arch Java image build | about 3 min to about 2 min | [Baselines](/claude-platform/reference/baselines/) |
-| Always-on prompt tokens | 28 percent fewer | [Changelog](/claude-platform/reference/changelog/) |
+| Defects found by running the real chain, each now guarded | 12 | [Changelog 1.1.1](/sdlc-foundry/reference/changelog/) |
+| Multi-arch Next.js image build | about 9 min to about 3 min | [Baselines](/sdlc-foundry/reference/baselines/) |
+| Multi-arch Java image build | about 3 min to about 2 min | [Baselines](/sdlc-foundry/reference/baselines/) |
+| Always-on prompt tokens | 28 percent fewer | [Changelog](/sdlc-foundry/reference/changelog/) |
 | Local cluster from nothing to all applications healthy | about 1m40s | Measured on the test application |
 
 Measured on one test application and Apple-silicon laptops with GitHub-hosted runners; your numbers will differ, the method is in the baselines page.
@@ -67,4 +67,4 @@ Measured on one test application and Apple-silicon laptops with GitHub-hosted ru
 - **Guard rails cover what the platform renders.** Policies check Deployments; pods created by operators are out of scope.
 - **Single maintainer.** It is an open-source project with best-effort support.
 
-Next: [usage scenarios](/claude-platform/scenarios/) or [get started](/claude-platform/get-started/).
+Next: [usage scenarios](/sdlc-foundry/scenarios/) or [get started](/sdlc-foundry/get-started/).

@@ -2,7 +2,7 @@
 # Bootstrap a Python FastAPI-style service repo with the canonical devbox + agentic setup.
 #
 # Usage:
-#   copier copy gh:ika100/claude-platform/templates/service-python ./<project> \
+#   copier copy gh:ika100/sdlc-foundry/templates/service-python ./<project> \
 #     --data project_name=<name> --data module_name=<name_with_underscores>
 
 _min_copier_version: "9.0.0"
@@ -99,5 +99,5 @@ docker_registry:
 
 platform_marketplace_ref:
   type: str
-  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  help: "Git ref of ika100/sdlc-foundry to pin the plugin marketplace to (branch, tag, or commit)."
   default: "main"

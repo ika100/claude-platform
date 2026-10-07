@@ -30,7 +30,7 @@ def test_update_restores_skeleton_keeps_project_files(repo):
     assert (repo / "internal/server/server.go").read_text() == "// mine\n"
     assert git(repo, "branch", "--show-current").startswith("chore/platform-update-")
     assert git(repo, "log", "-1", "--format=%s").startswith("chore: update skeleton from platform")
-    assert "_src_path: gh:ika100/claude-platform/templates/service-go" in (repo / ".copier-answers.yml").read_text()
+    assert "_src_path: gh:ika100/sdlc-foundry/templates/service-go" in (repo / ".copier-answers.yml").read_text()
     assert core.read_stamp(repo)["platform"] == core.platform_version()
 
 
@@ -69,6 +69,7 @@ def test_vtuple_orders_numerically():
 
 
 def test_doctor_flags_stale_plugins(monkeypatch):
+    monkeypatch.setattr(doctor, "legacy_plugins", lambda: {})
     monkeypatch.setattr(doctor, "installed_plugins", lambda: {"shared": "0.3.1"})
     res = doctor.check_plugins()
     assert res[0]["status"] == doctor.WARN and "RESTART" in res[0]["fix"]
@@ -137,3 +138,21 @@ def test_second_update_the_same_day_gets_a_unique_branch(repo):
     assert update.branch_name(repo) == base + "-2"
     git(repo, "branch", base + "-2")
     assert update.branch_name(repo) == base + "-3"
+
+
+def test_doctor_detects_plugins_from_the_pre_rename_marketplace(monkeypatch):
+    monkeypatch.setattr(doctor, "installed_plugins", lambda: {})
+    monkeypatch.setattr(doctor, "legacy_plugins", lambda: {"svc": "2.1.0", "shared": "0.6.1"})
+    res = doctor.check_plugins()
+    assert len(res) == 1 and res[0]["status"] == doctor.WARN
+    detail = res[0]["detail"] + " " + (res[0].get("fix") or "")
+    assert "ika100-claude" in detail and "renamed" in detail
+    assert "/plugin marketplace add ika100/sdlc-foundry" in detail
+    assert "/plugin install shared@sdlc-foundry" in detail and "/plugin install svc@sdlc-foundry" in detail
+
+
+def test_doctor_reports_legacy_and_current_installs_together(monkeypatch):
+    monkeypatch.setattr(doctor, "installed_plugins", lambda: {"shared": "0.7.2"})
+    monkeypatch.setattr(doctor, "legacy_plugins", lambda: {"svc": "2.1.0"})
+    names = [c["name"] for c in doctor.check_plugins()]
+    assert names[0] == "plugins (old marketplace)" and "plugins" in names

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file is for Claude Code working inside the `ika100/claude-platform` repo itself.
+This file is for Claude Code working inside the `ika100/sdlc-foundry` repo itself.
 
 ## Purpose
 

@@ -8,7 +8,7 @@ description: "Bring existing services or a v1 setup onto the platform without st
 ## Steps
 
 1. **Install the plugins** in the repository and run `/shared:doctor`.
-2. **Add the platform reference** and adopt the template for skeleton updates so CI, Dockerfile, `devbox` recipes and `CLAUDE.md` can be pulled in later with `/shared:update-service` ([Adopting](/claude-platform/guides/adopting/) has the exact steps per shape).
+2. **Add the platform reference** and adopt the template for skeleton updates so CI, Dockerfile, `devbox` recipes and `CLAUDE.md` can be pulled in later with `/shared:update-service` ([Adopting](/sdlc-foundry/guides/adopting/) has the exact steps per shape).
 3. **Review the update branch.** `/shared:update-service` writes to a review branch and lists which skeleton files it overwrote; keep your customisations in the files that are project-owned (application code, tests, documentation).
 4. **Compose the service into a GitOps repository**: `/gitops:compose add <service>` writes a complete, reviewable `services.yaml` entry using the shape's runtime defaults.
 
@@ -27,4 +27,4 @@ A service repository that contains code and an image build, a GitOps repository 
 
 ## If something looks wrong
 
-`/shared:doctor` first; then see [Troubleshooting](/claude-platform/guides/adopting/#troubleshooting); then `/shared:report-issue`.
+`/shared:doctor` first; then see [Troubleshooting](/sdlc-foundry/guides/adopting/#troubleshooting); then `/shared:report-issue`.

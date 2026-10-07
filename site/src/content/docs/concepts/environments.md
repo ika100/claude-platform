@@ -13,4 +13,4 @@ Each application has three environments, each in its own namespace `<app>-<env>`
 | `staging` | `sha-<first 7 of the commit>` | `/gitops:promote <svc> dev staging` |
 | `prod` | `X.Y.Z` (the service's release tag without `v`) | `/gitops:promote <svc> staging prod` |
 
-`/gitops:promote` verifies in GHCR that the tag exists, edits `environments`, renders the overlay, pins the tag and opens one pull request. It only moves forward; rollback is reverting the merged pull request. Details and a walk-through: [Promote to production safely](/claude-platform/scenarios/promote-safely/).
+`/gitops:promote` verifies in GHCR that the tag exists, edits `environments`, renders the overlay, pins the tag and opens one pull request. It only moves forward; rollback is reverting the merged pull request. Details and a walk-through: [Promote to production safely](/sdlc-foundry/scenarios/promote-safely/).

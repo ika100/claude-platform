@@ -15,7 +15,7 @@ description: "From an idea to a running, promoted application: GitOps repo, serv
 
 Each command shows a preview first, then creates the repository from its template (CI, Dockerfile, `devbox` recipes, agent instructions), makes the first commit and creates a private GitHub repository. Service repositories get the `deployable-service` topic so tooling can find them.
 
-In `shop-api` and `shop-web`, build features with the agents (see [Build a feature](/claude-platform/scenarios/build-a-feature/)). When CI has published the first images, compose the product in the GitOps repository:
+In `shop-api` and `shop-web`, build features with the agents (see [Build a feature](/sdlc-foundry/scenarios/build-a-feature/)). When CI has published the first images, compose the product in the GitOps repository:
 
 ```text
 /gitops:compose add shop-api
@@ -38,4 +38,4 @@ devbox run cluster-up      # k3d, ArgoCD, Gateway API, your GitHub credentials, 
 
 `/shared:doctor` reports missing tools or `gh` scopes with a fix for each. If something fails because a template or script misbehaves, `/shared:report-issue` drafts an issue for you.
 
-Next: [Promote to production safely](/claude-platform/scenarios/promote-safely/).
+Next: [Promote to production safely](/sdlc-foundry/scenarios/promote-safely/).

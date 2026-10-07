@@ -1,8 +1,8 @@
 {
-  "name": "claude-platform-site",
+  "name": "sdlc-foundry-site",
   "version": "0.0.0",
   "private": true,
-  "description": "Documentation site of claude-platform (GitHub Pages)",
+  "description": "Documentation site of sdlc-foundry (GitHub Pages)",
   "type": "module",
   "scripts": {
     "sync": "node scripts/sync-docs.mjs && node scripts/generate-reference.mjs",
