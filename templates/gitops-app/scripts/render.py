@@ -303,8 +303,22 @@ def postgres_cluster(app: str, env: str, conf: dict) -> dict:
     }
 
 
+KRO_POSTGRES_RGD = {'apiVersion': 'kro.run/v1alpha1', 'kind': 'ResourceGraphDefinition', 'metadata': {'name': 'postgres'}, 'spec': {'schema': {'apiVersion': 'v1alpha1', 'kind': 'Postgres', 'spec': {'version': 'integer | default=17', 'instances': 'integer | default=1', 'storage': 'string | default="1Gi"', 'database': 'string | required=true'}, 'status': {'ready': '${cluster.status.phase == "Cluster in healthy state"}', 'secretName': '${schema.metadata.name + "-app"}'}}, 'resources': [{'id': 'cluster', 'readyWhen': ['${cluster.status.phase == "Cluster in healthy state"}'], 'template': {'apiVersion': 'postgresql.cnpg.io/v1', 'kind': 'Cluster', 'metadata': {'name': '${schema.metadata.name}'}, 'spec': {'instances': '${schema.spec.instances}', 'imageName': '${"ghcr.io/cloudnative-pg/postgresql:" + string(schema.spec.version)}', 'storage': {'size': '${schema.spec.storage}'}, 'enableSuperuserAccess': False, 'bootstrap': {'initdb': {'database': '${schema.spec.database}', 'owner': '${schema.spec.database}'}}, 'resources': {'requests': {'cpu': '100m', 'memory': '256Mi'}, 'limits': {'memory': '512Mi'}}}}}]}}
+
+
+def postgres_kro_instance(app: str, env: str, conf: dict) -> dict:
+    d = ADDONS["postgres"]["defaults"]
+    return {"apiVersion": "kro.run/v1alpha1", "kind": "Postgres", "metadata": {"name": f"{app}-postgres"},
+            "spec": {"database": app.replace("-", "_"), "version": int(per_env(conf.get("version"), env, d["version"])),
+                     "instances": int(per_env(conf.get("instances"), env, d["instances"])),
+                     "storage": str(per_env(conf.get("storage"), env, d["storage"]))}}
+
+
 def addon_files(app: str, name: str, env: str, cfg: dict) -> dict[str, dict]:
     conf = (cfg.get("addons") or {}).get(name) or {}
+    if conf.get("backend") == "kro":   # spike: same contract, implemented by a kro ResourceGraphDefinition
+        return {"cluster.yaml": postgres_kro_instance(app, env, conf),
+                "kustomization.yaml": {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["cluster.yaml"]}}
     files = {"cluster.yaml": postgres_cluster(app, env, conf)}   # one addon today; dispatch on `name` when more exist
     files["kustomization.yaml"] = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["cluster.yaml"]}
     return files
@@ -362,6 +376,8 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
         for n in names:
             for fname, doc in addon_files(app, n, env, cfg).items():
                 out[app_dir / "addons" / env / n / fname] = dump(doc)
+    if any((conf or {}).get("backend") == "kro" for conf in (cfg.get("addons") or {}).values()):
+        out[ROOT / "bootstrap" / f"{app}-kro-postgres.yaml"] = dump(KRO_POSTGRES_RGD)   # cluster-scoped prerequisite, applied with the root app
     out[app_dir / "applicationset.yaml"] = "---\n".join(dump(d) for d in docs)
 
     out[ROOT / "bootstrap" / f"{app}-root.yaml"] = dump({

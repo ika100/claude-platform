@@ -126,3 +126,18 @@ def test_unknown_or_duplicate_addon_is_an_error(gitops_repo, gh):
 def test_uses_flag_needs_a_single_service(gitops_repo, gh):
     with pytest.raises(core.PlatformError, match="exactly one service"):
         run_compose(gitops_repo, "add", "todo-api", "todo-web", "--uses", "postgres")
+
+
+def test_kro_backend_renders_the_same_contract(gitops_repo, gh):
+    declare(gitops_repo)
+    f = gitops_repo / APP / "app.yaml"
+    cfg = yaml.safe_load(f.read_text())
+    cfg["addons"]["postgres"]["backend"] = "kro"
+    f.write_text(yaml.safe_dump(cfg))
+    commit(gitops_repo, "kro")
+    run_compose(gitops_repo, "add", "todo-api", "--uses", "postgres")
+    inst = yaml.safe_load((gitops_repo / APP / "addons/dev/postgres/cluster.yaml").read_text())
+    assert inst["kind"] == "Postgres" and inst["spec"] == {"database": "todo", "version": 17, "instances": 1, "storage": "1Gi"}
+    assert yaml.safe_load((gitops_repo / "bootstrap/todo-kro-postgres.yaml").read_text())["kind"] == "ResourceGraphDefinition"
+    env = {e["name"]: e for e in dev_deploy(gitops_repo)["spec"]["template"]["spec"]["containers"][0]["env"]}
+    assert env["DATABASE_URL"]["valueFrom"]["secretKeyRef"]["name"] == "todo-postgres-app"   # services see no difference
