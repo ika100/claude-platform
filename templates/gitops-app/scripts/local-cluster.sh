@@ -130,6 +130,8 @@ spec:
 YAML
       for _ in $(seq 1 60); do k get crd clustersecretstores.external-secrets.io >/dev/null 2>&1 && break; sleep 3; done
       for d in external-secrets external-secrets-webhook external-secrets-cert-controller; do
+        # the CRDs appear before the chart's Deployments do
+        for _ in $(seq 1 100); do k -n external-secrets get "deploy/$d" >/dev/null 2>&1 && break; sleep 3; done
         k -n external-secrets rollout status "deploy/$d" --timeout=300s >/dev/null
       done
       k apply -f - >/dev/null <<'YAML'
