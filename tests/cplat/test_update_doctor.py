@@ -185,3 +185,24 @@ def test_project_owned_patterns_come_from_the_templates_own_list():
     patterns = update.project_owned_patterns("web-nextjs")
     assert "app/**" in patterns and "tests/**" in patterns
     assert update.project_owned_patterns("no-such-template") == []
+
+
+def test_update_keeps_the_web_apps_own_dependencies(tmp_path):
+    """package.json holds the project's dependencies (and Dependabot's bumps): like pom.xml, go.mod and pyproject.toml it is project-owned."""
+    import json
+    newsvc.main(["own-deps", "desc", "--web", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"])
+    repo = tmp_path / "own-deps"
+    pkg = json.loads((repo / "package.json").read_text())
+    pkg["dependencies"]["zod"] = "^3.23.0"                  # a dependency the project added
+    pkg["devDependencies"]["typescript"] = "~6.0.3"         # a bump Dependabot merged
+    (repo / "package.json").write_text(json.dumps(pkg, indent=2) + "\n")
+    git(repo, "add", "-A"); git(repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "own deps")
+    update.main(["--repo", str(repo), "--skip-tasks", "--json"])
+    after = json.loads((repo / "package.json").read_text())
+    assert after["dependencies"]["zod"] == "^3.23.0" and after["devDependencies"]["typescript"] == "~6.0.3"
+
+
+def test_every_template_protects_its_dependency_manifest():
+    expected = {"service-python": "pyproject.toml", "library-python": "pyproject.toml", "service-java": "pom.xml", "service-go": "go.mod", "web-nextjs": "package.json"}
+    for template, manifest in expected.items():
+        assert manifest in update.project_owned_patterns(template), f"{template}: {manifest} would be overwritten by /shared:update-service"

@@ -6,6 +6,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.0.2] — 2026-10-07
+
+### Fixed
+
+- **web-nextjs: `package.json` is now project-owned** (`_skip_if_exists`), like `pom.xml`, `go.mod` and `pyproject.toml` in the other templates. Until now `/shared:update-service` overwrote it: it silently **reverted dependency versions** (for example a Dependabot bump of TypeScript, which then failed CI with a frozen-lockfile mismatch) and **removed dependencies the project had added**. If you updated a web repo with an earlier release, check `git diff HEAD~1 -- package.json` on the update branch before merging and restore your dependencies (`git checkout HEAD~1 -- package.json pnpm-lock.yaml`). A test now asserts that every template protects its dependency manifest. Found while migrating the platform's own todo web app.
+
 ## [3.0.1] — 2026-10-07
 
 ### Fixed
