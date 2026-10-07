@@ -69,7 +69,7 @@ def collect(repo: Path, app: str | None, context: str | None) -> tuple[str, list
     declared = list(((yaml.safe_load(cfg_file.read_text()) or {}).get("addons") or {})) if cfg_file.is_file() else []
     for name in declared:   # an addon runs in every environment where a service uses it
         for env in ENVS:
-            if any(name in (s.get("uses") or []) and env in (s.get("environments") or ["dev"]) for s in data.get("services") or []):
+            if any((name == "observability" or name in (s.get("uses") or [])) and env in (s.get("environments") or ["dev"]) for s in data.get("services") or []):
                 rows.append({"service": f"{name} (addon)", "env": env, "tag": "-", "ci": "-",
                              "argo": argo.get(f"addon-{name}-{env}", "-" if not context else "missing"), "exposed": False})
     return app_dir.name, rows

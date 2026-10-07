@@ -20,6 +20,7 @@ shapes:
     runtime:
       port: 8080
       probes: {liveness: /health, readiness: /ready}
+      metrics: /metrics   # Prometheus endpoint scraped by the observability addon's collector
       user: 10001
       volumes: {tmp: /tmp}
       env: {LOG_LEVEL: INFO}
@@ -59,6 +60,7 @@ shapes:
     runtime:
       port: 3000
       probes: {liveness: /api/health, readiness: /api/ready}
+      metrics: /api/metrics   # Prometheus endpoint scraped by the observability addon's collector
       user: 1000
       volumes: {tmp: /tmp, next-cache: /app/.next/cache}
       env: {NODE_ENV: production}
@@ -98,6 +100,7 @@ shapes:
     runtime:
       port: 8080
       probes: {liveness: /actuator/health/liveness, readiness: /actuator/health/readiness}
+      metrics: /actuator/prometheus   # Prometheus endpoint scraped by the observability addon's collector
       user: 65532
       volumes: {tmp: /tmp}
       env: {LOG_LEVEL: INFO, JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75 -Djava.io.tmpdir=/tmp"}
@@ -121,6 +124,7 @@ shapes:
     runtime:
       port: 8080
       probes: {liveness: /health, readiness: /ready}
+      metrics: /metrics   # Prometheus endpoint scraped by the observability addon's collector
       user: 65532
       volumes: {}
       env: {LOG_LEVEL: INFO}

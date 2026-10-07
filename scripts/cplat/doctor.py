@@ -115,17 +115,23 @@ def check_repo(repo: Path) -> list[dict]:
 
 
 def check_addons(repo: Path) -> list[dict]:
-    """A gitops-app repo that declares addons needs the operator in the cluster the user is pointed at."""
+    """A gitops-app repo that declares addons needs their cluster-side parts in the cluster the user is pointed at."""
     import yaml
-    declared: set[str] = set()
+    declared: dict = {}
     for f in (repo / "applications").glob("*/app.yaml"):
-        declared |= set(((yaml.safe_load(f.read_text()) or {}).get("addons") or {}))
-    if "postgres" not in declared or not shutil.which("kubectl"):
+        declared.update((yaml.safe_load(f.read_text()) or {}).get("addons") or {})
+    if not declared or not shutil.which("kubectl"):
         return []
-    have = run(["kubectl", "get", "crd", "clusters.postgresql.cnpg.io"], check=False).returncode == 0
-    if have:
-        return [check(OK, "addon postgres", "CloudNativePG operator is installed in the current kube context")]
-    return [check(WARN, "addon postgres", "CloudNativePG operator not found in the current kube context", "local: devbox run cluster-up; real clusters: install the cloudnative-pg chart")]
+    out = []
+    if "postgres" in declared:
+        have = run(["kubectl", "get", "crd", "clusters.postgresql.cnpg.io"], check=False).returncode == 0
+        out.append(check(OK, "addon postgres", "CloudNativePG operator is installed in the current kube context") if have else
+                   check(WARN, "addon postgres", "CloudNativePG operator not found in the current kube context", "local: devbox run cluster-up; real clusters: install the cloudnative-pg chart"))
+    if (declared.get("observability") or {}).get("ui") == "lgtm":
+        have = run(["kubectl", "-n", "observability", "get", "deploy", "lgtm"], check=False).returncode == 0
+        out.append(check(OK, "addon observability", "the Grafana dev stack (lgtm) is installed") if have else
+                   check(WARN, "addon observability", "`ui: lgtm` is declared but the dev stack is missing in the current kube context", "local: devbox run cluster-up"))
+    return out
 
 
 def run_checks(repo: Path) -> list[dict]:

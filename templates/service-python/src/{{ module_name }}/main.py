@@ -14,10 +14,10 @@ from pydantic import BaseModel
 {% if needs_observability -%}
 from .logging_config import configure_logging
 from .metrics import REQUEST_COUNT
-from .tracing import configure_tracing
+from .tracing import configure_tracing, tracing_enabled
 
 configure_logging(level=os.environ.get("LOG_LEVEL", "INFO"))
-if os.environ.get("OTLP_ENDPOINT"):
+if tracing_enabled():
     configure_tracing()
 {%- endif %}
 

@@ -93,6 +93,10 @@ Git holds only references. `services.yaml` `secrets:` becomes `ExternalSecret`s:
 
 `/gitops:addon add postgres` declares a database for the application; a service opts in with `uses: [postgres]` (`/gitops:compose add <svc> --uses postgres`). The platform renders a CloudNativePG `Cluster` for each environment where a service uses it and injects `DATABASE_URL` and `PG*` from the operator's Secret. Removing the addon never deletes the data; backups and pooling are not provided. Details: ADR-020.
 
+### Observability (OpenTelemetry)
+
+`/gitops:addon add observability` puts an OpenTelemetry Collector next to your services in every environment and points them at it with the standard `OTEL_*` variables. The collector receives OTLP and scrapes each service's Prometheus endpoint. Where the data goes is your choice: `exportTo: <OTLP/HTTP endpoint>` for your own backend, or `ui: lgtm` for a local Grafana dev stack (`http://grafana.localhost:8088`, installed by `cluster-up`). Details: ADR-021.
+
 ## 6. Keep it current
 
 - Agents/commands: `claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.

@@ -40,7 +40,10 @@ $cplat new-service e2e-web "e2e web" --web --no-github --skip-tasks --dir "$work
 
 step "Declare the Postgres addon (cluster-up then installs the CloudNativePG operator)"
 $cplat addon add postgres --repo-dir "$work/e2e-gitops" >/dev/null
-(cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "addon")
+(cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "postgres")
+step "Declare the OpenTelemetry base (collector only, no UI stack)"
+$cplat addon add observability --repo-dir "$work/e2e-gitops" >/dev/null
+(cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "observability")
 
 step "Start the local cluster with a registry (the template's own script, Gateway only)"
 (cd "$work/e2e-gitops" && LOCAL_CLUSTER=$cluster LOCAL_HTTP_PORT=$port WITH_ARGO=0 REGISTRY_PORT=$regport bash scripts/local-cluster.sh up)
@@ -85,6 +88,11 @@ for _ in $(seq 1 80); do
 done
 [ "$(kubectl --context k3d-$cluster -n $ns get cluster e2e-postgres -o jsonpath='{.status.phase}')" = "Cluster in healthy state" ] || fail "the Postgres cluster did not become healthy"
 
+step "Apply the OpenTelemetry collector"
+kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/addons/dev/observability"
+kubectl --context k3d-$cluster -n $ns rollout status deploy/otel-collector --timeout=180s || {
+  kubectl --context k3d-$cluster -n $ns logs deploy/otel-collector | tail -20; fail "the collector did not become ready (invalid generated config?)"; }
+
 step "Apply the generated manifests (what ArgoCD would sync)"
 for svc in e2e-api e2e-web; do
   kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/overlays/dev/$svc"
@@ -128,3 +136,15 @@ uri=$(secret_val e2e-postgres-app uri)
 [ "$(kc exec e2e-postgres-1 -c postgres -- psql "$uri" -tAc 'select 1')" = 1 ] || fail "cannot connect to Postgres with the addon's credentials"
 kc get deploy e2e-api -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' | grep -q DATABASE_URL || fail "DATABASE_URL is not wired into e2e-api"
 echo "ok   postgres reachable with the generated credentials; e2e-api consumes DATABASE_URL"
+
+step "OpenTelemetry: services are wired to the collector, telemetry reaches it"
+kc get deploy e2e-api -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="OTEL_EXPORTER_OTLP_ENDPOINT")].value}' | grep -q "http://otel-collector:4318" || fail "e2e-api has no OTEL endpoint"
+code=$(kc run otlp-push --rm -i --restart=Never --image=curlimages/curl:8.10.1 --command -- curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' \
+  -d '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"e2e-probe"}}]},"scopeSpans":[{"spans":[{"traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331","name":"probe","kind":1,"startTimeUnixNano":"1700000000000000000","endTimeUnixNano":"1700000001000000000"}]}]}]}' \
+  http://otel-collector:4318/v1/traces 2>/dev/null | head -1)
+[ "$code" = 200 ] || fail "the collector rejected an OTLP/HTTP trace (HTTP $code)"
+for _ in $(seq 1 30); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Traces' && break; sleep 2; done
+kc logs deploy/otel-collector | grep -q 'info	Traces' || fail "the pushed trace never reached the collector pipeline"
+for _ in $(seq 1 40); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Metrics' && break; sleep 3; done
+kc logs deploy/otel-collector | grep -q 'info	Metrics' || fail "no metrics reached the collector (scrape of e2e-api or OTLP push)"
+echo "ok   traces and metrics arrive at the collector"

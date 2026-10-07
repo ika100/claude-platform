@@ -53,11 +53,13 @@ def validate(shapes: list[dict]) -> list[str]:
             if not rt:
                 errs.append(f"{sid}: deployable shapes need a runtime block (port, probes, user, volumes, env, resources)")
             else:
-                for k in ("port", "probes", "user", "resources"):
+                for k in ("port", "probes", "user", "resources", "metrics"):
                     if k not in rt:
                         errs.append(f"{sid}: runtime.{k} missing")
                 if rt.get("probes", {}).keys() != {"liveness", "readiness"}:
                     errs.append(f"{sid}: runtime.probes needs liveness and readiness")
+                if not str(rt.get("metrics", "/")).startswith("/"):
+                    errs.append(f"{sid}: runtime.metrics must be a path starting with /")
                 if not isinstance(rt.get("user"), int) or rt.get("user", 0) < 1:
                     errs.append(f"{sid}: runtime.user must be a numeric non-root UID")
         if s.get("library") and s.get("deployable"):

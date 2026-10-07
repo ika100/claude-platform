@@ -105,6 +105,7 @@ def build_entry(name: str, slug: str, shape_entry: dict, port: int | None, regis
         "port": ns.port or seed.get("port") or port or rt["port"],
         "probes": seed.get("probes") or dict(rt["probes"]),
         "user": rt["user"],
+        "metrics": rt["metrics"],
         "volumes": dict(rt.get("volumes") or {}),
         "env": {**(rt.get("env") or {}), **(seed.get("env") or {})},
         "secretRefs": [],
