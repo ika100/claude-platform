@@ -1,5 +1,5 @@
 ---
-description: "Create a repo of any shape (python, web, gitops, java, go, library) from its template plus a private GitHub repo. Usage: /shared:new-service <name> <description> [--web|--gitops|--library|--type <shape>] [--app <org/gitops-repo>]"
+description: "Create a repo of any shape (python, web, gitops, java, go, library) from its template plus a GitHub repo (private by default). Usage: /shared:new-service <name> <description> [--web|--gitops|--library|--type <shape>] [--app <repo>] [--public] [--data k=v]"
 ---
 
 Create a repo with the platform script (all logic and tests live in `scripts/cplat`). **Request:** $ARGUMENTS

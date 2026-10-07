@@ -8,7 +8,8 @@
 #
 # Environment:
 #   LOCAL_CLUSTER        cluster name (default <app>-local)
-#   LOCAL_HTTP_PORT      host port of the Gateway (default 8088)
+#   LOCAL_HTTP_PORT      host port of the Gateway (default 8088; `auto` = the first free port from 8088; a busy port is reported
+#                        with its owner before anything is created)
 #   ARGOCD_VERSION       default stable
 #   K3S_IMAGE            default rancher/k3s:v1.32.5-k3s1 — the version the Gateway setup below is verified against
 #                        (k3d's own default may be older and ship a Traefik without Gateway API support)
@@ -32,7 +33,10 @@
 # Re-running `up` is safe; it re-applies credentials and the root Application.
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=ports.sh
+. "$here/ports.sh"
+cd "$here/.."
 app=$(basename "$(find applications -mindepth 1 -maxdepth 1 -type d | sort | head -1)")
 name="${LOCAL_CLUSTER:-$app-local}"
 ctx="k3d-$name"
@@ -69,6 +73,24 @@ case "${1:-up}" in
     k3d registry delete "k3d-${registry}" >/dev/null 2>&1 || true
     ;;
   up)
+    if ! k3d cluster list "$name" >/dev/null 2>&1; then    # a new cluster binds the host ports: check them first
+      if [ "$port" = auto ]; then
+        port=$(free_port 8088) || { echo "ERROR: no free host port between 8088 and 8138." >&2; exit 1; }
+        echo "Host port: using free port $port (LOCAL_HTTP_PORT=auto)"
+      fi
+      if port_in_use "$port"; then
+        free=$(free_port $((port + 1)) || true)
+        echo "ERROR: host port $port is already in use by $(port_owner "$port" | grep . || echo 'another program')." >&2
+        echo "  fix: free it, or choose another port: LOCAL_HTTP_PORT=${free:-9090} devbox run cluster-up   (or LOCAL_HTTP_PORT=auto)" >&2
+        exit 1
+      fi
+      if [ -n "$registry_port" ] && port_in_use "$registry_port"; then
+        echo "ERROR: registry port $registry_port is already in use by $(port_owner "$registry_port" | grep . || echo 'another program')." >&2
+        echo "  fix: choose another REGISTRY_PORT" >&2
+        exit 1
+      fi
+    fi
+
     if [ "$with_argo" = 1 ]; then
       token="${GH_TOKEN:-}"
       if [ -z "$token" ] && { [ -z "${REPO_TOKEN:-}" ] || [ -z "${PULL_TOKEN:-}" ]; }; then token=$(gh auth token); fi
