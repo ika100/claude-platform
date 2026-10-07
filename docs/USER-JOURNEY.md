@@ -68,6 +68,8 @@ What happens (no questions asked beyond the name and a description):
 2. You get `applications/taskboard/` with an empty `services.yaml` and an `app.yaml` (gateway + hostnames), generated ApplicationSets (dev/staging/prod), a `bootstrap/` root Argo Application, plus CI that validates everything offline (`kustomize build`, `kubeconform` incl. the Argo and Gateway CRDs, label check, secret scan). **This repo will own every Kubernetes manifest of the product** — the services only ship images.
 3. It is *not* tagged `deployable-service` (it is the GitOps source, not a service).
 
+> **Shortcut for the whole product.** Chapters 1 to 3 can be a single command: describe the repos in an `app.yml` (`app: taskboard`, `components:` with `name`, `description`, `shape`) and run `/shared:new-app app.yml`. It creates the GitOps repo and every component in the right order and opens one pull request that adds the services to `services.yaml`. Add `--dry-run` to preview; after a failure, `--resume` continues. The chapters below show what each step does.
+
 Open it: `cd taskboard && claude`. Its `CLAUDE.md` already explains the layout and pin policy to Claude.
 
 > **One-time cluster step (human, once per cluster).** Make sure Argo can read your GitHub repos (repo credentials), then run `KUBE_CONTEXT=<your-cluster> devbox run bootstrap` in `taskboard` (it applies `bootstrap/taskboard-root.yaml`). That root Application watches `applications/taskboard/applicationset.yaml` in git — from then on every change reaches the cluster through merged pull requests, and agents never run `kubectl apply`.
