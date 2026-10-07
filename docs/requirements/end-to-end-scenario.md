@@ -2,6 +2,8 @@
 
 **Purpose:** harden [platform-vision.md](platform-vision.md) by walking a realistic SaaS build from zero. As of 2026-05-22 this doc shows the canonical post-UX flow; the original pre-UX friction that motivated each improvement is preserved in the Resolution log and UX improvements proposed sections below, and called out per phase in "Pre-UX baseline" notes.
 
+**Status (2026-10-07):** `/shared:new-app` (Phase 1, UX-2) is **planned, not built**; `/shared:shapes` (UX-4) was **dropped**. Everything else in this walkthrough exists; see the shipped stories in [../backlog.md](../backlog.md). Where Phase 1 says "one command", today it is one `/shared:new-service` per repo (gitops-app first) followed by `/gitops:compose add <service...>`.
+
 **Persona:** Eike (solo founder). Goal: ship a distributed-team task-board SaaS in one afternoon.
 
 **Target system:**
@@ -44,9 +46,11 @@ Then runs one command:
 /shared:new-app taskboard --from app.yml
 ```
 
-(Or `/shared:new-app taskboard --interactive` for the TUI route. `/shared:shapes` to list valid `shape:` values beforehand.)
+(Or `/shared:new-app taskboard --interactive` for the TUI route. Valid `shape:` values are the ids in `shapes.yml`; an unknown `--type` on `/shared:new-service` lists them.)
 
-**Expected behavior (per PRD §6 A4, A1, A2, A5):**
+> **Planned, not built.** Today: `/shared:new-service taskboard-app --gitops`, then one `/shared:new-service <name> --type <shape> --app <org>/taskboard-app` per component, then `/gitops:compose add <services...>`.
+
+**Expected behavior (target for `new-app`; the per-component parts, A1 and A2, exist today):**
 - `taskboard-app` (the `gitops-app` shape) created first.
 - Five component repos created next, each tagged according to `shapes.yml.deployable`.
 - One composition PR opened against `taskboard-app` adding all five into `services.yaml` via [batch compose-add](../adr/014-gitops-app-composition-spec.md).
@@ -54,7 +58,7 @@ Then runs one command:
 - Pre-flight checks (per A1) — name availability, `gh auth`, marketplace freshness — run once at the top of the batch; any failure aborts before side effects.
 - `--dry-run` available (`/shared:new-app taskboard --from app.yml --dry-run`) to preview every repo, topic, and Copier input without executing.
 
-**What this exercises:** A4 universal app bootstrap; A1 per-component bootstrap with canonical `--type` + pre-flight + `--dry-run`; A5 shape discoverability; B5 batch compose; [ADR-013](../adr/013-plugin-auto-enable.md) auto-enable; [ADR-015](../adr/015-shape-registry-as-code.md) `shapes.yml` as the source of valid `--type` / `shape:` values.
+**What this exercises:** A4 universal app bootstrap; A1 per-component bootstrap with canonical `--type` + pre-flight + `--dry-run`; B5 batch compose; [ADR-013](../adr/013-plugin-auto-enable.md) auto-enable; [ADR-015](../adr/015-shape-registry-as-code.md) `shapes.yml` as the source of valid `--type` / `shape:` values.
 
 **Pre-UX baseline:** 6 separate `/shared:new-service` invocations plus 4 manual `/gitops:compose add` calls = 10 commands; now 1 command. See UX-2, UX-3.
 
@@ -219,9 +223,9 @@ Then Eike creates the service:
 /shared:new-service taskboard-ml --type service-rust
 ```
 
-`shapes.yml` validates `--type`, the right Copier template is invoked, `svc-rust` plugin auto-enables per [ADR-013](../adr/013-plugin-auto-enable.md), CI green on first push. `/shared:shapes` immediately shows the new shape.
+`shapes.yml` validates `--type`, the right Copier template is invoked, `svc-rust` plugin auto-enables per [ADR-013](../adr/013-plugin-auto-enable.md), CI green on first push. `shapes.yml` is the only list of shapes, so the new shape is valid at once.
 
-**What this exercises:** A3 extensibility contract is real; A5 (`/shared:shapes`) reflects the new shape immediately; [ADR-015](../adr/015-shape-registry-as-code.md) registry-as-code in action.
+**What this exercises:** A3 extensibility contract is real; [ADR-015](../adr/015-shape-registry-as-code.md) registry-as-code in action.
 
 **Remaining open:** UX-9 (`/shared:new-shape` scaffolding helper) — would collapse this contributor flow to `/shared:new-shape service-rust --based-on service-go` plus filling in language specifics. Deferred to second run; for first run, the contributor copies from the Java/Go templates by hand.
 
@@ -247,7 +251,7 @@ None of the above blocks the first-run scenario.
 
 | Phase | Pre-UX | Post-UX | Saving |
 |---|---|---|---|
-| 1 — Bootstrap | 10 (6× new-service + 4× compose add) | 1 (`/shared:new-app`) | 9 |
+| 1 — Bootstrap | 10 (6× new-service + 4× compose add) | 1 (`/shared:new-app`, planned); today 6× new-service + 1× batch `compose add` = 7 | 9 target, 3 today |
 | 2 — First feature | 1 | 1 | 0 |
 | 3 — Multi-repo (4 repos) | 5 (1× build-feature + 4× paste-and-run) | 5 (1× app build-feature + 4× `--from-plan`) | 0 commands, but 4 multi-line copy-pastes eliminated |
 | 4 — Deployment per env step | 8 (4× compose add already counted above + 4× promote) | 1 (`/gitops:promote --all`) + 1 verify (`/gitops:status`) | 6+ |
@@ -289,7 +293,7 @@ None of the above blocks the first-run scenario.
 | Question | Note |
 |---|---|
 | Q1 — component ordering at bootstrap | Behavior unspecified; default to "any order works" — `new-app` topo-sorts internally. Add a clarifying note in [ADR-014](../adr/014-gitops-app-composition-spec.md) or `templates.md` |
-| Q3 — naming collisions / `/shared:new-service` resume flag | Pre-flight `gh repo view` check spec'd in A1; resume flag on `/shared:new-app` spec'd in A4 |
+| Q3 — naming collisions / `/shared:new-service` resume flag | Pre-flight `gh repo view` check spec'd in A1; resume flag on `/shared:new-app` to be specified when it is built |
 | Q6 — architect cross-shape dependency awareness | Agent-prompt-quality concern, not a spec gap |
 | Q12 — `compose remove` | Spec'd in [ADR-014](../adr/014-gitops-app-composition-spec.md) and PRD B5 |
 | Q16 — rollback | Out of scope for v1; revert PR is the supported path |
@@ -331,7 +335,9 @@ Collapses Phase 1 from 6 commands to 1.
 
 **Cost:** small per command, biggest at `/shared:new-app` (where multi-repo dry-run requires aggregating).
 
-### UX-4 — `/shared:shapes` discoverability command
+### UX-4 — `/shared:shapes` discoverability command (dropped 2026-10-07)
+
+> **Dropped.** An unknown `--type` already lists the valid shapes and `shapes.yml` is readable; a command would add always-on prompt cost for no new capability. The proposal below is kept for the record.
 
 **Pain (Phases 1, 6):** to see which shapes exist, Eike has to read PRD §4 or `shapes.yml`. Contributors who want to add a shape have no way to inspect the schema.
 
@@ -403,18 +409,18 @@ Collapses Phase 4 from 8 commands to 2.
 
 | Improvement | Reduces command count by | Cost | Priority | Spec'd? |
 |---|---|---|---|---|
-| UX-2 `/shared:new-app` | 6 → 1 (Phase 1) | moderate | **P0** | PRD A4 |
+| UX-2 `/shared:new-app` | 6 → 1 (Phase 1) | moderate | **P0, planned (not built)** | this document; no PRD story |
 | UX-7 batch compose/promote | 8 → 2 (Phase 4) | moderate | **P0** | PRD B5/B6 + [ADR-014](../adr/014-gitops-app-composition-spec.md) batch ops |
 | UX-5 `--from-plan` | eliminates copy-paste (Phase 3) | small | **P0** | PRD C1 + [ADR-011](../adr/011-multi-repo-plan-format.md) consumption pattern |
 | UX-8 `/gitops:status` | new capability | small-moderate | **P1** | PRD C6 |
 | UX-3 pre-flight + `--dry-run` | prevents broken state | small | **P1** | PRD A1 + A4 ACs |
 | UX-1 unified `--type` | cognitive load | small | **P1** | PRD A1 |
 | UX-6 plan lifecycle | eliminates stale-plan noise | small | **P1** | PRD C5 + [ADR-011](../adr/011-multi-repo-plan-format.md) state machine |
-| UX-4 `/shared:shapes` | discoverability | trivial | **P2** | PRD A5 + [ADR-015](../adr/015-shape-registry-as-code.md) consequence |
+| UX-4 `/shared:shapes` | discoverability | trivial | **dropped** | covered by the `--type` error message |
 | UX-9 `/shared:new-shape` | shape-author leverage | moderate | **P2** | not yet spec'd |
 | UX-10 verb convention | style only | zero | **P2** (docs change) | PRD §8 constraint |
 
-**2026-05-22 update:** UX-1 through UX-8 and UX-10 promoted into PRD stories and ADR updates. Only UX-9 (`/shared:new-shape`) remains unspec'd — a P2 contributor-productivity feature that can land after the platform's first usable release.
+**2026-05-22 update:** UX-1 through UX-8 and UX-10 were promoted into PRD stories and ADR updates. **2026-10-07 correction:** the current PRD has no A4/A5 stories; UX-2 is planned and UX-4 is dropped (see the status line at the top). UX-9 (`/shared:new-shape`) remains unspec'd — a P2 contributor-productivity feature that can land after the platform's first usable release.
 
 ## Next actions
 
