@@ -101,6 +101,8 @@ devbox run quality && devbox run test      # sanity check — should be green ou
 
 ## Chapter 3 — Build a feature with the agent pipeline
 
+You can start immediately after Chapter 1: the feature branch is cut from the bootstrap commit, so the first pipeline run on `main` does not need to finish (or even be merged anywhere) before work begins. Its only job is to publish the first image, which you need again only when you deploy.
+
 In `taskboard-api`, inside Claude Code:
 
 ```

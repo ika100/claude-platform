@@ -23,6 +23,7 @@ def test_database_option_adds_jpa_flyway_driver_and_testcontainers(tmp_path):
     cfg = (repo / "src/main/resources/application.yml").read_text()
     assert "jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:db_svc}" in cfg
     assert "username: ${PGUSER:app}" in cfg and "password: ${PGPASSWORD:dev}" in cfg
+    assert "initialization-fail-timeout: 60000" in cfg      # no crash loop while the database initialises
     assert "ddl-auto: validate" in cfg and "include: readinessState,db" in cfg
     assert (repo / "src/main/resources/db/migration").is_dir()
     tests = list(repo.glob("src/test/java/**/TestcontainersConfiguration.java"))

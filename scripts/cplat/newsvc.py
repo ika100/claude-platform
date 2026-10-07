@@ -138,7 +138,8 @@ def _next_steps(req: dict) -> list[str]:
     if shape == "gitops-app":
         return [f"cd {n} && devbox shell", "devbox run quality", f"/gitops:compose add <service>  (after the services exist)",
                 "devbox run cluster-up   # local k3d + ArgoCD (needs Docker)"]
-    return [f"cd {n} && devbox shell", "devbox run quality && devbox run test", "/svc:plan-feature <your first feature>"]
+    return [f"cd {n} && devbox shell", "devbox run quality && devbox run test",
+            "/svc:build-feature <your first feature>   # starts its own feature branch right away; the bootstrap CI runs in parallel, do not wait for it"]
 
 
 def execute(req: dict) -> Report:

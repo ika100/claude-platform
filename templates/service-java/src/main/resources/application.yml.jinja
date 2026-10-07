@@ -8,6 +8,8 @@ spring:
     url: jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:{{ project_name | replace('-', '_') }}}
     username: ${PGUSER:app}
     password: ${PGPASSWORD:dev}
+    hikari:
+      initialization-fail-timeout: 60000   # wait up to 60 s for the database at startup instead of crash-looping while it initialises
   jpa:
     open-in-view: false
     hibernate:
