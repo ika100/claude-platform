@@ -89,6 +89,10 @@ flowchart LR
 
 Git holds only references. `services.yaml` `secrets:` becomes `ExternalSecret`s: `generate: [DB_PASSWORD]` makes External Secrets Operator create a random value in the cluster once per environment; `remote: {keys: [STRIPE_KEY]}` reads it from the secret store (locally the `secrets-store` namespace: `/gitops:secret set <service> <secret> <KEY>`; on real clusters Vault/AWS/GCP via the store named in `app.yaml`). Pods see them as environment variables. Details: ADR-018.
 
+### Addons (Postgres)
+
+`/gitops:addon add postgres` declares a database for the application; a service opts in with `uses: [postgres]` (`/gitops:compose add <svc> --uses postgres`). The platform renders a CloudNativePG `Cluster` for each environment where a service uses it and injects `DATABASE_URL` and `PG*` from the operator's Secret. Removing the addon never deletes the data; backups and pooling are not provided. Details: ADR-020.
+
 ## 6. Keep it current
 
 - Agents/commands: `claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.

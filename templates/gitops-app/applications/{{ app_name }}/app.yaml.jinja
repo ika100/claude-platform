@@ -11,6 +11,11 @@
 secretStore:
   name: platform-secrets
   kind: ClusterSecretStore
+# addons:  backing services, one per application and environment (ADR-020). Declare with `/gitops:addon add postgres`, then
+#          list it under `uses:` of the services that need it: they get DATABASE_URL and PG* from the operator's Secret.
+#          Values may be per environment: {dev: 1, prod: 3}. Needs the CloudNativePG operator (`cluster-up` installs it locally).
+# addons:
+#   postgres: {version: 17, instances: {dev: 1, prod: 3}, storage: {dev: 1Gi, prod: 20Gi}}
 gateway:
   name: traefik-gateway
   namespace: kube-system

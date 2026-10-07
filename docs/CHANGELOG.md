@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Addons: Postgres (Phase G, slice 4, ADR-020)
+
+- **`addons:` in `app.yaml` + `uses: [postgres]` on a service**: a CloudNativePG `Cluster` per environment (sizing as scalars or per-env maps) and `DATABASE_URL` / `PG*` injected from the operator's Secret (never in git). The contract, not the implementation, is what services see.
+- **`/gitops:addon add|remove|list`** (`cplat addon`), **`compose add --uses postgres`**; `doctor` checks the operator, `status` shows the addon's Argo health. Removing an addon never deletes the data (`prune: false`).
+- **`cluster-up` installs CloudNativePG** when `addons.postgres` is declared (`WITH_CNPG=0/1` overrides). e2e proves a real connection with the generated credentials.
+- gitops plugin 1.2.0.
+
 ### Supply chain (Phase G, slice 3, ADR-019)
 
 - **All GitHub Actions pinned by commit SHA** (91 references, platform and templates) with `scripts/pin-actions.py`; `--check` runs in platform CI. Every generated repo (incl. gitops-app and library-python) gets Dependabot for Actions, which keeps the pins current.

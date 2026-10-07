@@ -7,6 +7,7 @@
 The GitOps repo owns every manifest. services.yaml is the human-edited registry; this script derives:
   applications/<app>/applicationset.yaml                       one ApplicationSet per env (dev/staging/prod)
   applications/<app>/overlays/<env>/<service>/                 deployment.yaml, service.yaml, [httproute.yaml], kustomization.yaml
+  applications/<app>/addons/<env>/<addon>/                     cluster.yaml, kustomization.yaml (only where a service `uses` the addon)
   bootstrap/<app>-root.yaml                                    root Argo Application (app-of-apps), applied once by a human
 
 A service is only rendered for the environments listed in its `environments` (default: dev), so a new service never
@@ -22,6 +23,7 @@ services.yaml entry (written by `/gitops:compose`, every value explicit and revi
     user: 65532                        # numeric non-root UID the image runs as
     volumes: {tmp: /tmp}               # writable emptyDirs (root filesystem is read-only)
     env: {LOG_LEVEL: INFO}             # non-secret wiring, e.g. API_URL: http://todo-api
+    uses: [postgres]                   # addons from app.yaml whose connection settings are injected as env vars
     secretRefs: []                     # names of existing Secrets exposed as env vars
     secrets:                           # Secrets created by External Secrets Operator (never values in git, ADR-018)
       - name: todo-api-auth            # the Kubernetes Secret; exposed as env vars
@@ -38,6 +40,8 @@ applications/<app>/app.yaml (optional):
   gateway: {name: traefik-gateway, namespace: kube-system}
   hosts: {dev: "{service}.{app}-dev.localhost"}     # per env; no entry = not exposed in that env
   secretStore: {name: platform-secrets, kind: ClusterSecretStore}   # where `remote` secrets are read from
+  addons:                                           # backing services, one per application and environment (ADR-020)
+    postgres: {version: 17, instances: {dev: 1, prod: 3}, storage: {dev: 1Gi, prod: 20Gi}}
 
 Usage:
   render.py            write files
@@ -56,6 +60,15 @@ ROOT = Path(__file__).resolve().parent.parent
 ENVS = ["dev", "staging", "prod"]
 MANAGED_FILES = {"deployment.yaml", "service.yaml", "httproute.yaml", "kustomization.yaml", "password-generator.yaml"}
 MANAGED_PREFIXES = ("externalsecret-",)
+# Addon contract (ADR-020): what a service gets when it `uses` an addon. Services never see the implementation.
+ADDONS = {
+    "postgres": {
+        "secret": "{app}-postgres-app",    # connection Secret written by the operator (CloudNativePG)
+        "env": {"DATABASE_URL": "uri", "PGHOST": "host", "PGPORT": "port", "PGDATABASE": "dbname", "PGUSER": "user", "PGPASSWORD": "password"},
+        "defaults": {"version": 17, "instances": 1, "storage": "1Gi"},
+    },
+}
+ADDON_FILES = {"cluster.yaml", "kustomization.yaml"}
 ESO_API = "external-secrets.io/v1"
 GEN_API = "generators.external-secrets.io/v1alpha1"
 DEFAULT_STORE = {"name": "platform-secrets", "kind": "ClusterSecretStore"}
@@ -134,6 +147,32 @@ def validate_secrets(s: dict) -> None:
                               f"Declare it under `secrets:` (generate: [{k}] or remote: {{keys: [{k}]}}) instead")
 
 
+def per_env(value, env: str, default):
+    """A scalar, or a per-environment map ({dev: 1, prod: 3}); missing environments fall back to `default`."""
+    return value.get(env, default) if isinstance(value, dict) else (default if value is None else value)
+
+
+def validate_addons(services: list[dict], cfg: dict) -> None:
+    declared = cfg.get("addons") or {}
+    for name in declared:
+        if name not in ADDONS:
+            raise RenderError(f"app.yaml: unknown addon '{name}' (available: {', '.join(ADDONS)})")
+    for s in services:
+        for a in s.get("uses") or []:
+            if a not in ADDONS:
+                raise RenderError(f"service '{s['name']}': unknown addon '{a}' in `uses` (available: {', '.join(ADDONS)})")
+            if a not in declared:
+                raise RenderError(f"service '{s['name']}' uses '{a}', which app.yaml does not declare "
+                                  f"(add it with `/gitops:addon add {a}`, or under `addons:` in app.yaml)")
+            clash = [k for k in ADDONS[a]["env"] if k in (s.get("env") or {})]
+            if clash:
+                raise RenderError(f"service '{s['name']}': env {', '.join(clash)} is provided by the '{a}' addon; remove it from `env`")
+
+
+def addons_in(services: list[dict], env: str) -> list[str]:
+    return sorted({a for s in services if env in envs_of(s) for a in s.get("uses") or []})
+
+
 def envs_of(svc: dict) -> list[str]:
     return svc.get("environments") or ["dev"]
 
@@ -148,6 +187,15 @@ def replicas_for(svc: dict, env: str) -> int:
     return int(r.get(env, 1)) if isinstance(r, dict) else int(r)
 
 
+def addon_env(app: str, svc: dict) -> list[dict]:
+    """Connection settings of the addons a service uses, read from the operator's Secret (never copied into git)."""
+    out = []
+    for a in svc.get("uses") or []:
+        secret = ADDONS[a]["secret"].format(app=app)
+        out += [{"name": var, "valueFrom": {"secretKeyRef": {"name": secret, "key": key}}} for var, key in ADDONS[a]["env"].items()]
+    return out
+
+
 def deployment(app: str, svc: dict, env: str) -> dict:
     labels = labels_for(app, svc)
     selector = {"app": svc["name"]}
@@ -156,7 +204,7 @@ def deployment(app: str, svc: dict, env: str) -> dict:
         "name": "app",
         "image": svc["image"],
         "ports": [{"name": "http", "containerPort": int(svc["port"])}],
-        "env": [{"name": k, "value": v} for k, v in sorted(env_vars.items())],
+        "env": [{"name": k, "value": v} for k, v in sorted(env_vars.items())] + addon_env(app, svc),
     }
     secret_names = [*(svc.get("secretRefs") or []), *[x["name"] for x in svc.get("secrets") or []]]
     if secret_names:
@@ -238,11 +286,36 @@ def secret_manifests(app: str, svc: dict, env: str, cfg: dict) -> dict[str, dict
     return out
 
 
+def postgres_cluster(app: str, env: str, conf: dict) -> dict:
+    d = ADDONS["postgres"]["defaults"]
+    db = app.replace("-", "_")
+    return {
+        "apiVersion": "postgresql.cnpg.io/v1", "kind": "Cluster",
+        "metadata": {"name": f"{app}-postgres", "labels": {"app.kubernetes.io/name": "postgres", "app.kubernetes.io/part-of": app, "app.kubernetes.io/managed-by": "gitops-app"}},
+        "spec": {
+            "instances": int(per_env(conf.get("instances"), env, d["instances"])),
+            "imageName": f"ghcr.io/cloudnative-pg/postgresql:{per_env(conf.get('version'), env, d['version'])}",
+            "storage": {"size": str(per_env(conf.get("storage"), env, d["storage"]))},
+            "enableSuperuserAccess": False,
+            "bootstrap": {"initdb": {"database": db, "owner": db}},
+            "resources": conf.get("resources") or {"requests": {"cpu": "100m", "memory": "256Mi"}, "limits": {"memory": "512Mi"}},
+        },
+    }
+
+
+def addon_files(app: str, name: str, env: str, cfg: dict) -> dict[str, dict]:
+    conf = (cfg.get("addons") or {}).get(name) or {}
+    files = {"cluster.yaml": postgres_cluster(app, env, conf)}   # one addon today; dispatch on `name` when more exist
+    files["kustomization.yaml"] = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["cluster.yaml"]}
+    return files
+
+
 def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
     app = app_dir.name
     services = load_services(app_dir)
     cfg_file = app_dir / "app.yaml"
     cfg = (yaml.safe_load(cfg_file.read_text()) or {}) if cfg_file.is_file() else {}
+    validate_addons(services, cfg)
     org = ans.get("github_org", "ika100")
     server = ans.get("cluster_server", "https://kubernetes.default.svc")
     gitops_repo = f"https://github.com/{org}/{ans.get('project_name', app + '-gitops')}"
@@ -266,6 +339,29 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
                 },
             },
         })
+    for env in ENVS:
+        names = addons_in(services, env)
+        if not names:
+            continue
+        docs.append({
+            "apiVersion": "argoproj.io/v1alpha1", "kind": "ApplicationSet",
+            "metadata": {"name": f"{app}-addons-{env}", "namespace": "argocd"},
+            "spec": {
+                "generators": [{"list": {"elements": [{"name": n} for n in names]}}],
+                "template": {
+                    "metadata": {"name": "addon-{{name}}-" + env},
+                    "spec": {
+                        "project": "default",
+                        "source": {"repoURL": gitops_repo, "targetRevision": "main", "path": f"applications/{app}/addons/{env}/" + "{{name}}"},
+                        "destination": {"server": server, "namespace": f"{app}-{env}"},
+                        "syncPolicy": {"automated": {"prune": False, "selfHeal": True}, "syncOptions": ["CreateNamespace=true"]},
+                    },
+                },
+            },
+        })
+        for n in names:
+            for fname, doc in addon_files(app, n, env, cfg).items():
+                out[app_dir / "addons" / env / n / fname] = dump(doc)
     out[app_dir / "applicationset.yaml"] = "---\n".join(dump(d) for d in docs)
 
     out[ROOT / "bootstrap" / f"{app}-root.yaml"] = dump({
@@ -313,6 +409,13 @@ def stale_paths(app_dir: Path, wanted: set[Path]) -> list[Path]:
                 stale.append(d)
                 continue
             stale += [f for f in d.iterdir() if (f.name in MANAGED_FILES or f.name.startswith(MANAGED_PREFIXES)) and f not in wanted]
+    for env in ENVS:
+        base = app_dir / "addons" / env
+        if not base.is_dir():
+            continue
+        for d in base.iterdir():
+            if d.is_dir() and not any(p.parent == d for p in wanted):
+                stale.append(d)
     return stale
 
 

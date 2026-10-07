@@ -110,7 +110,22 @@ def check_repo(repo: Path) -> list[dict]:
             out.append(check(WARN, "repo platform version", f"{stamp['platform']} (platform is {cur})", "/shared:update-service"))
         else:
             out.append(check(OK, "repo platform version", stamp.get("platform", "?")))
+    out += check_addons(repo)
     return out
+
+
+def check_addons(repo: Path) -> list[dict]:
+    """A gitops-app repo that declares addons needs the operator in the cluster the user is pointed at."""
+    import yaml
+    declared: set[str] = set()
+    for f in (repo / "applications").glob("*/app.yaml"):
+        declared |= set(((yaml.safe_load(f.read_text()) or {}).get("addons") or {}))
+    if "postgres" not in declared or not shutil.which("kubectl"):
+        return []
+    have = run(["kubectl", "get", "crd", "clusters.postgresql.cnpg.io"], check=False).returncode == 0
+    if have:
+        return [check(OK, "addon postgres", "CloudNativePG operator is installed in the current kube context")]
+    return [check(WARN, "addon postgres", "CloudNativePG operator not found in the current kube context", "local: devbox run cluster-up; real clusters: install the cloudnative-pg chart")]
 
 
 def run_checks(repo: Path) -> list[dict]:

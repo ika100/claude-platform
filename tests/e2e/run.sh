@@ -38,6 +38,10 @@ $cplat new-service e2e-gitops "e2e gitops repo" --gitops --no-github --skip-task
 $cplat new-service e2e-api "e2e api" --type service-java --no-github --skip-tasks --dir "$work" --org e2e >/dev/null
 $cplat new-service e2e-web "e2e web" --web --no-github --skip-tasks --dir "$work" --org e2e >/dev/null
 
+step "Declare the Postgres addon (cluster-up then installs the CloudNativePG operator)"
+$cplat addon add postgres --repo-dir "$work/e2e-gitops" >/dev/null
+(cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "addon")
+
 step "Start the local cluster with a registry (the template's own script, Gateway only)"
 (cd "$work/e2e-gitops" && LOCAL_CLUSTER=$cluster LOCAL_HTTP_PORT=$port WITH_ARGO=0 REGISTRY_PORT=$regport bash scripts/local-cluster.sh up)
 
@@ -59,11 +63,12 @@ app_dir = gitops.find_app(repo)
 y, data = gitops.load(app_dir)
 services = gitops.services_of(data)
 shapes = {s["id"]: s for s in core.registry.load()}
-ns = argparse.Namespace(port=None, replicas=None, env=[], expose=True, generate=[], secret=[])
+ns = argparse.Namespace(port=None, replicas=None, env=[], expose=True, generate=[], secret=[], uses=[])
 for name, shape in (("e2e-api", "service-java"), ("e2e-web", "web-nextjs")):
     ns.env = ["API_URL=http://e2e-api"] if name == "e2e-web" else []
     ns.generate = ["e2e-api-auth=DB_PASSWORD,JWT_KEY"] if name == "e2e-api" else []   # random values created by ESO
     ns.secret = ["e2e-api-stripe=STRIPE_KEY"] if name == "e2e-api" else []            # read from the secret store
+    ns.uses = ["postgres"] if name == "e2e-api" else []                               # DATABASE_URL from the addon
     services.append(compose.build_entry(name, f"e2e/{name}", shapes[shape], None, registry, ns, {}))
 gitops.save(app_dir, y, data)
 PY
@@ -72,8 +77,15 @@ uv run scripts/render.py)
 step "Set the remote secret in the local store (what a developer does with /gitops:secret)"
 printf 'sk_test_e2e' | $cplat secret set e2e-api e2e-api-stripe STRIPE_KEY --value-stdin --repo-dir "$work/e2e-gitops" >/dev/null
 
-step "Apply the generated manifests (what ArgoCD would sync)"
+step "Apply the Postgres addon and wait for the database"
 ns=e2e-dev
+kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/addons/dev/postgres"
+for _ in $(seq 1 80); do
+  [ "$(kubectl --context k3d-$cluster -n $ns get cluster e2e-postgres -o jsonpath='{.status.phase}' 2>/dev/null)" = "Cluster in healthy state" ] && break; sleep 5
+done
+[ "$(kubectl --context k3d-$cluster -n $ns get cluster e2e-postgres -o jsonpath='{.status.phase}')" = "Cluster in healthy state" ] || fail "the Postgres cluster did not become healthy"
+
+step "Apply the generated manifests (what ArgoCD would sync)"
 for svc in e2e-api e2e-web; do
   kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/overlays/dev/$svc"
 done
@@ -110,3 +122,9 @@ kc annotate externalsecret e2e-api-auth force-sync="$(date +%s)" --overwrite >/d
 [ "$(secret_val e2e-api-auth DB_PASSWORD)" = "$db" ] || fail "generated secret changed on re-sync (it must be created once)"
 kc get pod -l app=e2e-api -o jsonpath='{.items[0].spec.containers[0].envFrom[*].secretRef.name}' | grep -q e2e-api-auth || fail "pod does not consume the generated secret"
 echo "ok   generated + remote secrets synced and consumed"
+
+step "Postgres addon: the generated credentials work and the service is wired to them"
+uri=$(secret_val e2e-postgres-app uri)
+[ "$(kc exec e2e-postgres-1 -c postgres -- psql "$uri" -tAc 'select 1')" = 1 ] || fail "cannot connect to Postgres with the addon's credentials"
+kc get deploy e2e-api -o jsonpath='{.spec.template.spec.containers[0].env[*].name}' | grep -q DATABASE_URL || fail "DATABASE_URL is not wired into e2e-api"
+echo "ok   postgres reachable with the generated credentials; e2e-api consumes DATABASE_URL"
