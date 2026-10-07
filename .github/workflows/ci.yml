@@ -42,7 +42,7 @@ jobs:
           else
             files=$(git diff --name-only "origin/${BASE}...HEAD")
           fi
-          echo "changed files:"; echo "$files" | sed 's/^/  /'
+          echo "changed files:"; awk '{print "  " $0}' <<< "$files"
           has() { if grep -Eq "$1" <<< "$files"; then echo true; else echo false; fi; }
           # anything that is not documentation or repository metadata can break the tested code
           code=$(grep -Evq '^(docs/|.*\.md$|LICENSE$|NOTICE$|\.github/(ISSUE_TEMPLATE/|CODEOWNERS|PULL_REQUEST_TEMPLATE|dependabot))' <<< "$files" && echo true || echo false)
