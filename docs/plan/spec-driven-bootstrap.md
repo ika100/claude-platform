@@ -56,7 +56,7 @@ Implements [STORY-034](../backlog.md). The platform already has the pieces (prod
 4. **Seed files are project-owned** (`_skip_if_exists`): `docs/backlog.md` with the format header and zero stories, `docs/plan/` with a `.gitkeep`. Existing repos are not touched (update-service already removes new files in project-owned paths), but they pick up the `CLAUDE.md` rule on their next update because `CLAUDE.md` is skeleton-owned.
 5. **Enforcement is by contract, not by gate.** A hard gate (refusing `build-feature` without a plan) would break the quick path and every existing repo. Instead the rule lives in `CLAUDE.md` (agents read it), the next steps lead with the plan, and `shapes.py check` makes the seed files and the rule part of the add-a-shape contract so no future shape can skip them.
 6. **Products (`new-app`).** The product-level spec is the multi-repo plan from `/app:build-feature` in the gitops-app repo; each component then follows `--from-plan`, which already exists. `new-app` only changes its next steps.
-7. **Out of scope:** a CI check that every PR cites a story (needs a runtime in every shape's devbox; decide after this lands, see open questions), and retrofitting stories into existing repos.
+7. **Out of scope:** a CI check that every PR cites a story (needs a runtime in every shape's devbox; deferred, see decisions below), the plan approval gate ([STORY-036](../backlog.md)), and retrofitting stories into existing repos.
 
 ## t1 — Seed files in every template
 
@@ -135,7 +135,7 @@ Implements [STORY-034](../backlog.md). The platform already has the pieces (prod
 - **Prompt size:** the `CLAUDE.md` rule and the `build-feature` flag add always-loaded text; keep each under the budgets noted in CHANGELOG 2.1.0.
 - **`--plan` drift:** a plan edited after approval can disagree with its stories; validation catches missing stories only, not changed acceptance criteria. Accepted for v1.
 
-## Open questions
+## Decisions on the open questions (2026-10-07)
 
-1. Add a CI check later that a PR to `main` cites a `STORY-NNN` (hard enforcement)? It needs a script runnable in every shape's CI; proposal: decide after one release of the soft version.
-2. Should `plan-feature` stop for explicit approval and record `status: approved` in the plan, with `--plan` refusing drafts? It makes the review gate real at the cost of one more step; proposal: yes, in a follow-up once `--plan` exists.
+1. **CI check that a PR cites a `STORY-NNN`:** not in this feature. Ship the soft version first (next steps, `CLAUDE.md` rule, `--plan`, contract check) and decide after one release whether to add a hard check.
+2. **Plan approval:** yes, as a follow-up once `--plan` exists: [STORY-036](../backlog.md). `plan-feature` writes `status: draft`; approving flips it to `approved`; `build-feature --plan` refuses drafts. Not part of t1 to t6, so `--plan` accepts any valid plan in this feature.

@@ -415,6 +415,17 @@ As a founder, I want creating a service, library, web app or whole product to le
 - [ ] The platform's add-a-shape contract requires the seed `docs/backlog.md` and the `CLAUDE.md` rule; `shapes.py check` fails when a template lacks them.
 - [ ] Tests cover the bootstrap output of each shape, the templates' seed files and rule, and the plan validation of `--plan`.
 
+#### STORY-036: Plans are approved before they are built
+**Status:** planned · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
+
+As a founder, I want a plan to be explicitly approved before `build-feature` consumes it, so that the review step between planning and building is real and recorded.
+
+**Acceptance criteria:**
+- [ ] `/svc:plan-feature` writes `status: draft` into the plan metadata and its closing message says how to approve (review the files, then confirm).
+- [ ] Approving sets `status: approved` (a one-line edit by the user or by `/svc:plan-feature --approve <slug>`), recorded in git history.
+- [ ] `/svc:build-feature --plan <path>` refuses a plan that is not `approved` and says how to approve it; without `--plan` the command is unchanged.
+- [ ] The multi-repo plan lifecycle of ADR-011 (`draft` → `in_progress` → `completed`) is unchanged; this status belongs to single-repo plans only, and the docs say how the two differ.
+
 ## Not built (specified in the PRD, absent from the code)
 
 | Item | PRD ref | State | Evidence |
