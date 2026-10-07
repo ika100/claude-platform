@@ -3,7 +3,7 @@ title: "Worked example: a project management app"
 description: "A Spring Boot API, a Next.js UI and PostgreSQL, built and run on a laptop with the platform's own commands."
 ---
 
-**Situation.** You want a real, small product end to end: create, update and delete projects in a web UI, business logic in a backend, data in PostgreSQL, running on your laptop through the same GitOps flow as production. The sample lives in three public repositories: [`pm-gitops`](https://github.com/ika100/pm-gitops), [`pm-backend`](https://github.com/ika100/pm-backend) and [`pm-web-ui`](https://github.com/ika100/pm-web-ui).
+**Situation.** You want a real, small product end to end: create, update and delete projects in a web UI, business logic in a backend, data in PostgreSQL, running on your laptop through the same GitOps flow as production. The sample consisted of three repositories, `pm-gitops`, `pm-backend` and `pm-web-ui`; they were a temporary demo and have been removed, so the steps below show how to build your own.
 
 ## 1. Create the repositories
 
