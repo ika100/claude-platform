@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Observability: OpenTelemetry base, optional UI stack (Phase G, slice 5, ADR-021)
+
+- **`addons.observability`** renders an OpenTelemetry Collector per environment (OTLP in, a Prometheus scrape job per service with a `metrics:` path, optional OTLP/HTTP export via `exportTo` + `headersSecret`) and injects the standard `OTEL_*` variables into every service. No operator, no CRDs; works with any OTLP backend.
+- **`ui: lgtm`** (optional): `cluster-up` installs Grafana, Tempo, Loki and Prometheus as a shared dev stack at `http://grafana.localhost:8088`. Dev/demo only.
+- `shapes.yml` runtime gains `metrics`; `compose add` writes it into `services.yaml`. **service-python** now configures tracing from the standard OTel variables (legacy `OTLP_ENDPOINT` still works) and ships tracing tests; run `/shared:update-service` in Python services.
+- `/gitops:addon add observability [--ui lgtm | --export-to URL]`; `doctor` and `status` know the addon. Config addons are pruned, databases never (separate ApplicationSets).
+
 ### Addons: Postgres (Phase G, slice 4, ADR-020)
 
 - **`addons:` in `app.yaml` + `uses: [postgres]` on a service**: a CloudNativePG `Cluster` per environment (sizing as scalars or per-env maps) and `DATABASE_URL` / `PG*` injected from the operator's Secret (never in git). The contract, not the implementation, is what services see.

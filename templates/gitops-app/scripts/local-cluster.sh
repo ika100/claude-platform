@@ -21,6 +21,8 @@
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
 #   ESO_VERSION          External Secrets Operator chart version (default 2.12.0)
 #   WITH_ESO=0           skip External Secrets Operator (no `secrets:` support in that cluster)
+#   LGTM_VERSION         grafana/otel-lgtm image tag for `observability: {ui: lgtm}` (default 0.35.0)
+#   WITH_LGTM            1 = install the dev Grafana stack, 0 = never; default: only if app.yaml says `ui: lgtm`
 #   CNPG_VERSION         CloudNativePG operator chart version (default 0.29.1)
 #   WITH_CNPG            1 = install CloudNativePG, 0 = never; default: only if app.yaml declares `addons.postgres`
 #   REGISTRY_PORT        also create a local image registry reachable as localhost:<port> from the host and as
@@ -42,6 +44,11 @@ eso_version="${ESO_VERSION:-2.12.0}"
 with_eso="${WITH_ESO:-1}"
 cnpg_version="${CNPG_VERSION:-0.29.1}"
 with_cnpg="${WITH_CNPG:-auto}"
+lgtm_version="${LGTM_VERSION:-0.35.0}"
+with_lgtm="${WITH_LGTM:-auto}"
+if [ "$with_lgtm" = auto ]; then
+  if grep -qE '^[^#]*ui:[[:space:]]*lgtm' applications/*/app.yaml 2>/dev/null; then with_lgtm=1; else with_lgtm=0; fi
+fi
 if [ "$with_cnpg" = auto ]; then
   if grep -qE '^[[:space:]]+postgres:' applications/*/app.yaml 2>/dev/null; then with_cnpg=1; else with_cnpg=0; fi
 fi
@@ -193,6 +200,48 @@ YAML
       k -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=300s >/dev/null
     fi
 
+    if [ "$with_lgtm" = 1 ]; then
+      echo "Installing the Grafana dev stack (otel-lgtm $lgtm_version): Grafana, Tempo, Loki, Prometheus in one pod (dev only)"
+      # One shared stack in its own namespace: the all-in-one image runs as root, so it stays outside the application namespaces.
+      k create namespace observability --dry-run=client -o yaml | k apply -f - >/dev/null
+      k apply -f - >/dev/null <<YAML
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: lgtm, namespace: observability, labels: {app: lgtm}}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: lgtm}}
+  template:
+    metadata: {labels: {app: lgtm}}
+    spec:
+      containers:
+        - name: lgtm
+          image: grafana/otel-lgtm:${lgtm_version}
+          ports: [{name: grafana, containerPort: 3000}, {name: otlp-grpc, containerPort: 4317}, {name: otlp-http, containerPort: 4318}]
+          readinessProbe: {httpGet: {path: /api/health, port: grafana}, initialDelaySeconds: 20, periodSeconds: 5}
+          resources: {requests: {cpu: 200m, memory: 512Mi}, limits: {memory: 2Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: lgtm, namespace: observability}
+spec:
+  selector: {app: lgtm}
+  ports:
+    - {name: grafana, port: 3000, targetPort: grafana}
+    - {name: otlp-grpc, port: 4317, targetPort: otlp-grpc}
+    - {name: otlp-http, port: 4318, targetPort: otlp-http}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: grafana, namespace: observability}
+spec:
+  parentRefs: [{name: traefik-gateway, namespace: kube-system}]
+  hostnames: [grafana.localhost]
+  rules: [{backendRefs: [{name: lgtm, port: 3000}]}]
+YAML
+      k -n observability rollout status deploy/lgtm --timeout=300s >/dev/null
+    fi
+
     if [ "$with_argo" = 1 ]; then
       echo "Installing ArgoCD ($argocd_version)"
       k create namespace argocd --dry-run=client -o yaml | k apply -f - >/dev/null
@@ -220,6 +269,7 @@ YAML
     done
 
     urls=""
+    if [ "$with_lgtm" = 1 ]; then urls="Grafana:        http://grafana.localhost:${port}/   (admin / admin; dev stack, data is lost on restart)\n"; fi
     for host in $(grep -rhA1 'hostnames:' applications/*/overlays/*/*/httproute.yaml 2>/dev/null | grep -- '- ' | sed 's/.*- //' | sort -u); do
       urls="${urls}Exposed:        http://${host}:${port}/   (once the workloads are running)\n"
     done

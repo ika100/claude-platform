@@ -1,5 +1,5 @@
 ---
-description: "Declare backing services for the application (Postgres). Usage: /gitops:addon add|remove|list [postgres] [--version N]"
+description: "Declare addons for the application (postgres, observability). Usage: /gitops:addon add|remove|list <postgres|observability> [--version N] [--ui lgtm] [--export-to URL]"
 ---
 
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS
@@ -12,4 +12,4 @@ P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -
 2. **Run** with `--pr` (one PR; the user asked for it, do not ask again).
 3. **Next**: services opt in with `/gitops:compose add <service> --uses postgres` (or `uses: [postgres]`), which injects `DATABASE_URL` and `PG*`. The operator (CloudNativePG) must exist in the cluster; `devbox run cluster-up` installs it locally.
 
-Removing an addon never deletes the database; say so. No backups/PITR/pooling are provided (ADR-020).
+`observability` needs no `uses:`: every service gets `OTEL_*` variables and a collector per environment (`--ui lgtm` = local Grafana dev stack, `--export-to` = your OTLP/HTTP backend). Removing an addon never deletes the database; say so. No backups/PITR/pooling are provided (ADR-020).

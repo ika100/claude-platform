@@ -126,3 +126,127 @@ def test_unknown_or_duplicate_addon_is_an_error(gitops_repo, gh):
 def test_uses_flag_needs_a_single_service(gitops_repo, gh):
     with pytest.raises(core.PlatformError, match="exactly one service"):
         run_compose(gitops_repo, "add", "todo-api", "todo-web", "--uses", "postgres")
+
+
+# ---------------- observability: OpenTelemetry base (ADR-021) ----------------
+
+def obs(repo, **conf):
+    f = repo / APP / "app.yaml"
+    cfg = yaml.safe_load(f.read_text()) or {}
+    cfg.setdefault("addons", {})["observability"] = conf
+    f.write_text(yaml.safe_dump(cfg))
+    commit(repo, "obs")
+
+
+def collector(repo, env="dev"):
+    d = repo / APP / "addons" / env / "observability"
+    return d, yaml.safe_load(yaml.safe_load((d / "configmap.yaml").read_text())["data"]["config.yaml"])
+
+
+def test_observability_renders_a_collector_scraping_every_service_with_a_metrics_path(gitops_repo, gh):
+    obs(gitops_repo)
+    run_compose(gitops_repo, "add", "todo-api")
+    d, cfg = collector(gitops_repo)
+    assert {p.name for p in d.iterdir()} == {"configmap.yaml", "collector.yaml", "service.yaml", "kustomization.yaml"}
+    jobs = cfg["receivers"]["prometheus"]["config"]["scrape_configs"]
+    assert jobs == [{"job_name": "todo-api", "scrape_interval": "30s", "metrics_path": "/actuator/prometheus", "static_configs": [{"targets": ["todo-api.todo-dev.svc:80"]}]}]
+    assert list(cfg["exporters"]) == ["debug"] and cfg["service"]["pipelines"]["traces"]["exporters"] == ["debug"]
+    res = {r["key"]: r["value"] for r in cfg["processors"]["resource"]["attributes"]}
+    assert res == {"deployment.environment": "dev", "service.namespace": "todo"}
+    dep = yaml.safe_load((d / "collector.yaml").read_text())
+    c = dep["spec"]["template"]["spec"]["containers"][0]
+    assert c["securityContext"]["runAsUser"] == 10001 and c["securityContext"]["readOnlyRootFilesystem"] is True
+    assert dep["spec"]["template"]["metadata"]["annotations"]["checksum/config"]
+    assert render_check(gitops_repo).returncode == 0
+
+
+def test_every_service_gets_otel_variables_and_service_env_still_wins(gitops_repo, gh):
+    obs(gitops_repo)
+    run_compose(gitops_repo, "add", "todo-api", "--env", "OTEL_SDK_DISABLED=true")
+    env = {e["name"]: e.get("value") for e in dev_deploy(gitops_repo)["spec"]["template"]["spec"]["containers"][0]["env"]}
+    assert env["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://otel-collector:4318"
+    assert env["OTEL_SERVICE_NAME"] == "todo-api" and env["OTEL_RESOURCE_ATTRIBUTES"] == "service.namespace=todo,deployment.environment=dev"
+    assert env["OTEL_SDK_DISABLED"] == "true"
+
+
+def test_without_the_addon_nothing_is_wired(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api")
+    env = {e["name"] for e in dev_deploy(gitops_repo)["spec"]["template"]["spec"]["containers"][0]["env"]}
+    assert not any(n.startswith("OTEL_") for n in env) and not (gitops_repo / APP / "addons").exists()
+
+
+@pytest.mark.parametrize("conf,exporter", [
+    ({"ui": "lgtm"}, "http://lgtm.observability.svc:4318"),
+    ({"exportTo": "https://otlp.example.com"}, "https://otlp.example.com"),
+])
+def test_backend_selection(gitops_repo, gh, conf, exporter):
+    obs(gitops_repo, **conf)
+    run_compose(gitops_repo, "add", "todo-api")
+    _, cfg = collector(gitops_repo)
+    assert cfg["exporters"]["otlphttp/backend"]["endpoint"] == exporter
+    assert cfg["service"]["pipelines"]["metrics"]["exporters"] == ["debug", "otlphttp/backend"]
+
+
+def test_headers_come_from_a_secret_never_from_git(gitops_repo, gh):
+    obs(gitops_repo, exportTo="https://otlp.example.com", headersSecret="otlp-auth")
+    run_compose(gitops_repo, "add", "todo-api")
+    d, cfg = collector(gitops_repo)
+    assert cfg["exporters"]["otlphttp/backend"]["headers"] == {"Authorization": "${env:AUTHORIZATION}"}
+    dep = yaml.safe_load((d / "collector.yaml").read_text())
+    assert dep["spec"]["template"]["spec"]["containers"][0]["envFrom"] == [{"secretRef": {"name": "otlp-auth"}}]
+
+
+@pytest.mark.parametrize("conf,msg", [
+    ({"ui": "grafana"}, "must be none or lgtm"),
+    ({"ui": "lgtm", "exportTo": "https://x.example.com"}, "either `ui: lgtm` or `exportTo`"),
+    ({"exportTo": "otlp.example.com"}, "http(s) OTLP/HTTP"),
+    ({"headersSecret": "s"}, "needs exportTo"),
+])
+def test_invalid_observability_config_is_rejected(gitops_repo, gh, conf, msg):
+    run_compose(gitops_repo, "add", "todo-api")
+    commit(gitops_repo)
+    obs(gitops_repo, **conf)
+    p = render(gitops_repo)
+    assert p.returncode == 1 and msg in p.stderr
+
+
+def test_uses_observability_is_an_error(gitops_repo, gh):
+    obs(gitops_repo)
+    run_compose(gitops_repo, "add", "todo-api")
+    f = gitops_repo / APP / "services.yaml"
+    d = yaml.safe_load(f.read_text())
+    d["services"][0]["uses"] = ["observability"]
+    f.write_text(yaml.safe_dump(d))
+    p = render(gitops_repo)
+    assert p.returncode == 1 and "applies to every service automatically" in p.stderr
+
+
+def test_config_addons_are_pruned_but_databases_are_not(gitops_repo, gh):
+    declare(gitops_repo)
+    obs(gitops_repo)
+    run_compose(gitops_repo, "add", "todo-api", "--uses", "postgres")
+    sets = {d["metadata"]["name"]: d for d in yaml.safe_load_all((gitops_repo / APP / "applicationset.yaml").read_text())}
+    assert sets["todo-addons-dev"]["spec"]["template"]["spec"]["syncPolicy"]["automated"]["prune"] is False
+    assert sets["todo-addons-config-dev"]["spec"]["template"]["spec"]["syncPolicy"]["automated"]["prune"] is True
+    assert [e["name"] for e in sets["todo-addons-dev"]["spec"]["generators"][0]["list"]["elements"]] == ["postgres"]
+    assert [e["name"] for e in sets["todo-addons-config-dev"]["spec"]["generators"][0]["list"]["elements"]] == ["observability"]
+
+
+def test_addon_add_observability_with_options(gitops_repo, gh):
+    assert addon.main(["add", "observability", "--ui", "lgtm", "--repo-dir", str(gitops_repo)]) == 0
+    assert app_yaml(gitops_repo)["addons"]["observability"] == {"ui": "lgtm"}
+    commit(gitops_repo, "x")
+    with pytest.raises(core.PlatformError, match="apply to the observability"):
+        addon.main(["add", "postgres", "--ui", "lgtm", "--repo-dir", str(gitops_repo)])
+
+
+def test_compose_seeds_the_metrics_path_per_shape(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api", "todo-web")
+    assert {s["name"]: s["metrics"] for s in services(gitops_repo)} == {"todo-api": "/actuator/prometheus", "todo-web": "/api/metrics"}
+
+
+def test_collector_config_has_no_yaml_anchors(gitops_repo, gh):
+    obs(gitops_repo, ui="lgtm")
+    run_compose(gitops_repo, "add", "todo-api")
+    text = yaml.safe_load((gitops_repo / APP / "addons/dev/observability/configmap.yaml").read_text())["data"]["config.yaml"]
+    assert "&id" not in text and "*id" not in text

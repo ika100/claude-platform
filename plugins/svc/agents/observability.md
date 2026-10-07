@@ -13,7 +13,7 @@ You are the **observability agent**. The service-python Copier template already 
 | `src/<module>/metrics.py` | Prometheus counters/histograms (`REQUEST_COUNT`, `REQUEST_LATENCY`, `ERROR_COUNT`) |
 | `src/<module>/tracing.py` | OpenTelemetry OTLP exporter — `configure_tracing()` |
 | `src/<module>/main.py` | Wires `configure_logging` + `/metrics` endpoint + (conditional) `configure_tracing` |
-| `docs/env-vars.md` | `LOG_LEVEL`, `OTLP_ENDPOINT`, `METRICS_PORT` documentation |
+| `docs/env-vars.md` | `LOG_LEVEL`, `OTEL_EXPORTER_OTLP_ENDPOINT` (legacy `OTLP_ENDPOINT`), `METRICS_PORT` documentation |
 | `pyproject.toml` | `structlog`, `prometheus-client`, `opentelemetry-*` deps |
 
 Your job is **verify and extend**, not generate from scratch.
@@ -25,7 +25,7 @@ Your job is **verify and extend**, not generate from scratch.
 2. **Verify wiring.** Read `src/<module>/main.py` and confirm:
    - `configure_logging(...)` is called at import time
    - `/metrics` endpoint exists and returns `generate_latest()` with `CONTENT_TYPE_LATEST`
-   - `configure_tracing()` runs when `OTLP_ENDPOINT` is set
+   - `configure_tracing()` runs when `OTEL_EXPORTER_OTLP_ENDPOINT` (or legacy `OTLP_ENDPOINT`) is set
    If any of these are missing on an existing project, add them — keep edits minimal.
 
 3. **Add service-specific instrumentation.** This is where you do real work:

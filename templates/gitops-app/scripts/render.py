@@ -67,7 +67,16 @@ ADDONS = {
         "env": {"DATABASE_URL": "uri", "PGHOST": "host", "PGPORT": "port", "PGDATABASE": "dbname", "PGUSER": "user", "PGPASSWORD": "password"},
         "defaults": {"version": 17, "instances": 1, "storage": "1Gi"},
     },
+    # OpenTelemetry base (ADR-021): applies to every service, no `uses`. A collector per environment receives OTLP and scrapes
+    # the services' Prometheus endpoints; a UI/backend is optional (`ui: lgtm`, or `exportTo`).
+    "observability": {
+        "scope": "all",
+        "prune": True,                      # configuration only: removing it removes the collector (postgres keeps its data)
+        "image": "otel/opentelemetry-collector-contrib:0.162.0",
+        "defaults": {"ui": "none"},
+    },
 }
+LGTM_ENDPOINT = "http://lgtm.observability.svc:4318"    # the shared all-in-one UI stack `cluster-up` installs for `ui: lgtm`
 ADDON_FILES = {"cluster.yaml", "kustomization.yaml"}
 ESO_API = "external-secrets.io/v1"
 GEN_API = "generators.external-secrets.io/v1alpha1"
@@ -161,6 +170,8 @@ def validate_addons(services: list[dict], cfg: dict) -> None:
         for a in s.get("uses") or []:
             if a not in ADDONS:
                 raise RenderError(f"service '{s['name']}': unknown addon '{a}' in `uses` (available: {', '.join(ADDONS)})")
+            if ADDONS[a].get("scope") == "all":
+                raise RenderError(f"service '{s['name']}': '{a}' applies to every service automatically; remove it from `uses`")
             if a not in declared:
                 raise RenderError(f"service '{s['name']}' uses '{a}', which app.yaml does not declare "
                                   f"(add it with `/gitops:addon add {a}`, or under `addons:` in app.yaml)")
@@ -169,8 +180,28 @@ def validate_addons(services: list[dict], cfg: dict) -> None:
                 raise RenderError(f"service '{s['name']}': env {', '.join(clash)} is provided by the '{a}' addon; remove it from `env`")
 
 
-def addons_in(services: list[dict], env: str) -> list[str]:
-    return sorted({a for s in services if env in envs_of(s) for a in s.get("uses") or []})
+    obs = declared.get("observability")
+    if "observability" in declared:
+        obs = obs or {}
+        if obs.get("ui", "none") not in ("none", "lgtm"):
+            raise RenderError(f"app.yaml: observability.ui must be none or lgtm, got '{obs.get('ui')}'")
+        if obs.get("ui") == "lgtm" and obs.get("exportTo"):
+            raise RenderError("app.yaml: observability: choose either `ui: lgtm` or `exportTo`, not both")
+        if obs.get("exportTo") and not str(obs["exportTo"]).startswith(("http://", "https://")):
+            raise RenderError("app.yaml: observability.exportTo must be an http(s) OTLP/HTTP endpoint")
+        if obs.get("headersSecret") and not obs.get("exportTo"):
+            raise RenderError("app.yaml: observability.headersSecret needs exportTo")
+
+
+def addons_in(services: list[dict], env: str, cfg: dict) -> list[str]:
+    names = {a for s in services if env in envs_of(s) for a in s.get("uses") or []}
+    if "observability" in (cfg.get("addons") or {}) and any(env in envs_of(s) for s in services):
+        names.add("observability")
+    return sorted(names)
+
+
+def obs_enabled(cfg: dict) -> bool:
+    return "observability" in (cfg.get("addons") or {})
 
 
 def envs_of(svc: dict) -> list[str]:
@@ -196,10 +227,17 @@ def addon_env(app: str, svc: dict) -> list[dict]:
     return out
 
 
-def deployment(app: str, svc: dict, env: str) -> dict:
+def obs_env(app: str, svc: dict, env: str) -> dict[str, str]:
+    """Standard OTel variables pointing at the environment's collector (services.yaml `env` still wins)."""
+    return {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://otel-collector:4318", "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf",
+            "OTEL_SERVICE_NAME": svc["name"], "OTEL_RESOURCE_ATTRIBUTES": f"service.namespace={app},deployment.environment={env}",
+            "OTEL_SDK_DISABLED": "false"}
+
+
+def deployment(app: str, svc: dict, env: str, obs: bool = False) -> dict:
     labels = labels_for(app, svc)
     selector = {"app": svc["name"]}
-    env_vars = {"PORT": str(svc["port"]), **{k: str(v) for k, v in (svc.get("env") or {}).items()}}
+    env_vars = {"PORT": str(svc["port"]), **(obs_env(app, svc, env) if obs else {}), **{k: str(v) for k, v in (svc.get("env") or {}).items()}}
     container: dict = {
         "name": "app",
         "image": svc["image"],
@@ -303,8 +341,70 @@ def postgres_cluster(app: str, env: str, conf: dict) -> dict:
     }
 
 
-def addon_files(app: str, name: str, env: str, cfg: dict) -> dict[str, dict]:
+def collector_config(app: str, env: str, conf: dict, services: list[dict]) -> dict:
+    scrape = [{"job_name": s["name"], "scrape_interval": "30s", "metrics_path": s["metrics"],
+               "static_configs": [{"targets": [f"{s['name']}.{app}-{env}.svc:80"]}]}
+              for s in services if env in envs_of(s) and s.get("metrics")]
+    receivers: dict = {"otlp": {"protocols": {"grpc": {"endpoint": "0.0.0.0:4317"}, "http": {"endpoint": "0.0.0.0:4318"}}}}
+    if scrape:
+        receivers["prometheus"] = {"config": {"scrape_configs": scrape}}
+    endpoint = LGTM_ENDPOINT if conf.get("ui") == "lgtm" else conf.get("exportTo")
+    exporters: dict = {"debug": {"verbosity": "basic"}}
+    names = ["debug"]
+    if endpoint:
+        backend: dict = {"endpoint": endpoint}
+        if conf.get("headersSecret"):
+            backend["headers"] = {"Authorization": "${env:AUTHORIZATION}"}
+        exporters["otlphttp/backend"] = backend
+        names.append("otlphttp/backend")
+    processors = {"memory_limiter": {"check_interval": "1s", "limit_percentage": 80, "spike_limit_percentage": 25}, "batch": {},
+                  "resource": {"attributes": [{"key": "deployment.environment", "value": env, "action": "upsert"},
+                                              {"key": "service.namespace", "value": app, "action": "upsert"}]}}
+    chain = lambda: {"processors": ["memory_limiter", "resource", "batch"], "exporters": list(names)}  # noqa: E731  (fresh lists: no YAML anchors)
+    return {"extensions": {"health_check": {"endpoint": "0.0.0.0:13133"}}, "receivers": receivers, "processors": processors, "exporters": exporters,
+            "service": {"extensions": ["health_check"], "pipelines": {
+                "traces": {"receivers": ["otlp"], **chain()},
+                "metrics": {"receivers": ["otlp", *(["prometheus"] if scrape else [])], **chain()},
+                "logs": {"receivers": ["otlp"], **chain()}}}}
+
+
+def observability_files(app: str, env: str, conf: dict, services: list[dict]) -> dict[str, dict | str]:
+    import hashlib
+    labels = {"app.kubernetes.io/name": "otel-collector", "app.kubernetes.io/part-of": app, "app.kubernetes.io/managed-by": "gitops-app"}
+    config = dump(collector_config(app, env, conf, services))
+    container: dict = {
+        "name": "collector", "image": ADDONS["observability"]["image"], "args": ["--config=/conf/config.yaml"],
+        "ports": [{"name": "otlp-grpc", "containerPort": 4317}, {"name": "otlp-http", "containerPort": 4318}, {"name": "health", "containerPort": 13133}],
+        "readinessProbe": {"httpGet": {"path": "/", "port": "health"}, "periodSeconds": 5},
+        "livenessProbe": {"httpGet": {"path": "/", "port": "health"}, "periodSeconds": 10},
+        "resources": {"requests": {"cpu": "50m", "memory": "128Mi"}, "limits": {"cpu": "500m", "memory": "256Mi"}},
+        "securityContext": {"runAsNonRoot": True, "runAsUser": 10001, "allowPrivilegeEscalation": False, "readOnlyRootFilesystem": True, "capabilities": {"drop": ["ALL"]}},
+        "volumeMounts": [{"name": "conf", "mountPath": "/conf"}],
+    }
+    if conf.get("headersSecret"):
+        container["envFrom"] = [{"secretRef": {"name": conf["headersSecret"]}}]
+    deploy = {
+        "apiVersion": "apps/v1", "kind": "Deployment", "metadata": {"name": "otel-collector", "labels": labels},
+        "spec": {"replicas": 1, "selector": {"matchLabels": {"app": "otel-collector"}},
+                 "template": {"metadata": {"labels": {**labels, "app": "otel-collector"},
+                                           "annotations": {"checksum/config": hashlib.sha256(config.encode()).hexdigest()[:16]}},
+                              "spec": {"securityContext": {"runAsNonRoot": True, "seccompProfile": {"type": "RuntimeDefault"}},
+                                       "containers": [container], "volumes": [{"name": "conf", "configMap": {"name": "otel-collector"}}]}}},
+    }
+    return {
+        "configmap.yaml": {"apiVersion": "v1", "kind": "ConfigMap", "metadata": {"name": "otel-collector", "labels": labels}, "data": {"config.yaml": config}},
+        "collector.yaml": deploy,
+        "service.yaml": {"apiVersion": "v1", "kind": "Service", "metadata": {"name": "otel-collector", "labels": labels},
+                         "spec": {"type": "ClusterIP", "selector": {"app": "otel-collector"},
+                                  "ports": [{"name": "otlp-grpc", "port": 4317, "targetPort": "otlp-grpc"}, {"name": "otlp-http", "port": 4318, "targetPort": "otlp-http"}]}},
+        "kustomization.yaml": {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["configmap.yaml", "collector.yaml", "service.yaml"]},
+    }
+
+
+def addon_files(app: str, name: str, env: str, cfg: dict, services: list[dict]) -> dict[str, dict | str]:
     conf = (cfg.get("addons") or {}).get(name) or {}
+    if name == "observability":
+        return observability_files(app, env, conf, services)
     files = {"cluster.yaml": postgres_cluster(app, env, conf)}   # one addon today; dispatch on `name` when more exist
     files["kustomization.yaml"] = {"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["cluster.yaml"]}
     return files
@@ -340,28 +440,33 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
             },
         })
     for env in ENVS:
-        names = addons_in(services, env)
+        names = addons_in(services, env, cfg)
         if not names:
             continue
-        docs.append({
-            "apiVersion": "argoproj.io/v1alpha1", "kind": "ApplicationSet",
-            "metadata": {"name": f"{app}-addons-{env}", "namespace": "argocd"},
-            "spec": {
-                "generators": [{"list": {"elements": [{"name": n} for n in names]}}],
-                "template": {
-                    "metadata": {"name": "addon-{{name}}-" + env},
-                    "spec": {
-                        "project": "default",
-                        "source": {"repoURL": gitops_repo, "targetRevision": "main", "path": f"applications/{app}/addons/{env}/" + "{{name}}"},
-                        "destination": {"server": server, "namespace": f"{app}-{env}"},
-                        "syncPolicy": {"automated": {"prune": False, "selfHeal": True}, "syncOptions": ["CreateNamespace=true"]},
+        # one ApplicationSet per prune policy: stateful addons (postgres) are never pruned, config-only ones are
+        for prune, suffix in ((False, "addons"), (True, "addons-config")):
+            group = [n for n in names if bool(ADDONS[n].get("prune", False)) is prune]
+            if not group:
+                continue
+            docs.append({
+                "apiVersion": "argoproj.io/v1alpha1", "kind": "ApplicationSet",
+                "metadata": {"name": f"{app}-{suffix}-{env}", "namespace": "argocd"},
+                "spec": {
+                    "generators": [{"list": {"elements": [{"name": n} for n in group]}}],
+                    "template": {
+                        "metadata": {"name": "addon-{{name}}-" + env},
+                        "spec": {
+                            "project": "default",
+                            "source": {"repoURL": gitops_repo, "targetRevision": "main", "path": f"applications/{app}/addons/{env}/" + "{{name}}"},
+                            "destination": {"server": server, "namespace": f"{app}-{env}"},
+                            "syncPolicy": {"automated": {"prune": prune, "selfHeal": True}, "syncOptions": ["CreateNamespace=true"]},
+                        },
                     },
                 },
-            },
-        })
+            })
         for n in names:
-            for fname, doc in addon_files(app, n, env, cfg).items():
-                out[app_dir / "addons" / env / n / fname] = dump(doc)
+            for fname, doc in addon_files(app, n, env, cfg, services).items():
+                out[app_dir / "addons" / env / n / fname] = dump(doc) if not isinstance(doc, str) else doc
     out[app_dir / "applicationset.yaml"] = "---\n".join(dump(d) for d in docs)
 
     out[ROOT / "bootstrap" / f"{app}-root.yaml"] = dump({
@@ -380,7 +485,7 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
             if env not in envs_of(s):
                 continue
             base = app_dir / "overlays" / env / s["name"]
-            files = {"deployment.yaml": deployment(app, s, env), "service.yaml": service(app, s)}
+            files = {"deployment.yaml": deployment(app, s, env, obs_enabled(cfg)), "service.yaml": service(app, s)}
             route = httproute(app, s, env, cfg)
             if route:
                 files["httproute.yaml"] = route
