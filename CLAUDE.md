@@ -13,13 +13,16 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 | `.claude-plugin/marketplace.json` | Marketplace catalog. Bump plugin versions here when a plugin changes. |
 | `plugins/<name>/.claude-plugin/plugin.json` | Per-plugin manifest. Mirror the version in the marketplace catalog. |
 | `plugins/<name>/agents/*.md` | Subagent definitions (YAML frontmatter + system prompt). |
-| `plugins/<name>/commands/*.md` | Slash commands (description frontmatter + body using `$ARGUMENTS`). |
-| `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks. All three plugins ship a SessionStart hook that checks devbox is on PATH and runs `devbox install` if a `devbox.json` is present. |
-| `devbox.json` | Repo-root devbox env (jq, uv, python, copier) + smoke-test scripts (`validate`, `smoke-service`, `smoke-library`). |
+| `plugins/<name>/commands/*.md` | Slash commands (description frontmatter + body using `$ARGUMENTS`). Commands stay thin: they run `scripts/cplat` and relay its output. |
+| `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks (e.g. the SessionStart hook that checks devbox and runs `devbox install`). |
 | `plugins/<name>/settings.json` | Plugin-scoped permission allowlists. |
-| `templates/service-python/` | Copier-templated service repo skeleton. |
-| `templates/library-python/` | Copier-templated library repo skeleton. |
-| `docs/AGENTS.md` | The orchestration model — read before changing agents or commands. |
+| `shapes.yml` | The shape registry: one entry per template/plugin pair, validated by `scripts/shapes.py check`. |
+| `templates/<shape>/` | Copier templates: `service-python`, `library-python`, `service-java`, `service-go`, `web-nextjs`, `gitops-app`. Only `*.jinja` files are rendered in the newer templates (see each `copier.yml`). |
+| `scripts/cplat/` | The tested CLI behind the commands (`new-service`, `update-service`, `compose`, `promote`, `addon`, `secret`, `doctor`, `status`, `feedback`). |
+| `scripts/*.py`, `scripts/ci-local.sh` | Repository checks: shape registry, pinned Actions, Markdown links, local CI. |
+| `tests/cplat/`, `tests/e2e/` | pytest suite for the CLI and renderer; the full-stack cluster test. |
+| `devbox.json` | Repo-root devbox env + smoke-test scripts (`validate`, `smoke-*`, `ci-local`). |
+| `docs/` | Guides, `docs/adr/` (decisions, indexed in its README), `docs/CHANGELOG.md`, `docs/AGENTS.md` (orchestration model: read before changing agents or commands). |
 
 ## Conventions
 

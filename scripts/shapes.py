@@ -196,6 +196,15 @@ def check_front_matter() -> list[str]:
     return errs
 
 
+def check_adr_index() -> list[str]:
+    """Every docs/adr/NNN-*.md must be listed in docs/adr/README.md (the index people actually read)."""
+    index = ROOT / "docs" / "adr" / "README.md"
+    if not index.is_file():
+        return ["docs/adr/README.md is missing"]
+    text = index.read_text()
+    return [f"docs/adr/{f.name} is not listed in docs/adr/README.md" for f in sorted((ROOT / "docs" / "adr").glob("[0-9]*.md")) if f"]({f.name})" not in text]
+
+
 def prd_rows() -> dict[str, tuple[str, str]]:
     """Parse the §4 table: shape id -> (plugin, template)."""
     text = PRD.read_text()
@@ -241,7 +250,7 @@ def main(argv: list[str]) -> int:
         return 0
     errs = validate(shapes)
     if cmd == "check":
-        errs += check_files(shapes) + check_contract(shapes) + check_prd(shapes) + check_front_matter()
+        errs += check_files(shapes) + check_contract(shapes) + check_prd(shapes) + check_front_matter() + check_adr_index()
     elif cmd != "validate":
         print(__doc__)
         return 2

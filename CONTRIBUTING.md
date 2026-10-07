@@ -55,7 +55,7 @@ CI runs the same checks plus a smoke test per template (generated repos must pas
 - **Plugins**: when you change anything under `plugins/<name>/`, bump the version in both `plugins/<name>/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` (semver: patch for fixes, minor for additions, major for breaking changes).
 - **Keep always-on text small.** Agent and command `description:` front matter is loaded into every session (max 260 characters, enforced). Put detail in the body.
 - **Changelog**: add a line under `## [Unreleased]` in `docs/CHANGELOG.md` for anything users can notice.
-- **Decisions**: a change that alters how the platform works gets an ADR in `docs/adr/` (next free number; context, decision, consequences, what is not included).
+- **Decisions**: a change that alters how the platform works gets an ADR in `docs/adr/` (next free number; context, decision, consequences, what is not included) and a row in `docs/adr/README.md`.
 - **GitHub Actions** must be pinned by commit SHA with a `# vX` comment (`python3 scripts/pin-actions.py` does it for you) and every workflow needs top-level `permissions:`.
 - **No secrets** in code, tests or fixtures; build token-shaped test strings at runtime so scanners stay quiet.
 
