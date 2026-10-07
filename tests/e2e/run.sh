@@ -58,7 +58,7 @@ done
 
 step "Describe the services like /gitops:compose does and render the manifests"
 (cd "$work/e2e-gitops" && uv run --with pyyaml --with ruamel.yaml python - "$root" "$registry:$regport" <<'PY'
-import argparse, sys
+import sys
 root, registry = sys.argv[1], sys.argv[2]
 sys.path.insert(0, f"{root}/scripts/cplat")
 import compose, core, gitops
@@ -68,12 +68,13 @@ app_dir = gitops.find_app(repo)
 y, data = gitops.load(app_dir)
 services = gitops.services_of(data)
 shapes = {s["id"]: s for s in core.registry.load()}
-ns = argparse.Namespace(port=None, replicas=None, env=[], expose=True, generate=[], secret=[], uses=[])
+ns = compose.build_parser().parse_args(["add", "e2e-api", "--expose"])   # real parser defaults: new compose flags cannot break this harness
 for name, shape in (("e2e-api", "service-java"), ("e2e-web", "web-nextjs")):
     ns.env = ["API_URL=http://e2e-api"] if name == "e2e-web" else []
     ns.generate = ["e2e-api-auth=DB_PASSWORD,JWT_KEY"] if name == "e2e-api" else []   # random values created by ESO
     ns.secret = ["e2e-api-stripe=STRIPE_KEY"] if name == "e2e-api" else []            # read from the secret store
     ns.uses = ["postgres"] if name == "e2e-api" else []                               # DATABASE_URL from the addon
+    ns.secret_ref = ["e2e-api-auth"] if name == "e2e-web" else []                     # the web app reads the secret generated for the API
     services.append(compose.build_entry(name, f"e2e/{name}", shapes[shape], None, registry, ns, {}))
 gitops.save(app_dir, y, data)
 PY

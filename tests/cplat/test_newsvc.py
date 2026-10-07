@@ -87,3 +87,49 @@ def test_real_local_render_of_each_shape(tmp_path):
         assert subprocess.run(["bash", str(core.PLATFORM_ROOT / "scripts/detect-shape.sh"), str(repo)], text=True, capture_output=True).stdout.strip() == shape
     assert "module github.com/acme/t-service-go" in (tmp_path / "t-service-go" / "go.mod").read_text()
     assert not (tmp_path / "t-service-go" / ".platform-app.yml").exists() or "acme/app-gitops" in (tmp_path / "t-service-go" / ".platform-app.yml").read_text()
+
+
+# ---------------- visibility and template options ----------------
+
+def test_public_flag_is_shown_in_the_preview_and_used_for_the_github_repo(tmp_path, monkeypatch, capsys):
+    import subprocess
+
+    calls = []
+    real_run = newsvc.run
+
+    def fake_run(cmd, **kw):
+        if cmd[0] == "gh":
+            calls.append(cmd)
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        return real_run(cmd, **kw)
+
+    monkeypatch.setattr(newsvc, "run", fake_run)
+    monkeypatch.setattr(newsvc.core, "has_gh", lambda: True)
+    assert newsvc.main(["pubsvc", "d", "--public", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme", "--dry-run"]) == 0
+    assert "create PUBLIC GitHub repo acme/pubsvc" in capsys.readouterr().out
+    assert newsvc.main(["pubsvc", "d", "--public", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    create = next(c for c in calls if c[:3] == ["gh", "repo", "create"])
+    assert "--public" in create and "--private" not in create
+
+
+def test_private_stays_the_default(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr(newsvc.core, "has_gh", lambda: True)
+    assert newsvc.main(["privsvc", "d", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme", "--dry-run"]) == 0
+    assert "create PRIVATE GitHub repo" in capsys.readouterr().out
+
+
+def test_public_conflicts_are_rejected():
+    with pytest.raises(core.PlatformError, match="conflicts"):
+        newsvc.resolve(["x-svc", "d", "--public", "--visibility", "private"])
+    with pytest.raises(core.PlatformError, match="needs a GitHub repository"):
+        newsvc.resolve(["x-svc", "d", "--public", "--no-github"])
+
+
+def test_data_sets_template_options_and_rejects_unknown_ones(tmp_path):
+    req = newsvc.resolve(["opt-svc", "d", "--type", "service-java", "--data", "needs_observability=false", "--dir", str(tmp_path)])
+    assert req["data"]["needs_observability"] == "false" and "needs_observability" in req["set_keys"]
+    with pytest.raises(core.PlatformError) as e:
+        newsvc.resolve(["opt-svc", "d", "--type", "service-java", "--data", "needs_everything=true"])
+    assert "no option 'needs_everything'" in str(e.value) and "needs_observability" in (e.value.hint or "")
+    with pytest.raises(core.PlatformError, match="KEY=VALUE"):
+        newsvc.resolve(["opt-svc", "d", "--data", "oops"])

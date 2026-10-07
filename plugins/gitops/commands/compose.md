@@ -1,5 +1,5 @@
 ---
-description: "Add/remove services in a gitops-app repo: writes a complete services.yaml entry, regenerates manifests, opens one PR. Usage: /gitops:compose add|remove <service...> [--expose] [--env K=V] [--generate S=K,K] [--secret S=K,K] [--uses postgres] [--from-k8s]"
+description: "Add/remove services in a gitops-app repo: writes the services.yaml entry, renders manifests, opens a PR. Usage: /gitops:compose add|remove <service...> [--expose] [--env K=V] [--generate S=K,K] [--secret S=K,K] [--uses postgres] [--secret-ref N] [--from-k8s]"
 ---
 
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS

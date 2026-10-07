@@ -6,6 +6,14 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### UX fixes found while building the project-management sample
+
+- **`/shared:new-service --public`** (or `--visibility public`): create the GitHub repository public instead of the hard-coded private one; the preview says PUBLIC or PRIVATE before anything is created.
+- **`/shared:new-service --data KEY=VALUE`**: set template options at creation (for example `needs_observability=false`); the keys are validated against the template's own `copier.yml` and an unknown one lists the valid options. Before, options could only be changed afterwards with `update-service --data`.
+- **`/gitops:compose add <svc> --secret-ref NAME`**: expose an existing Secret (for example the one generated for another service) to a service. `secretRefs` was previously impossible to set from the CLI.
+- **`devbox run cluster-up` checks the host ports first**: a busy `LOCAL_HTTP_PORT` (or `REGISTRY_PORT`) stops the script before anything is created, names the program that holds the port and suggests a free one; `LOCAL_HTTP_PORT=auto` picks the first free port from 8088.
+- Plugins: shared 0.7.3, gitops 1.3.3.
+
 ## [3.0.3] — 2026-10-07
 
 ### Fixed

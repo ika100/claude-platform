@@ -406,3 +406,21 @@ def test_secret_set_and_list(gitops_repo, gh, monkeypatch, capsys):
     assert not any("sk_test_1" in " ".join(c) for c in k.calls)   # never on a command line
     with pytest.raises(core.PlatformError, match="generated"):
         secret.main(["set", "todo-api", "todo-api-auth", "DB_PASSWORD", "--value-stdin", *base])
+
+
+def test_secret_ref_exposes_another_services_generated_secret(gitops_repo, gh):
+    run_compose(gitops_repo, "add", "todo-api", "--generate", "todo-api-auth=API_KEY")
+    commit(gitops_repo)
+    run_compose(gitops_repo, "add", "todo-web", "--secret-ref", "todo-api-auth")
+    web = [s for s in services(gitops_repo) if s["name"] == "todo-web"][0]
+    assert web["secretRefs"] == ["todo-api-auth"]
+    dep = yaml.safe_load((gitops_repo / "applications/todo/overlays/dev/todo-web/deployment.yaml").read_text())
+    assert dep["spec"]["template"]["spec"]["containers"][0]["envFrom"] == [{"secretRef": {"name": "todo-api-auth"}}]
+    assert render_check(gitops_repo).returncode == 0
+
+
+def test_secret_ref_rejects_bad_names_and_multiple_services(gitops_repo, gh):
+    with pytest.raises(core.PlatformError, match="not a valid Secret name"):
+        run_compose(gitops_repo, "add", "todo-api", "--secret-ref", "Bad_Name")
+    with pytest.raises(core.PlatformError, match="exactly one service"):
+        run_compose(gitops_repo, "add", "todo-api", "todo-web", "--secret-ref", "x")

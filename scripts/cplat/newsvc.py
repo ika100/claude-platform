@@ -5,6 +5,8 @@ import argparse
 import re
 from pathlib import Path
 
+import yaml
+
 import core
 from core import PLATFORM_ROOT, PlatformError, Report, run
 
@@ -26,10 +28,22 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--description", help="legacy alias; appended to the description words")
     p.add_argument("--dir", default=".", help="parent directory for the new repo (default: current directory)")
     p.add_argument("--no-github", action="store_true", help="local repo only; do not create a GitHub repo")
+    p.add_argument("--public", action="store_true", help="create the GitHub repo as public (default: private); same as --visibility public")
+    p.add_argument("--visibility", choices=["private", "public"], help="visibility of the GitHub repo (default: private)")
+    p.add_argument("--data", action="append", default=[], metavar="KEY=VALUE", help="template option, e.g. needs_database=true (repeatable; see the template's copier.yml)")
     p.add_argument("--skip-tasks", action="store_true", help="skip the template's bootstrap tasks (tests/CI)")
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--json", action="store_true")
     return p
+
+
+def template_options(template_dir: Path) -> list[str]:
+    """Names of the template's questions (keys of copier.yml that are not `_settings`)."""
+    try:
+        cfg = yaml.safe_load((template_dir / "copier.yml").read_text()) or {}
+    except (OSError, yaml.YAMLError):
+        return []
+    return sorted(k for k in cfg if not str(k).startswith("_"))
 
 
 def resolve(argv: list[str]) -> dict:
@@ -73,7 +87,21 @@ def resolve(argv: list[str]) -> dict:
     if target.exists() and any(p.name != ".claude" for p in target.iterdir()):
         raise PlatformError(f"{target} already exists and is not empty", hint="choose another name or remove the directory")
 
+    visibility = "public" if ns.public else (ns.visibility or "private")
+    if ns.public and ns.visibility == "private":
+        raise PlatformError("--public conflicts with --visibility private")
+    if visibility == "public" and ns.no_github:
+        raise PlatformError("--public needs a GitHub repository", hint="drop --no-github")
+
     data = {"project_name": name, "description": description, "github_org": org, "platform_marketplace_ref": ns.ref}
+    options = template_options(template_dir)
+    for kv in ns.data:
+        key, sep, value = kv.partition("=")
+        if not key or not sep:
+            raise PlatformError(f"--data expects KEY=VALUE, got '{kv}'")
+        if options and key not in options:
+            raise PlatformError(f"template {entry['template']} has no option '{key}'", hint="options: " + ", ".join(options))
+        data[key] = value
     if python:
         data["module_name"] = name.replace("-", "_")
         data["python_version"] = ns.python or "3.12"
@@ -81,21 +109,21 @@ def resolve(argv: list[str]) -> dict:
         "shape": shape, "entry": entry, "template": entry["template"], "name": name, "description": description,
         "org": org, "target": target, "data": data, "app": ns.app if entry["deployable"] else None,
         "ignored_app": bool(ns.app and not entry["deployable"]), "github": not ns.no_github and core.has_gh(),
-        "want_github": not ns.no_github, "skip_tasks": ns.skip_tasks, "dry_run": ns.dry_run, "json": ns.json, "ref": ns.ref,
+        "want_github": not ns.no_github, "visibility": visibility, "set_keys": [kv.partition("=")[0] for kv in ns.data], "skip_tasks": ns.skip_tasks, "dry_run": ns.dry_run, "json": ns.json, "ref": ns.ref,
     }
 
 
 def plan(req: dict) -> Report:
     r = Report(title=f"New {req['shape']} repo: {req['name']}")
     r.will_do.append(f"render templates/{req['template']} into {req['target']} (answers: " +
-                     ", ".join(f"{k}={v}" for k, v in req["data"].items() if k in ("github_org", "module_name", "python_version")) + ")")
+                     ", ".join(f"{k}={v}" for k, v in req["data"].items() if k in ("github_org", "module_name", "python_version", *req["set_keys"])) + ")")
     r.will_do.append("run the template's bootstrap tasks (git init, devbox install, lockfiles) and create the first commit")
     if req["app"]:
         r.will_do.append(f"write .platform-app.yml linking the repo to {req['app']}")
     r.will_do.append("stamp .platform-version and record the stable template source in .copier-answers.yml")
     if req["want_github"]:
         if req["github"]:
-            r.will_do.append(f"[outward] create PRIVATE GitHub repo {req['org']}/{req['name']} and push")
+            r.will_do.append(f"[outward] create {req['visibility'].upper()} GitHub repo {req['org']}/{req['name']} and push")
             if req["entry"]["deployable"]:
                 r.will_do.append("[outward] add topic deployable-service (so it can be composed into a gitops-app)")
         else:
@@ -154,14 +182,14 @@ def execute(req: dict) -> Report:
     cmds_if_manual = []
     slug = f"{req['org']}/{req['name']}"
     if req["want_github"] and req["github"]:
-        run(["gh", "repo", "create", slug, "--private", "--description", req["description"], "--source=.", "--remote=origin", "--push"], cwd=target)
-        r.did.append(f"created private GitHub repo https://github.com/{slug} and pushed")
+        run(["gh", "repo", "create", slug, f"--{req['visibility']}", "--description", req["description"], "--source=.", "--remote=origin", "--push"], cwd=target)
+        r.did.append(f"created {req['visibility']} GitHub repo https://github.com/{slug} and pushed")
         if req["entry"]["deployable"]:
             run(["gh", "repo", "edit", slug, "--add-topic", "deployable-service"])
             r.did.append("added topic deployable-service")
         r.undo.append(f"gh repo delete {slug} --yes   (needs the delete_repo scope: gh auth refresh -s delete_repo)")
     elif req["want_github"]:
-        cmds_if_manual = [f"gh repo create {slug} --private --source=. --remote=origin --push"]
+        cmds_if_manual = [f"gh repo create {slug} --{req['visibility']} --source=. --remote=origin --push"]
         if req["entry"]["deployable"]:
             cmds_if_manual.append(f"gh repo edit {slug} --add-topic deployable-service")
         r.did.append("skipped GitHub (gh missing)")
