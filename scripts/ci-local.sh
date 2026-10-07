@@ -27,6 +27,9 @@ python3 scripts/pin-actions.py --check
 step "relative Markdown links"
 python3 scripts/check-links.py
 
+step "license and copyright metadata (REUSE)"
+uvx --quiet --from "reuse[charset-normalizer]" reuse lint | tail -3
+
 step "cplat tests (Kyverno CLI tests skip without the kyverno binary)"
 uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q
 

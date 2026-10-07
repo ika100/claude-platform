@@ -39,14 +39,22 @@ git clone https://github.com/ika100/claude-platform && cd claude-platform
 uv run scripts/shapes.py check                                              # registry, templates, plugins, descriptions
 python3 scripts/pin-actions.py --check                                      # every GitHub Action pinned by SHA, workflows have permissions
 python3 scripts/check-links.py                                               # relative Markdown links resolve
+uvx --from "reuse[charset-normalizer]" reuse lint                           # every file has license + copyright metadata (REUSE)
 uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q # CLI + render tests (3 tests need the Kyverno CLI and skip without it)
 copier copy ./templates/web-nextjs /tmp/try --defaults --trust --skip-tasks --data project_name=try   # render a template you touched
 bash tests/e2e/run.sh                                                       # whole stack on a local k3d cluster (Docker, k3d, kubectl)
 ```
 
-`bash scripts/ci-local.sh` (or `devbox run ci-local`; add `--render` to render every template) runs the first four in one go.
+`bash scripts/ci-local.sh` (or `devbox run ci-local`; add `--render` to render every template) runs the first five in one go.
 
 CI runs the same checks plus a smoke test per template (generated repos must pass their own `quality` and `test` recipes). Pull requests that only touch documentation run a reduced set of jobs.
+
+## Legal and privacy
+
+- **Your license grant.** Submitting a contribution licenses it under Apache-2.0 (section 5 of the license); you keep your copyright. Only contribute work you have the right to contribute: no code copied from sources with an incompatible or unknown license, and nothing your employer owns without their permission.
+- **AI-assisted contributions are welcome**, under the same rule: you are responsible for what you submit. Mention substantial AI assistance in the PR description and check generated code for copied snippets.
+- **Third-party material** (code, icons, fonts, text) needs its license text in `LICENSES/`, an entry in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and an override in `REUSE.toml`; `reuse lint` (in CI) enforces that every file has license and copyright information.
+- **Privacy.** Commit author names and e-mail addresses are public and permanent. Use your GitHub `@users.noreply.github.com` address if you do not want to publish a personal one.
 
 ## Pull request rules
 

@@ -99,6 +99,8 @@ jobs:
         run: bash scripts/test-detect-shape.sh
       - name: relative Markdown links resolve
         run: python3 scripts/check-links.py
+      - name: every file has license and copyright metadata (REUSE)
+        run: uvx --from "reuse[charset-normalizer]" reuse lint
       - name: actions are pinned by commit SHA and workflows declare least-privilege permissions
         run: python3 scripts/pin-actions.py --check
       - name: workflows (platform + every generated repo) pass actionlint

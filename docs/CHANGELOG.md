@@ -13,6 +13,14 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 - Existing services are unaffected (`app/**` is project-owned); new web services get the design.
 - e2e: log checks no longer fail intermittently under `pipefail` (`kubectl logs | grep -q` could die of SIGPIPE).
 
+### Open source
+
+- **Public repository** under the Apache License 2.0 (`LICENSE`, `NOTICE`), with a contributing guide, Code of Conduct (Contributor Covenant 2.1), security policy (private vulnerability reporting), support guide, CODEOWNERS and a PR template. The three todo test repositories are public too.
+- **Legal hygiene**: `THIRD_PARTY_NOTICES.md` and `LICENSES/` (Apache-2.0, CC-BY-4.0, ISC); the web template's icon paths are adapted from Lucide, so `icons.tsx` now carries Lucide's ISC notice (which travels into every generated web app); trademark/affiliation and no-warranty disclaimers, a privacy and no-telemetry statement and an AI-assistance disclosure in the README; the repository is **REUSE 3.3 compliant** (`REUSE.toml`, `reuse lint` in CI) so every file has machine-readable license and copyright data.
+- **Repository protection**: `main` requires a pull request and the `ci-success` status, linear history, no force-push or deletion; `v*` tags are immutable; secret scanning with push protection, Dependabot alerts and security updates, CodeQL, and read-only Actions tokens with approval for outside contributors' workflows.
+- A pre-publication secret scan (gitleaks over the full history of all four repositories, detect-secrets, issue/PR text and run logs) found no credentials.
+- The `/shared:report-issue` command now warns that issues on this repository are public (shared 0.7.1).
+
 ### CI usage cut, link check, local CI
 
 - **Platform CI** only runs what a change needs: a `changes` job (plain `git diff`, no third-party action) gates the template smoke jobs and the cplat tests; docs-only pull requests run the validation jobs only (about 2 minutes instead of about 25). Superseded runs of the same PR are cancelled. A final `ci-success` job aggregates everything and is the single required status for branch protection (skipped jobs count as passed; matrix jobs would otherwise block merges forever). The e2e workflow is path-filtered, nightly and cancels superseded PR runs.

@@ -1,4 +1,9 @@
 claude-platform
-Copyright 2026 Eike Hensler
+Copyright 2026 Eike Hensler and claude-platform contributors
 
 This product includes software developed by the claude-platform contributors.
+Licensed under the Apache License, Version 2.0.
+
+Third-party material and trademarks: see THIRD_PARTY_NOTICES.md. Icon paths in
+templates/web-nextjs/app/_components/icons.tsx are adapted from Lucide
+(ISC License, Copyright (c) 2026 Lucide Icons and Contributors).
