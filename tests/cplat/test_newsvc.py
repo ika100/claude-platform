@@ -133,3 +133,9 @@ def test_data_sets_template_options_and_rejects_unknown_ones(tmp_path):
     assert "no option 'needs_everything'" in str(e.value) and "needs_observability" in (e.value.hint or "")
     with pytest.raises(core.PlatformError, match="KEY=VALUE"):
         newsvc.resolve(["opt-svc", "d", "--data", "oops"])
+
+
+def test_next_steps_tell_the_agent_to_start_a_feature_without_waiting_for_ci():
+    steps = newsvc._next_steps({"name": "svc-a", "shape": "service-python"})
+    joined = "\n".join(steps)
+    assert "/svc:build-feature" in joined and "do not wait" in joined

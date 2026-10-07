@@ -10,7 +10,7 @@
     {
       "name": "svc",
       "source": "./plugins/svc",
-      "version": "2.1.2",
+      "version": "2.1.3",
       "description": "Multi-agent pipeline for Python service repos (product-manager → architect → coder → quality → tester → security → deployment).",
       "category": "agents",
       "tags": ["python", "fastapi", "devbox", "k8s"]
@@ -58,7 +58,7 @@
     {
       "name": "shared",
       "source": "./plugins/shared",
-      "version": "0.7.3",
+      "version": "0.7.4",
       "description": "Common quality and security agents plus the /new-service bootstrap command (shape-aware via shapes.yml).",
       "category": "agents",
       "tags": ["quality", "security", "bootstrap"]

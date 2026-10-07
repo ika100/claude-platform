@@ -37,6 +37,8 @@ Run the prelude:
 4. `BASE_REF=$(git rev-parse HEAD)`.
 5. Build `<project-map>` from `ls -d */` (excluding `.devbox`, `.venv`, `.git`, `node_modules`). Hold it as `$PROJECT_MAP`. Every subagent prompt below must prepend it.
 
+Do not wait for CI on `main` (a fresh bootstrap commit may still be building): branching from it is safe, and the pipeline below runs its own checks.
+
 Print `## Phase 0b complete — on $FEATURE_BRANCH, BASE_REF=<short-sha>`.
 
 **Shape dispatch.** After the prelude, run this in one Bash call: `P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape` It prints JSON: `shape`, `plugin`, `deployable`, `library` and `agents` (the subagent type for every role — spawn each role with exactly that type, e.g. `agents.coder`). If `unsupported` is present, stop and show it. Roles missing from `agents` (e.g. deployment for a library) are skipped. Print `Shape: <shape>`.
