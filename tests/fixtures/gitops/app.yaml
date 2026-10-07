@@ -1,3 +1,6 @@
 gateway: {name: traefik-gateway, namespace: kube-system}
 hosts:
   dev: "{service}.{app}-dev.localhost"
+policies: {}
+addons:
+  observability: {}

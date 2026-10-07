@@ -97,6 +97,10 @@ Git holds only references. `services.yaml` `secrets:` becomes `ExternalSecret`s:
 
 `/gitops:addon add observability` puts an OpenTelemetry Collector next to your services in every environment and points them at it with the standard `OTEL_*` variables. The collector receives OTLP and scrapes each service's Prometheus endpoint. Where the data goes is your choice: `exportTo: <OTLP/HTTP endpoint>` for your own backend, or `ui: lgtm` for a local Grafana dev stack (`http://grafana.localhost:8088`, installed by `cluster-up`). Details: ADR-021.
 
+### Guard rails (Kyverno)
+
+Add `policies: {}` to `app.yaml` and the platform renders Kyverno policies for each environment that encode its own conventions (non-root, read-only filesystem, limits, allowed registries, no `:latest` outside dev). `devbox run validate` checks the rendered manifests against them before merge; in the cluster they run in Audit (dev, staging) or Enforce (prod). Details: ADR-022.
+
 ## 6. Keep it current
 
 - Agents/commands: `claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude`, then **restart Claude Code** (a running session keeps the old prompts). `/shared:doctor` tells you when that is needed.

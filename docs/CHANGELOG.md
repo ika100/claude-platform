@@ -6,6 +6,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Kyverno guard rails (Phase G, slice 6, ADR-022)
+
+- **`policies:` in `app.yaml`** (opt-in) renders a namespaced CEL `NamespacedValidatingPolicy` per environment with the platform's conventions (numeric non-root, read-only filesystem, no escalation, dropped capabilities, no privileged/host access, requests + memory limit, `part-of` label, allowed registries, no `:latest` outside dev). Audit in dev/staging and Enforce in prod by default; per environment `Audit | Enforce | Off`.
+- **Checked before merge**: `devbox run validate` / CI evaluate the rendered overlays and addons offline with the Kyverno CLI (`scripts/check-policies.sh`); the CI downloads the CLI with a pinned checksum.
+- `cluster-up` installs Kyverno when `policies:` is declared (`WITH_KYVERNO` overrides); `doctor` checks it. e2e runs the whole stack under `Enforce` and proves a violating Deployment is denied.
+
 ### Observability: OpenTelemetry base, optional UI stack (Phase G, slice 5, ADR-021)
 
 - **`addons.observability`** renders an OpenTelemetry Collector per environment (OTLP in, a Prometheus scrape job per service with a `metrics:` path, optional OTLP/HTTP export via `exportTo` + `headersSecret`) and injects the standard `OTEL_*` variables into every service. No operator, no CRDs; works with any OTLP backend.

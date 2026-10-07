@@ -8,6 +8,7 @@ The GitOps repo owns every manifest. services.yaml is the human-edited registry;
   applications/<app>/applicationset.yaml                       one ApplicationSet per env (dev/staging/prod)
   applications/<app>/overlays/<env>/<service>/                 deployment.yaml, service.yaml, [httproute.yaml], kustomization.yaml
   applications/<app>/addons/<env>/<addon>/                     cluster.yaml, kustomization.yaml (only where a service `uses` the addon)
+  applications/<app>/policies/<env>/                           policy.yaml, kustomization.yaml (Kyverno guard rails, when app.yaml has `policies:`)
   bootstrap/<app>-root.yaml                                    root Argo Application (app-of-apps), applied once by a human
 
 A service is only rendered for the environments listed in its `environments` (default: dev), so a new service never
@@ -40,6 +41,7 @@ applications/<app>/app.yaml (optional):
   gateway: {name: traefik-gateway, namespace: kube-system}
   hosts: {dev: "{service}.{app}-dev.localhost"}     # per env; no entry = not exposed in that env
   secretStore: {name: platform-secrets, kind: ClusterSecretStore}   # where `remote` secrets are read from
+  policies: {mode: {dev: Audit, staging: Audit, prod: Enforce}, registries: []}   # Kyverno guard rails per environment (ADR-022)
   addons:                                           # backing services, one per application and environment (ADR-020)
     postgres: {version: 17, instances: {dev: 1, prod: 3}, storage: {dev: 1Gi, prod: 20Gi}}
 
@@ -76,6 +78,8 @@ ADDONS = {
         "defaults": {"ui": "none"},
     },
 }
+POLICY_API = "policies.kyverno.io/v1"
+POLICY_MODES = {"Audit": "Audit", "Enforce": "Deny"}     # app.yaml mode -> Kyverno validationActions
 LGTM_ENDPOINT = "http://lgtm.observability.svc:4318"    # the shared all-in-one UI stack `cluster-up` installs for `ui: lgtm`
 ADDON_FILES = {"cluster.yaml", "kustomization.yaml"}
 ESO_API = "external-secrets.io/v1"
@@ -198,6 +202,76 @@ def addons_in(services: list[dict], env: str, cfg: dict) -> list[str]:
     if "observability" in (cfg.get("addons") or {}) and any(env in envs_of(s) for s in services):
         names.add("observability")
     return sorted(names)
+
+
+def policies_conf(cfg: dict) -> dict | None:
+    """None = policies off (key absent or false); {} = on with defaults."""
+    v = cfg.get("policies")
+    return None if v in (None, False) else (v if isinstance(v, dict) else {})
+
+
+def policy_mode(conf: dict, env: str) -> str:
+    return str(per_env(conf.get("mode"), env, "Enforce" if env == "prod" else "Audit"))
+
+
+def validate_policies(cfg: dict) -> None:
+    conf = policies_conf(cfg)
+    if conf is None:
+        return
+    for env in ENVS:
+        mode = policy_mode(conf, env)
+        if mode not in (*POLICY_MODES, "Off"):
+            raise RenderError(f"app.yaml: policies.mode for {env} must be Audit, Enforce or Off, got '{mode}'")
+    if not isinstance(conf.get("registries") or [], list):
+        raise RenderError("app.yaml: policies.registries must be a list of image prefixes, e.g. [ghcr.io/acme/]")
+
+
+def allowed_registries(services: list[dict], cfg: dict, conf: dict) -> list[str]:
+    """Image prefixes the guard rails accept: where our services' images live, the addons' images, and app.yaml extras."""
+    prefixes = {s["image"].rsplit("/", 1)[0] + "/" for s in services}
+    if obs_enabled(cfg):
+        prefixes.add(ADDONS["observability"]["image"].split("/", 1)[0] + "/")
+    prefixes |= {str(r) for r in conf.get("registries") or []}
+    return sorted(prefixes)
+
+
+def guardrail_policy(app: str, env: str, mode: str, registries: list[str]) -> dict:
+    """Namespaced Kyverno (CEL) policy every rendered Deployment satisfies; a violation means someone bypassed render.py."""
+    import json
+    pod = "variables.pod"
+    sc = "c.?securityContext"
+    rules = [
+        ("containers must run as a numeric non-root user (runAsNonRoot: true, runAsUser > 0)",
+         f"{pod}.containers.all(c, {sc}.?runAsNonRoot.orValue({pod}.?securityContext.?runAsNonRoot.orValue(false)) && {sc}.?runAsUser.orValue(0) > 0)"),
+        ("containers need readOnlyRootFilesystem: true", f"{pod}.containers.all(c, {sc}.?readOnlyRootFilesystem.orValue(false))"),
+        ("containers need allowPrivilegeEscalation: false and must drop ALL capabilities",
+         f'{pod}.containers.all(c, !{sc}.?allowPrivilegeEscalation.orValue(true) && {sc}.?capabilities.?drop.orValue([]).exists(d, d == "ALL"))'),
+        ("privileged containers, host namespaces and hostPath volumes are not allowed",
+         f"!{pod}.?hostNetwork.orValue(false) && !{pod}.?hostPID.orValue(false) && {pod}.containers.all(c, !{sc}.?privileged.orValue(false)) && "
+         f"{pod}.?volumes.orValue([]).all(v, !has(v.hostPath))"),
+        ("containers need CPU and memory requests and a memory limit",
+         f"{pod}.containers.all(c, c.?resources.?requests.?cpu.hasValue() && c.?resources.?requests.?memory.hasValue() && c.?resources.?limits.?memory.hasValue())"),
+        ("workloads need the label app.kubernetes.io/part-of", 'object.metadata.?labels["app.kubernetes.io/part-of"].hasValue()'),
+        ("images must come from an allowed registry: " + ", ".join(registries),
+         f"{pod}.containers.all(c, variables.registries.exists(r, c.image.startsWith(r)))"),
+    ]
+    if env != "dev":
+        rules.append(("images must be pinned to a tag other than latest", f'{pod}.containers.all(c, c.image.contains(":") && !c.image.endsWith(":latest"))'))
+    return {
+        "apiVersion": POLICY_API, "kind": "NamespacedValidatingPolicy",
+        "metadata": {"name": "platform-guardrails", "namespace": f"{app}-{env}",
+                     "labels": {"app.kubernetes.io/part-of": app, "app.kubernetes.io/managed-by": "gitops-app"}},
+        "spec": {
+            "validationActions": [POLICY_MODES[mode]],
+            "matchConstraints": {"resourceRules": [{"apiGroups": ["apps"], "apiVersions": ["v1"], "operations": ["CREATE", "UPDATE"], "resources": ["deployments"]}]},
+            "variables": [{"name": "pod", "expression": "object.spec.template.spec"}, {"name": "registries", "expression": json.dumps(registries)}],
+            "validations": [{"expression": e, "message": m} for m, e in rules],
+        },
+    }
+
+
+def policy_envs(services: list[dict], conf: dict) -> list[str]:
+    return [env for env in ENVS if policy_mode(conf, env) != "Off" and any(env in envs_of(s) for s in services)]
 
 
 def obs_enabled(cfg: dict) -> bool:
@@ -416,6 +490,7 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
     cfg_file = app_dir / "app.yaml"
     cfg = (yaml.safe_load(cfg_file.read_text()) or {}) if cfg_file.is_file() else {}
     validate_addons(services, cfg)
+    validate_policies(cfg)
     org = ans.get("github_org", "ika100")
     server = ans.get("cluster_server", "https://kubernetes.default.svc")
     gitops_repo = f"https://github.com/{org}/{ans.get('project_name', app + '-gitops')}"
@@ -467,6 +542,29 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
         for n in names:
             for fname, doc in addon_files(app, n, env, cfg, services).items():
                 out[app_dir / "addons" / env / n / fname] = dump(doc) if not isinstance(doc, str) else doc
+    pconf = policies_conf(cfg)
+    if pconf is not None:
+        regs = allowed_registries(services, cfg, pconf)
+        for env in policy_envs(services, pconf):
+            docs.append({
+                "apiVersion": "argoproj.io/v1alpha1", "kind": "ApplicationSet",
+                "metadata": {"name": f"{app}-policies-{env}", "namespace": "argocd"},
+                "spec": {
+                    "generators": [{"list": {"elements": [{"name": "guardrails"}]}}],
+                    "template": {
+                        "metadata": {"name": "policy-{{name}}-" + env},
+                        "spec": {
+                            "project": "default",
+                            "source": {"repoURL": gitops_repo, "targetRevision": "main", "path": f"applications/{app}/policies/{env}"},
+                            "destination": {"server": server, "namespace": f"{app}-{env}"},
+                            "syncPolicy": {"automated": {"prune": True, "selfHeal": True}, "syncOptions": ["CreateNamespace=true"]},
+                        },
+                    },
+                },
+            })
+            base = app_dir / "policies" / env
+            out[base / "policy.yaml"] = dump(guardrail_policy(app, env, policy_mode(pconf, env), regs))
+            out[base / "kustomization.yaml"] = dump({"apiVersion": "kustomize.config.k8s.io/v1beta1", "kind": "Kustomization", "resources": ["policy.yaml"]})
     out[app_dir / "applicationset.yaml"] = "---\n".join(dump(d) for d in docs)
 
     out[ROOT / "bootstrap" / f"{app}-root.yaml"] = dump({
@@ -514,13 +612,22 @@ def stale_paths(app_dir: Path, wanted: set[Path]) -> list[Path]:
                 stale.append(d)
                 continue
             stale += [f for f in d.iterdir() if (f.name in MANAGED_FILES or f.name.startswith(MANAGED_PREFIXES)) and f not in wanted]
-    for env in ENVS:
-        base = app_dir / "addons" / env
-        if not base.is_dir():
+    for kind in ("addons", "policies"):
+        top = app_dir / kind
+        if top.is_dir() and not any(top in p.parents for p in wanted):
+            stale.append(top)          # nothing of this kind is wanted any more: remove the whole directory
             continue
-        for d in base.iterdir():
-            if d.is_dir() and not any(p.parent == d for p in wanted):
-                stale.append(d)
+        for env in ENVS:
+            base = app_dir / kind / env
+            if not base.is_dir():
+                continue
+            if kind == "policies":
+                if not any(p.parent == base for p in wanted):
+                    stale.append(base)
+                continue
+            for d in base.iterdir():
+                if d.is_dir() and not any(p.parent == d for p in wanted):
+                    stale.append(d)
     return stale
 
 

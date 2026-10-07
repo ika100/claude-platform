@@ -43,6 +43,8 @@ $cplat addon add postgres --repo-dir "$work/e2e-gitops" >/dev/null
 (cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "postgres")
 step "Declare the OpenTelemetry base (collector only, no UI stack)"
 $cplat addon add observability --repo-dir "$work/e2e-gitops" >/dev/null
+step "Turn on the Kyverno guard rails, enforced in dev (cluster-up installs Kyverno)"
+printf 'policies:\n  mode: {dev: Enforce}\n' >> "$work/e2e-gitops/applications/e2e/app.yaml"
 (cd "$work/e2e-gitops" && git add -A && git -c user.name=e2e -c user.email=e2e@example.com commit -qm "observability")
 
 step "Start the local cluster with a registry (the template's own script, Gateway only)"
@@ -80,8 +82,15 @@ uv run scripts/render.py)
 step "Set the remote secret in the local store (what a developer does with /gitops:secret)"
 printf 'sk_test_e2e' | $cplat secret set e2e-api e2e-api-stripe STRIPE_KEY --value-stdin --repo-dir "$work/e2e-gitops" >/dev/null
 
-step "Apply the Postgres addon and wait for the database"
+step "Apply the guard rails (Enforce) before anything else, so every platform workload is admitted under them"
 ns=e2e-dev
+kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/policies/dev"
+for _ in $(seq 1 40); do
+  [ "$(kubectl --context k3d-$cluster -n $ns get namespacedvalidatingpolicy platform-guardrails -o jsonpath='{.status.conditionStatus.ready}' 2>/dev/null)" = true ] && break; sleep 3
+done
+[ "$(kubectl --context k3d-$cluster -n $ns get namespacedvalidatingpolicy platform-guardrails -o jsonpath='{.status.conditionStatus.ready}')" = true ] || { kubectl --context k3d-$cluster -n $ns get namespacedvalidatingpolicy platform-guardrails -o yaml | tail -25; fail "the Kyverno policy did not become ready"; }
+
+step "Apply the Postgres addon and wait for the database"
 kubectl --context k3d-$cluster apply -n $ns -k "$work/e2e-gitops/applications/e2e/addons/dev/postgres"
 for _ in $(seq 1 80); do
   [ "$(kubectl --context k3d-$cluster -n $ns get cluster e2e-postgres -o jsonpath='{.status.phase}' 2>/dev/null)" = "Cluster in healthy state" ] && break; sleep 5
@@ -148,3 +157,8 @@ kc logs deploy/otel-collector | grep -q 'info	Traces' || fail "the pushed trace 
 for _ in $(seq 1 40); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Metrics' && break; sleep 3; done
 kc logs deploy/otel-collector | grep -q 'info	Metrics' || fail "no metrics reached the collector (scrape of e2e-api or OTLP push)"
 echo "ok   traces and metrics arrive at the collector"
+
+step "Kyverno: the platform's own workloads were admitted under Enforce, a violating one is denied"
+kc get deploy e2e-api e2e-web otel-collector >/dev/null || fail "a platform workload is missing"
+if out=$(kc create deployment violating --image=docker.io/library/nginx:latest 2>&1); then kc delete deployment violating >/dev/null; fail "a violating Deployment was admitted under Enforce"; fi
+case "$out" in *"platform-guardrails"*) echo "ok   denied: $(echo "$out" | tr '\n' ' ' | cut -c1-160)";; *) fail "the denial did not come from the guard rails: $out";; esac

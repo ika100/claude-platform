@@ -111,6 +111,7 @@ def check_repo(repo: Path) -> list[dict]:
         else:
             out.append(check(OK, "repo platform version", stamp.get("platform", "?")))
     out += check_addons(repo)
+    out += check_policies(repo)
     return out
 
 
@@ -132,6 +133,17 @@ def check_addons(repo: Path) -> list[dict]:
         out.append(check(OK, "addon observability", "the Grafana dev stack (lgtm) is installed") if have else
                    check(WARN, "addon observability", "`ui: lgtm` is declared but the dev stack is missing in the current kube context", "local: devbox run cluster-up"))
     return out
+
+
+def check_policies(repo: Path) -> list[dict]:
+    """`policies:` in app.yaml needs Kyverno (and its CEL policy CRDs) in the cluster the user is pointed at."""
+    import yaml
+    if not shutil.which("kubectl") or not any((yaml.safe_load(f.read_text()) or {}).get("policies") is not None and (yaml.safe_load(f.read_text()) or {}).get("policies") is not False
+                                                for f in (repo / "applications").glob("*/app.yaml")):
+        return []
+    have = run(["kubectl", "get", "crd", "namespacedvalidatingpolicies.policies.kyverno.io"], check=False).returncode == 0
+    return [check(OK, "policies", "Kyverno is installed in the current kube context")] if have else \
+        [check(WARN, "policies", "app.yaml declares `policies:` but Kyverno (1.17+) is missing in the current kube context", "local: devbox run cluster-up; real clusters: install the kyverno chart")]
 
 
 def run_checks(repo: Path) -> list[dict]:
