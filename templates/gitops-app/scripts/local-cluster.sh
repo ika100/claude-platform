@@ -21,6 +21,8 @@
 #                        (used by the platform's end-to-end test, which applies the rendered manifests directly)
 #   ESO_VERSION          External Secrets Operator chart version (default 2.12.0)
 #   WITH_ESO=0           skip External Secrets Operator (no `secrets:` support in that cluster)
+#   CNPG_VERSION         CloudNativePG operator chart version (default 0.29.1)
+#   WITH_CNPG            1 = install CloudNativePG, 0 = never; default: only if app.yaml declares `addons.postgres`
 #   REGISTRY_PORT        also create a local image registry reachable as localhost:<port> from the host and as
 #                        k3d-<cluster>-registry:<port> from the cluster
 # Re-running `up` is safe; it re-applies credentials and the root Application.
@@ -38,6 +40,11 @@ with_argo="${WITH_ARGO:-1}"
 registry_port="${REGISTRY_PORT:-}"
 eso_version="${ESO_VERSION:-2.12.0}"
 with_eso="${WITH_ESO:-1}"
+cnpg_version="${CNPG_VERSION:-0.29.1}"
+with_cnpg="${WITH_CNPG:-auto}"
+if [ "$with_cnpg" = auto ]; then
+  if grep -qE '^[[:space:]]+postgres:' applications/*/app.yaml 2>/dev/null; then with_cnpg=1; else with_cnpg=0; fi
+fi
 registry="${name}-registry"
 org=$(sed -n 's/^github_org:[[:space:]]*//p' .copier-answers.yml | head -1)
 k() { kubectl --context "$ctx" "$@"; }
@@ -164,6 +171,26 @@ spec:
       auth:
         serviceAccount: {name: eso-store, namespace: secrets-store}
 YAML
+    fi
+
+    if [ "$with_cnpg" = 1 ]; then
+      echo "Installing the CloudNativePG operator ($cnpg_version)"
+      k apply -f - >/dev/null <<YAML
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: cnpg
+  namespace: kube-system
+spec:
+  repo: https://cloudnative-pg.github.io/charts
+  chart: cloudnative-pg
+  version: ${cnpg_version}
+  targetNamespace: cnpg-system
+  createNamespace: true
+YAML
+      for _ in $(seq 1 60); do k get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 && break; sleep 3; done
+      for _ in $(seq 1 100); do k -n cnpg-system get deploy/cnpg-cloudnative-pg >/dev/null 2>&1 && break; sleep 3; done
+      k -n cnpg-system rollout status deploy/cnpg-cloudnative-pg --timeout=300s >/dev/null
     fi
 
     if [ "$with_argo" = 1 ]; then
