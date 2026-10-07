@@ -57,7 +57,7 @@ This supports an audit; it is not a certification. You remain responsible for yo
 
 Measured on one test application and Apple-silicon laptops with GitHub-hosted runners; your numbers will differ, the method is in the baselines page.
 
-## Honest limits {#honest-limits}
+## Honest limits
 
 - **Claude Code and GitHub are assumed.** The commands are Claude Code plugins, the templates target GitHub Actions and GHCR. Other hosts need work.
 - **Slash commands are prompts around scripts.** The scripts are tested; the prompts that call them are not deterministic and always ask before outward actions.

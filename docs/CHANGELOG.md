@@ -6,6 +6,16 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-10-07
+
+The platform is now an **open-source project with a documentation site**: <https://ika100.github.io/claude-platform/> (vision, problem statement, client value, usage scenarios, user documentation). It also gets a feedback loop for problems found in the field, a designed starter UI for new web services, and a leaner CI. No breaking changes.
+
+### Upgrading from 2.1.x
+
+- **Plugins**: `claude plugin marketplace update ika100-claude`, then `claude plugin update <name>@ika100-claude` for each installed plugin, then **restart Claude Code** (a running session keeps the old prompts). You get `/shared:report-issue` and the escalation line in every agent and command (shared 0.7.1, svc 2.1.1, gitops 1.3.1, web, svc-java and svc-go 0.2.2, app 0.1.3).
+- **Generated repos**: run `/shared:update-service` for pull requests with the new skeleton: `concurrency` that cancels superseded PR runs, monthly grouped Dependabot, the `org.opencontainers.image.source` label in Dockerfiles (links the GHCR package to the repository), `git init -b main` for new repos, and for web repos the test-setup cleanup. **Existing web apps keep their own UI** (`app/**` is project-owned); new web services get the designed starter UI.
+- **Forks and contributors**: `main` is protected and the single required status is `ci-success`; see `CONTRIBUTING.md` (new) and run `scripts/ci-local.sh` for the cheap checks.
+
 ### Web template: a designed starter UI
 
 - **web-nextjs** now ships a real design instead of a bare heading: plain-CSS design tokens (`app/globals.css`), automatic light/dark themes, fluid typography, a sticky header with brand mark, a hero with gradient headline and actions, a responsive "what's included" card grid, numbered getting-started steps, a branded 404 and error boundary, a favicon, `themeColor`/`viewport` metadata, a skip link, visible focus styles and reduced-motion support. No new dependencies, no network fonts (Docker builds stay reproducible).
