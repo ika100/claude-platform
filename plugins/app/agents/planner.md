@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Produces a multi-repo plan (docs/plan/<slug>.md, ADR-011 format) for a feature that spans the component repos of a gitops-app product. Reads the service registry and each component repo's conventions, decides which repos change and in what order, and writes paste-ready per-repo prompts for /svc:build-feature. Writes only the plan file; never edits component repos.
+description: "Plans a feature across a product's repos: writes docs/plan/<slug>.md (ADR-011) with per-repo prompts and order. Writes only the plan file."
 tools: Read, Write, Glob, Grep, Bash, WebFetch
 model: opus
 ---

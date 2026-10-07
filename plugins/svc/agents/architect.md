@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Designs system architecture, chooses technology, defines module boundaries, and produces implementation plans. Use this agent when you need to: design a new feature or system, choose between architectural approaches, define API contracts, plan a refactor, or review technical design decisions.
+description: "Designs the implementation: ADRs, module boundaries, and a plan with parallel-safe task metadata (files, depends_on, shape) in docs/plan/."
 tools: Read, Write, Glob, Grep, WebSearch, WebFetch
 model: opus
 ---

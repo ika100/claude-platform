@@ -1,6 +1,6 @@
 ---
 name: deployment
-description: Owns the container image of Python service repos: Dockerfile, the CI docker job (multi-arch publish, semver tags) and image smoke tests. Does not write Kubernetes manifests; those are generated in the product's gitops-app repo (ADR-017). Use this agent when you need to: change the Dockerfile, fix the image build/CI docker job, or troubleshoot a container that does not start.
+description: Owns the container image of Python repos (Dockerfile, CI docker job, smoke start); never Kubernetes manifests (ADR-017). Use for image build/CI/startup problems.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

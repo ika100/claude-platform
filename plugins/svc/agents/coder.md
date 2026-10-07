@@ -1,6 +1,6 @@
 ---
 name: coder
-description: Implements features and bug fixes in Python following the architect's plan and the project's conventions. Use this agent when you need to: write new code, fix a bug, refactor an existing module, or implement a spec from the architect or product-manager agent.
+description: Implements features and fixes in Python repos following the architect's plan and project conventions; all commands via devbox run.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

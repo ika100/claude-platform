@@ -1,5 +1,5 @@
 ---
-description: "Create a new repo of any shape (service-python, web-nextjs, gitops-app, service-java, service-go, library-python) from the platform template, with a private GitHub repo. Usage: /shared:new-service <name> <one-line description> [--web|--gitops|--library|--type <shape>] [--app <org>/<gitops-repo>] [--org <org>] [--ref <tag>]"
+description: "Create a repo of any shape (python, web, gitops, java, go, library) from its template plus a private GitHub repo. Usage: /shared:new-service <name> <description> [--web|--gitops|--library|--type <shape>] [--app <org/gitops-repo>]"
 ---
 
 Create a repo with the platform script (all logic and tests live in `scripts/cplat`). **Request:** $ARGUMENTS

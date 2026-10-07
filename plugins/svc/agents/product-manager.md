@@ -1,6 +1,6 @@
 ---
 name: product-manager
-description: Defines requirements, writes user stories, maintains a product backlog, and translates business goals into actionable specs. Use this agent when you need to: break down a feature idea into user stories, prioritize work, clarify acceptance criteria, or produce a product requirements document (PRD).
+description: Turns a feature idea into user stories with acceptance criteria and keeps docs/backlog.md; tags stories per repo for multi-repo features.
 tools: Read, Write, Edit, Bash, WebSearch, WebFetch
 model: sonnet
 ---

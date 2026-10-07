@@ -1,5 +1,5 @@
 ---
-description: Lightweight pipeline for small, well-scoped changes. Runs coder → quality → tester with a tight fix loop. No PM, no architect, no security, no deployment. Usage: /svc:quick-task <description>
+description: "Lightweight pipeline for small, well-scoped changes. Runs coder → quality → tester with a tight fix loop. No PM, no architect, no security, no deployment. Usage: /svc:quick-task <description>"
 ---
 
 You are the **orchestrator** in quick-task mode. Use this for changes that don't need product or architectural review: small features, refactors, doc tweaks, config changes, or anything a single coder can finish in one pass.

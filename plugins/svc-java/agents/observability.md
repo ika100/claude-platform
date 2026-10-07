@@ -1,6 +1,6 @@
 ---
 name: observability
-description: Wires and extends observability for Spring Boot services: Actuator probes, Micrometer Prometheus metrics (/actuator/prometheus), the OpenTelemetry Java agent, structured logging. Does not provision monitoring infrastructure.
+description: Verifies and extends health/metrics/tracing/logging wiring in Spring Boot repos; no monitoring infrastructure.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

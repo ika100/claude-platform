@@ -170,6 +170,30 @@ def check_contract(shapes: list[dict]) -> list[str]:
     return errs
 
 
+def check_front_matter() -> list[str]:
+    """Every agent/command must have strictly valid YAML front matter with a description (a bare `: ` in an unquoted
+    description is invalid YAML; Claude Code tolerates it, other tools do not) and the description must stay short:
+    descriptions are loaded into every session."""
+    errs: list[str] = []
+    for f in sorted(list((ROOT / "plugins").glob("*/agents/*.md")) + list((ROOT / "plugins").glob("*/commands/*.md"))):
+        m = re.match(r"---\n(.*?)\n---", f.read_text(), re.S)
+        rel = f.relative_to(ROOT)
+        if not m:
+            errs.append(f"{rel}: no front matter")
+            continue
+        try:
+            meta = yaml.safe_load(m.group(1))
+        except yaml.YAMLError:
+            errs.append(f"{rel}: front matter is not valid YAML (quote the description)")
+            continue
+        d = (meta or {}).get("description")
+        if not d:
+            errs.append(f"{rel}: missing description")
+        elif len(d) > 260:
+            errs.append(f"{rel}: description is {len(d)} chars (max 260; it is loaded into every session)")
+    return errs
+
+
 def prd_rows() -> dict[str, tuple[str, str]]:
     """Parse the §4 table: shape id -> (plugin, template)."""
     text = PRD.read_text()
@@ -215,7 +239,7 @@ def main(argv: list[str]) -> int:
         return 0
     errs = validate(shapes)
     if cmd == "check":
-        errs += check_files(shapes) + check_contract(shapes) + check_prd(shapes)
+        errs += check_files(shapes) + check_contract(shapes) + check_prd(shapes) + check_front_matter()
     elif cmd != "validate":
         print(__doc__)
         return 2

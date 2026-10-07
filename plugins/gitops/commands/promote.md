@@ -1,5 +1,5 @@
 ---
-description: Promote services to the next environment (dev→staging→prod) in a gitops-app repo by pinning the image tag; opens one PR. Verifies the image exists in GHCR. Usage: /gitops:promote <service...|--all> <from> <to> [--version vX.Y.Z] [--sha <full-sha>]
+description: "Promote services dev→staging→prod in a gitops-app repo by pinning a GHCR-verified image tag; one PR. Usage: /gitops:promote <service...|--all> <from> <to> [--version vX.Y.Z]"
 ---
 
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS

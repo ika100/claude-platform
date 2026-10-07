@@ -1,6 +1,6 @@
 ---
 name: observability
-description: Wires and extends observability for Go services: slog structured logging, Prometheus metrics (/metrics via client_golang), tracing. Does not provision monitoring infrastructure.
+description: Verifies and extends health/metrics/tracing/logging wiring in Go repos; no monitoring infrastructure.
 tools: Read, Write, Edit, Glob, Grep, Bash
 model: sonnet
 ---

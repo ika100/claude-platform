@@ -4,6 +4,14 @@ All notable changes to the `ika100/claude-platform` marketplace and templates.
 
 Format: each section lists changes for a tagged release. Plugin and template versions are independent — a release may bump only one channel.
 
+## [Unreleased]
+
+### Token efficiency and consistency (Phase G, slice 1)
+
+- **Always-on cost −28%**: the 41 agent/command descriptions (loaded into every session) are tightened from 10.8 KB to 6.3 KB, ≈ **−1.1k tokens** of the ≈ 3.95k always-on total, keeping what routing needs (what it does, when to use it, usage line). `shapes.py check` now enforces valid front matter and a 260-character cap, and fixes seven descriptions that were not valid YAML (unquoted `: `).
+- **Model tiering**: `product-manager` runs on sonnet (structured story writing); `architect` and the `app` planner stay on opus (decomposition and design decisions).
+- **`/svc:build-feature --no-pm`** skips the product-manager phase for precise requests.
+
 ## [2.0.0] — 2026-10-07
 
 **v2: the GitOps repo owns every Kubernetes manifest; services ship an image.** Driven by the end-to-end todo-app test (see [ADR-017](adr/017-gitops-owns-manifests.md) and [BASELINES](BASELINES.md)). Plugin versions: svc 2.0.0, shared 0.6.0, gitops 1.0.0, web 0.2.0, svc-java 0.2.0, svc-go 0.2.0, app 0.1.1, shapes unchanged.

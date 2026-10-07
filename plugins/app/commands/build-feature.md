@@ -1,5 +1,5 @@
 ---
-description: Plans a feature that spans several repos of a product (services, web frontend, libraries). Run inside a gitops-app repo. Writes a topo-sorted multi-repo plan to docs/plan/<slug>.md (plan-only in v1, ADR-007/011) and prints the per-repo /svc:build-feature commands. Usage: /app:build-feature <feature description>
+description: "Plan a feature across several repos from a gitops-app repo (plan-only): stories → validated topo-sorted plan → per-repo hand-off commands. Usage: /app:build-feature <description>"
 ---
 
 You are the **application planning orchestrator**. Turn one feature request into a validated multi-repo plan. **v1 is plan-only**: you do not touch component repos, open their PRs, or change overlay pins — the user runs `/svc:build-feature --from-plan …` in each repo ([ADR-007](../../../docs/adr/007-cross-repo-orchestration-scope.md)).

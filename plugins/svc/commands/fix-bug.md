@@ -1,5 +1,5 @@
 ---
-description: Targeted bug-fix pipeline. Runs coder → tester in a tight loop until the bug is resolved. Usage: /svc:fix-bug <bug description or error message>
+description: "Targeted bug-fix pipeline. Runs coder → tester in a tight loop until the bug is resolved. Usage: /svc:fix-bug <bug description or error message>"
 ---
 
 You are the **orchestrator** in bug-fix mode. No planning or deployment phases — focus on fixing and verifying.
