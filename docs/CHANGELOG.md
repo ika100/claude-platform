@@ -6,6 +6,8 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **k9s in the gitops project**: `k9s` is part of the gitops-app devbox and `devbox run cluster-ui` opens it on the local cluster in the `<app>-dev` namespace (clear error with the fix when the cluster is not running). `cluster-up` mentions it when it finishes. Existing projects get it with `/shared:update-service`.
+
 ## [3.1.0] — 2026-10-07
 
 Found and fixed while building the project-management sample (`pm-gitops`, `pm-backend`, `pm-web-ui`) end to end. New options and flags only; nothing breaking.

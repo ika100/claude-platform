@@ -10,7 +10,8 @@
     "jq@latest",
     "git@latest",
     "gh@latest",
-    "kubectl@latest"
+    "kubectl@latest",
+    "k9s@latest"
   ],
   "shell": {
     "scripts": {
@@ -18,6 +19,7 @@
       "bootstrap": "[ -n \"$KUBE_CONTEXT\" ] || { echo 'Set KUBE_CONTEXT to the cluster to bootstrap, e.g. KUBE_CONTEXT=my-cluster devbox run bootstrap. Contexts:'; kubectl config get-contexts -o name; exit 1; }; echo \"Applying bootstrap/ to context $KUBE_CONTEXT\"; kubectl --context \"$KUBE_CONTEXT\" apply -n argocd -f bootstrap/",
       "cluster-up": "bash scripts/local-cluster.sh up",
       "cluster-down": "bash scripts/local-cluster.sh down",
+      "cluster-ui": "bash scripts/local-cluster.sh ui",
       "render-check": "uv run scripts/render.py --check",
       "plan-check": "uv run scripts/plan.py validate",
       "policy-check": "bash scripts/check-policies.sh",
