@@ -66,9 +66,20 @@ jobs:
           copier copy ./templates/gitops-app /tmp/v2 --defaults --trust --skip-tasks --data project_name=fx-gitops --data app_name=fx
           cp tests/fixtures/gitops/services.yaml /tmp/v2/applications/fx/services.yaml
           cp tests/fixtures/gitops/app.yaml /tmp/v2/applications/fx/app.yaml
-          (cd /tmp/v2 && uv run scripts/render.py && uv run scripts/render.py --check)
+          (cd /tmp/v2 && uv run scripts/render.py)
+          # what `/gitops:promote` does: staging/prod run pinned tags, never :latest (the guard rails below require it)
+          sed -i 's/newTag: latest/newTag: sha-1234567/' /tmp/v2/applications/fx/overlays/staging/*/kustomization.yaml
+          (cd /tmp/v2 && uv run scripts/render.py --check)
           uv run scripts/check-k8s-labels.py /tmp/v2
-          for d in /tmp/v2/applications/fx/overlays/*/*/; do kubectl kustomize "$d" > /dev/null; done
+          for d in /tmp/v2/applications/fx/overlays/*/*/ /tmp/v2/applications/fx/addons/*/*/; do kubectl kustomize "$d" > /dev/null; done
+      - name: Install the Kyverno CLI (pinned, checksum-verified)
+        run: |
+          curl -fsSL -o /tmp/kyverno-cli.tgz https://github.com/kyverno/kyverno/releases/download/v1.19.1/kyverno-cli_v1.19.1_linux_x86_64.tar.gz
+          echo "b38228f367fc0fdc2b08f4c83ea50ac5f16c60ff8d62d76a66157c33c47b70ae  /tmp/kyverno-cli.tgz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin" && tar -xzf /tmp/kyverno-cli.tgz -C "$HOME/.local/bin" kyverno
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: rendered manifests satisfy the Kyverno guard rails (offline)
+        run: bash /tmp/v2/scripts/check-policies.sh
 
 
   platform-tests:
@@ -79,6 +90,12 @@ jobs:
       - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
       - name: Install copier
         run: uv tool install copier
+      - name: Install the Kyverno CLI (pinned, checksum-verified)
+        run: |
+          curl -fsSL -o /tmp/kyverno-cli.tgz https://github.com/kyverno/kyverno/releases/download/v1.19.1/kyverno-cli_v1.19.1_linux_x86_64.tar.gz
+          echo "b38228f367fc0fdc2b08f4c83ea50ac5f16c60ff8d62d76a66157c33c47b70ae  /tmp/kyverno-cli.tgz" | sha256sum -c -
+          mkdir -p "$HOME/.local/bin" && tar -xzf /tmp/kyverno-cli.tgz -C "$HOME/.local/bin" kyverno
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: pytest
         run: uv run --with pytest --with pyyaml --with ruamel.yaml pytest tests/cplat -q
 
