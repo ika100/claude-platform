@@ -6,6 +6,10 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Database support in the Java template (found while building the project-management sample)
+
+- **service-java `needs_database`** (default false; `/shared:new-service ... --type service-java --data needs_database=true`): Spring Data JPA, Bean Validation, Flyway and the PostgreSQL driver; `application.yml` reads the platform's **`PG*` variables** (the postgres addon injects them; defaults match `devbox run db-up`) and the password never travels inside a URL; Hibernate only validates (`ddl-auto: validate`), the schema belongs to Flyway (`src/main/resources/db/migration`); readiness includes the database; Testcontainers PostgreSQL for the generated tests (Docker needed); `db-up` recipe, env-var docs and CLAUDE.md section. The CI smoke job has a database variant that starts a real PostgreSQL next to the image. Before, a Java service could not use the postgres addon without hand-written wiring.
+
 ### UX fixes found while building the project-management sample
 
 - **`/shared:new-service --public`** (or `--visibility public`): create the GitHub repository public instead of the hard-coded private one; the preview says PUBLIC or PRIVATE before anything is created.

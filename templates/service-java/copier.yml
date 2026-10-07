@@ -23,6 +23,8 @@ _skip_if_exists:
   - docs/env-vars.md
 
 _exclude:
+  - "{% if not needs_database %}**/TestcontainersConfiguration.java{% endif %}"
+  - "{% if not needs_database %}src/main/resources/db{% endif %}"
   - "copier.yml"
   - ".git"
 
@@ -89,6 +91,11 @@ needs_observability:
   type: bool
   help: "Include Micrometer Prometheus (/actuator/prometheus), the OpenTelemetry Java agent, and a default PrometheusRule?"
   default: true
+
+needs_database:
+  type: bool
+  help: "Include PostgreSQL support (Spring Data JPA, Flyway, Bean Validation, Testcontainers tests) wired to the platform's postgres addon?"
+  default: false
 
 docker_registry:
   type: str

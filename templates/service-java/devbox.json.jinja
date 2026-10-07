@@ -11,6 +11,9 @@
   "shell": {
     "scripts": {
       "dev":          "mvn -B spring-boot:run",
+{%- if needs_database %}
+      "db-up":        "docker run --rm --name {{ project_name }}-db -p 5432:5432 -e POSTGRES_USER=app -e POSTGRES_PASSWORD=dev -e POSTGRES_DB={{ project_name | replace('-', '_') }} postgres:17",
+{%- endif %}
       "test":         "mvn -B verify",
       "test-fast":    "mvn -B test",
       "lint":         "mvn -B spotless:check checkstyle:check",
