@@ -152,10 +152,12 @@ code=$(kc run otlp-push --rm -i --restart=Never --image=curlimages/curl:8.10.1 -
   -d '{"resourceSpans":[{"resource":{"attributes":[{"key":"service.name","value":{"stringValue":"e2e-probe"}}]},"scopeSpans":[{"spans":[{"traceId":"0af7651916cd43dd8448eb211c80319c","spanId":"b7ad6b7169203331","name":"probe","kind":1,"startTimeUnixNano":"1700000000000000000","endTimeUnixNano":"1700000001000000000"}]}]}]}' \
   http://otel-collector:4318/v1/traces 2>/dev/null | grep -oE '^[0-9]{3}' | head -1)
 [ "$code" = 200 ] || fail "the collector rejected an OTLP/HTTP trace (HTTP $code)"
-for _ in $(seq 1 30); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Traces' && break; sleep 2; done
-kc logs deploy/otel-collector | grep -q 'info	Traces' || fail "the pushed trace never reached the collector pipeline"
-for _ in $(seq 1 40); do kc logs deploy/otel-collector 2>/dev/null | grep -q 'info	Metrics' && break; sleep 3; done
-kc logs deploy/otel-collector | grep -q 'info	Metrics' || fail "no metrics reached the collector (scrape of e2e-api or OTLP push)"
+# capture the logs first: `kubectl logs | grep -q` can die of SIGPIPE under pipefail once the log is long
+collector_has() { local logs; logs=$(kc logs deploy/otel-collector 2>/dev/null) || return 1; grep -q "$1" <<< "$logs"; }
+for _ in $(seq 1 30); do collector_has 'info	Traces' && break; sleep 2; done
+collector_has 'info	Traces' || fail "the pushed trace never reached the collector pipeline"
+for _ in $(seq 1 40); do collector_has 'info	Metrics' && break; sleep 3; done
+collector_has 'info	Metrics' || fail "no metrics reached the collector (scrape of e2e-api or OTLP push)"
 echo "ok   traces and metrics arrive at the collector"
 
 step "Kyverno: the platform's own workloads were admitted under Enforce, a violating one is denied"

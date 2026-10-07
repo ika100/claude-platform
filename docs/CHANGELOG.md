@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Web template: a designed starter UI
+
+- **web-nextjs** now ships a real design instead of a bare heading: plain-CSS design tokens (`app/globals.css`), automatic light/dark themes, fluid typography, a sticky header with brand mark, a hero with gradient headline and actions, a responsive "what's included" card grid, numbered getting-started steps, a branded 404 and error boundary, a favicon, `themeColor`/`viewport` metadata, a skip link, visible focus styles and reduced-motion support. No new dependencies, no network fonts (Docker builds stay reproducible).
+- Components live in `app/_components/`; tests cover every component (15 tests, 100% line coverage) and the Playwright smoke test now checks landmarks, the 404 page and a 375px viewport without horizontal scroll. `vitest.setup.ts` cleans up after each test (without it, repeated `render()` calls accumulate).
+- Existing services are unaffected (`app/**` is project-owned); new web services get the design.
+- e2e: log checks no longer fail intermittently under `pipefail` (`kubectl logs | grep -q` could die of SIGPIPE).
+
 ## [2.1.0] — 2026-10-07
 
 Everything the GitOps repo needs around your services, still declared in one place and rendered by `render.py`: secrets, a Postgres addon, OpenTelemetry observability, Kyverno guard rails, and a hardened CI supply chain. No breaking changes.
