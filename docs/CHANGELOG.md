@@ -6,6 +6,10 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [3.1.0] — 2026-10-07
+
+Found and fixed while building the project-management sample (`pm-gitops`, `pm-backend`, `pm-web-ui`) end to end. New options and flags only; nothing breaking.
+
 - **CI re-checks a pull request when its title is edited** (all templates and the platform itself): the `pr-title` check ran only on open/push/reopen, so correcting a rejected title never turned it green; a title edit now re-runs CI in its own concurrency group, so it cannot cancel a running build.
 
 - **Worked example** "project management app" on the docs site: Spring Boot + Next.js + PostgreSQL built and run end to end with the platform's commands (also a findings list).
