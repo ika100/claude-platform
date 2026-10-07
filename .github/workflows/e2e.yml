@@ -16,14 +16,18 @@ on:
       - 'tests/e2e/**'
       - '.github/workflows/e2e.yml'
 
+# Least privilege by default; jobs that publish packages declare what they need.
+permissions:
+  contents: read
+
 jobs:
   e2e:
     name: e2e (render → build → k3d → Gateway)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
-      - uses: astral-sh/setup-uv@v3
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: astral-sh/setup-uv@caf0cab7a618c569241d31dcd442f54681755d39 # v3
       - name: Install copier and k3d
         run: |
           uv tool install copier
