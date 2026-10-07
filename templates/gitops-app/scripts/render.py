@@ -23,6 +23,12 @@ services.yaml entry (written by `/gitops:compose`, every value explicit and revi
     volumes: {tmp: /tmp}               # writable emptyDirs (root filesystem is read-only)
     env: {LOG_LEVEL: INFO}             # non-secret wiring, e.g. API_URL: http://todo-api
     secretRefs: []                     # names of existing Secrets exposed as env vars
+    secrets:                           # Secrets created by External Secrets Operator (never values in git, ADR-018)
+      - name: todo-api-auth            # the Kubernetes Secret; exposed as env vars
+        generate: [DB_PASSWORD, JWT_KEY]   # random values generated in the cluster once per environment
+        # length: 32                   # optional (default 32)
+      - name: todo-api-stripe
+        remote: {keys: [STRIPE_KEY]}   # read from the secret store; optional `path` (default {app}-{env}-<secret name>)
     replicas: {dev: 1, staging: 1, prod: 2}   # or a single integer
     resources: {requests: {cpu: 50m, memory: 128Mi}, limits: {cpu: 500m, memory: 512Mi}}
     expose: {host: todo-api}           # optional: publish through the Gateway (needs app.yaml `hosts`)
@@ -31,6 +37,7 @@ services.yaml entry (written by `/gitops:compose`, every value explicit and revi
 applications/<app>/app.yaml (optional):
   gateway: {name: traefik-gateway, namespace: kube-system}
   hosts: {dev: "{service}.{app}-dev.localhost"}     # per env; no entry = not exposed in that env
+  secretStore: {name: platform-secrets, kind: ClusterSecretStore}   # where `remote` secrets are read from
 
 Usage:
   render.py            write files
@@ -38,6 +45,7 @@ Usage:
 """
 from __future__ import annotations
 
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -46,7 +54,14 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 ENVS = ["dev", "staging", "prod"]
-MANAGED_FILES = {"deployment.yaml", "service.yaml", "httproute.yaml", "kustomization.yaml"}
+MANAGED_FILES = {"deployment.yaml", "service.yaml", "httproute.yaml", "kustomization.yaml", "password-generator.yaml"}
+MANAGED_PREFIXES = ("externalsecret-",)
+ESO_API = "external-secrets.io/v1"
+GEN_API = "generators.external-secrets.io/v1alpha1"
+DEFAULT_STORE = {"name": "platform-secrets", "kind": "ClusterSecretStore"}
+SECRET_NAME = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+ENV_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+LITERAL_SECRET = re.compile(r"(PASSWORD|SECRET|TOKEN|API_?KEY|PRIVATE_?KEY|CREDENTIAL)", re.I)
 
 
 class RenderError(Exception):
@@ -89,10 +104,34 @@ def load_services(app_dir: Path) -> list[dict]:
                 raise RenderError(f"service '{n}': missing '{k}'")
         if set(s["probes"]) != {"liveness", "readiness"}:
             raise RenderError(f"service '{n}': probes needs liveness and readiness")
+        validate_secrets(s)
         bad = [e for e in s.get("environments", ["dev"]) if e not in ENVS]
         if bad:
             raise RenderError(f"service '{n}': unknown environments {bad} (valid: {ENVS})")
     return services
+
+
+def validate_secrets(s: dict) -> None:
+    n = s["name"]
+    seen = set()
+    for sec in s.get("secrets") or []:
+        sn = sec.get("name", "")
+        if not SECRET_NAME.match(sn) or len(sn) > 63:
+            raise RenderError(f"service '{n}': secret name '{sn}' must be a lowercase DNS label")
+        if sn in seen:
+            raise RenderError(f"service '{n}': duplicate secret '{sn}'")
+        seen.add(sn)
+        gen, rem = sec.get("generate") or [], (sec.get("remote") or {}).get("keys") or []
+        if bool(gen) == bool(rem):
+            raise RenderError(f"service '{n}': secret '{sn}' needs exactly one of `generate: [KEY...]` or `remote: {{keys: [KEY...]}}` "
+                              "(generated values must not be refreshed together with fetched ones: use two secrets)")
+        for k in [*gen, *rem]:
+            if not ENV_KEY.match(str(k)):
+                raise RenderError(f"service '{n}': secret '{sn}': '{k}' is not a valid environment variable name")
+    for k, v in (s.get("env") or {}).items():
+        if LITERAL_SECRET.search(k) and str(v).strip():
+            raise RenderError(f"service '{n}': env {k} looks like a secret; values in services.yaml are committed to git. "
+                              f"Declare it under `secrets:` (generate: [{k}] or remote: {{keys: [{k}]}}) instead")
 
 
 def envs_of(svc: dict) -> list[str]:
@@ -119,8 +158,9 @@ def deployment(app: str, svc: dict, env: str) -> dict:
         "ports": [{"name": "http", "containerPort": int(svc["port"])}],
         "env": [{"name": k, "value": v} for k, v in sorted(env_vars.items())],
     }
-    if svc.get("secretRefs"):
-        container["envFrom"] = [{"secretRef": {"name": n}} for n in svc["secretRefs"]]
+    secret_names = [*(svc.get("secretRefs") or []), *[x["name"] for x in svc.get("secrets") or []]]
+    if secret_names:
+        container["envFrom"] = [{"secretRef": {"name": n}} for n in secret_names]
     if svc.get("resources"):
         container["resources"] = svc["resources"]
     http = lambda path: {"httpGet": {"path": path, "port": "http"}}  # noqa: E731
@@ -167,6 +207,35 @@ def httproute(app: str, svc: dict, env: str, cfg: dict) -> dict | None:
                  "rules": [{"matches": [{"path": {"type": "PathPrefix", "value": (expose.get("path", "/") if isinstance(expose, dict) else "/")}}],
                             "backendRefs": [{"name": svc["name"], "port": 80}]}]},
     }
+
+
+def secret_manifests(app: str, svc: dict, env: str, cfg: dict) -> dict[str, dict]:
+    """ExternalSecrets (+ one Password generator per service) for `secrets:`; values never appear in git."""
+    out: dict[str, dict] = {}
+    labels = labels_for(app, svc)
+    store = cfg.get("secretStore") or DEFAULT_STORE
+    for sec in svc.get("secrets") or []:
+        name = sec["name"]
+        meta = {"name": name, "labels": labels}
+        target = {"name": name, "creationPolicy": "Owner", "deletionPolicy": "Retain"}
+        if sec.get("generate"):
+            gen_ref = {"apiVersion": GEN_API, "kind": "Password", "name": f"{svc['name']}-password"}
+            spec = {"refreshInterval": "0", "target": target, "dataFrom": [
+                {"sourceRef": {"generatorRef": dict(gen_ref)}, "rewrite": [{"regexp": {"source": "^password$", "target": k}}]}
+                for k in sec["generate"]]}
+            out[f"externalsecret-{name}.yaml"] = {"apiVersion": ESO_API, "kind": "ExternalSecret", "metadata": meta, "spec": spec}
+            out["password-generator.yaml"] = {
+                "apiVersion": GEN_API, "kind": "Password", "metadata": {"name": f"{svc['name']}-password", "labels": labels},
+                "spec": {"length": int(sec.get("length", 32)), "digits": 5, "symbols": 0, "noUpper": False, "allowRepeat": True}}
+        else:
+            remote = sec["remote"]
+            key = str(remote.get("path") or "{app}-{env}-{secret}").format(app=app, env=env, secret=name, service=svc["name"])
+            spec = {"refreshInterval": str(remote.get("refreshInterval", "1h")),
+                    "secretStoreRef": {"name": store["name"], "kind": store.get("kind", "ClusterSecretStore")},
+                    "target": target,
+                    "data": [{"secretKey": k, "remoteRef": {"key": key, "property": k}} for k in remote["keys"]]}
+            out[f"externalsecret-{name}.yaml"] = {"apiVersion": ESO_API, "kind": "ExternalSecret", "metadata": meta, "spec": spec}
+    return out
 
 
 def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
@@ -219,6 +288,7 @@ def render_app(app_dir: Path, ans: dict) -> dict[Path, str]:
             route = httproute(app, s, env, cfg)
             if route:
                 files["httproute.yaml"] = route
+            files.update(secret_manifests(app, s, env, cfg))
             for fname, doc in files.items():
                 out[base / fname] = dump(doc)
             tag = existing_tag(base / "kustomization.yaml") or "latest"
@@ -242,7 +312,7 @@ def stale_paths(app_dir: Path, wanted: set[Path]) -> list[Path]:
             if not any(p.parent == d for p in wanted):
                 stale.append(d)
                 continue
-            stale += [f for f in d.iterdir() if f.name in MANAGED_FILES and f not in wanted]
+            stale += [f for f in d.iterdir() if (f.name in MANAGED_FILES or f.name.startswith(MANAGED_PREFIXES)) and f not in wanted]
     return stale
 
 

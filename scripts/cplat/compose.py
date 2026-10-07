@@ -25,6 +25,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--repo-dir", default=".", help="the gitops-app repo (default: current directory)")
     p.add_argument("--env", action="append", default=[], metavar="KEY=VALUE", help="env var for the service (single service only)")
     p.add_argument("--expose", nargs="?", const=True, default=None, metavar="HOST", help="publish through the Gateway (optional host label)")
+    p.add_argument("--generate", action="append", default=[], metavar="SECRET=KEY,KEY", help="Secret whose values ESO generates randomly once per environment (single service only)")
+    p.add_argument("--secret", action="append", default=[], metavar="SECRET=KEY,KEY", help="Secret read from the secret store (set the values with `cplat secret set`; single service only)")
     p.add_argument("--replicas", type=int)
     p.add_argument("--port", type=int, help="override the port (default: the service's template answer, else the shape default)")
     p.add_argument("--from-k8s", action="store_true", help="seed port/probes/env/replicas/resources from the service's existing k8s/base/deployment.yaml (v1 → v2 migration)")
@@ -84,6 +86,17 @@ def seed_from_k8s(slug: str) -> dict:
     return out
 
 
+def parse_secret_args(items: list[str]) -> list[tuple[str, list[str]]]:
+    out = []
+    for item in items:
+        name, _, keys = item.partition("=")
+        ks = [k for k in keys.split(",") if k]
+        if not name or not ks:
+            raise PlatformError(f"expected SECRET=KEY[,KEY...], got '{item}'", hint="e.g. --generate todo-api-auth=DB_PASSWORD,JWT_KEY")
+        out.append((name, ks))
+    return out
+
+
 def build_entry(name: str, slug: str, shape_entry: dict, port: int | None, registry_ns: str, ns: argparse.Namespace, seed: dict) -> dict:
     rt = shape_entry["runtime"]
     entry = {
@@ -103,6 +116,10 @@ def build_entry(name: str, slug: str, shape_entry: dict, port: int | None, regis
         if not k or not _:
             raise PlatformError(f"--env expects KEY=VALUE, got '{kv}'")
         entry["env"][k] = v
+    secrets = [{"name": n, "generate": keys} for n, keys in parse_secret_args(ns.generate)] + \
+              [{"name": n, "remote": {"keys": keys}} for n, keys in parse_secret_args(ns.secret)]
+    if secrets:
+        entry["secrets"] = secrets
     if ns.expose:
         entry["expose"] = {"host": name if ns.expose is True else ns.expose}
     return entry
@@ -132,8 +149,8 @@ def main(argv: list[str]) -> int:
     ans = gitops.answers(repo)
     org = ans.get("github_org", "ika100")
     registry_ns = ans.get("docker_registry", f"ghcr.io/{org}")
-    if ns.env and len(ns.services) != 1:
-        raise PlatformError("--env applies to exactly one service")
+    if (ns.env or ns.generate or ns.secret) and len(ns.services) != 1:
+        raise PlatformError("--env, --generate and --secret apply to exactly one service")
     if not ns.dry_run:
         gitops.require_clean(repo)
     shapes = {e["id"]: e for e in core.registry.load()}

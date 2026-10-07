@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Secrets with External Secrets Operator (Phase G, slice 2, ADR-018)
+
+- **`secrets:` in `services.yaml`**: `generate: [KEY…]` has ESO create random values in the cluster once per environment (DB passwords, signing keys); `remote: {keys: […]}` reads from a SecretStore (`app.yaml` `secretStore`). Rendered as `ExternalSecret` (+ `Password` generator) and wired into the pod via `envFrom`. Secret values never enter git; secret-looking keys with a value in `env:` are rejected.
+- **`devbox run cluster-up` installs ESO** (k3s `HelmChart`, chart 2.12.0) and a `platform-secrets` store over the `secrets-store` namespace; `WITH_ESO=0` skips it.
+- **`cplat compose add … --generate NAME=KEY,KEY --secret NAME=KEY`** and **`/gitops:secret set|list`** (`cplat secret`); values come from a hidden prompt or stdin. e2e test covers generated, stable and remote secrets.
+- gitops plugin 1.1.0.
+
 ### Token efficiency and consistency (Phase G, slice 1)
 
 - **Always-on cost −28%**: the 41 agent/command descriptions (loaded into every session) are tightened from 10.8 KB to 6.3 KB, ≈ **−1.1k tokens** of the ≈ 3.95k always-on total, keeping what routing needs (what it does, when to use it, usage line). `shapes.py check` now enforces valid front matter and a 260-character cap, and fixes seven descriptions that were not valid YAML (unquoted `: `).

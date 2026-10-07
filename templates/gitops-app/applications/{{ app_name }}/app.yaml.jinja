@@ -5,6 +5,12 @@
 # hosts:   hostname template per environment for services with `expose:`. No entry = not exposed in that environment.
 #          Placeholders: {service} (expose.host or the service name), {app}, {env}.
 #          *.localhost resolves to 127.0.0.1 in browsers and curl without any DNS or /etc/hosts setup.
+# secretStore: the (Cluster)SecretStore that `remote` secrets in services.yaml are read from (External Secrets Operator, ADR-018).
+#          `cluster-up` creates `platform-secrets` (reads Secrets from the secrets-store namespace). Real clusters: point this
+#          at your Vault / AWS / GCP store. `generate` secrets need no store: ESO generates random values in the cluster.
+secretStore:
+  name: platform-secrets
+  kind: ClusterSecretStore
 gateway:
   name: traefik-gateway
   namespace: kube-system
