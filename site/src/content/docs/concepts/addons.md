@@ -14,4 +14,4 @@ An **addon** is declared once in `app.yaml` and used by name. Services see a **c
 
 Operators are cluster prerequisites: `cluster-up` installs them locally; real clusters need them installed by the cluster owner. Removing an addon never deletes a database (its Argo Application is not pruned).
 
-Because the contract is stable, an implementation can be swapped without touching any service ([ADR-020](/claude-platform/reference/adr/020/), [ADR-021](/claude-platform/reference/adr/021/)). Try it: [Add Postgres, secrets and observability](/claude-platform/scenarios/addons-secrets-observability/).
+Because the contract is stable, an implementation can be swapped without touching any service ([ADR-020](/sdlc-foundry/reference/adr/020/), [ADR-021](/sdlc-foundry/reference/adr/021/)). Try it: [Add Postgres, secrets and observability](/sdlc-foundry/scenarios/addons-secrets-observability/).

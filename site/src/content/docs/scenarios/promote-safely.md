@@ -32,5 +32,5 @@ The command verifies in GHCR that the image tag exists before it opens the pull 
 ## Why it is safe
 
 - A new service starts in `dev` only; it never reaches production by accident.
-- Staging and production never run `latest` (the Kyverno policy rejects it outside dev, if you enabled [guard rails](/claude-platform/concepts/guard-rails/)).
-- Nothing applies manifests by hand: ArgoCD owns reconciliation ([ADR-017](/claude-platform/reference/adr/017/)).
+- Staging and production never run `latest` (the Kyverno policy rejects it outside dev, if you enabled [guard rails](/sdlc-foundry/concepts/guard-rails/)).
+- Nothing applies manifests by hand: ArgoCD owns reconciliation ([ADR-017](/sdlc-foundry/reference/adr/017/)).

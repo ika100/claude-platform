@@ -38,8 +38,8 @@ Pairs with the `shared` plugin for quality + security checks on infra YAML. Enab
 ```json
 {
   "enabledPlugins": {
-    "gitops@ika100-claude": true,
-    "shared@ika100-claude": true
+    "gitops@sdlc-foundry": true,
+    "shared@sdlc-foundry": true
   }
 }
 ```

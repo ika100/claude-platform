@@ -1,7 +1,7 @@
 name: pages
 
 # Builds the documentation site (site/, Astro Starlight) and publishes it to GitHub Pages:
-# https://ika100.github.io/claude-platform/
+# https://ika100.github.io/sdlc-foundry/
 # The user-facing Markdown in docs/ and the generated reference pages are synced into the site at build time.
 on:
   push:

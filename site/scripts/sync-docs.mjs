@@ -7,7 +7,7 @@ import { convertWikiLinks, firstHeading, rewriteLinks, stripFirstHeading, withFr
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OUT = path.join(ROOT, 'site', 'src', 'content', 'docs');
-const BASE = '/claude-platform';
+const BASE = '/sdlc-foundry';
 
 /** repo file -> site page. `slug` is relative to the docs collection. */
 const PAGES = [

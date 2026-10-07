@@ -25,7 +25,7 @@ PY
 for s in $(echo "$shapes"); do
   d=$(mk "answers-$s"); printf '_src_path: /tmp/tmp.abc/templates/%s\n_commit: v1\n' "$s" > "$d/.copier-answers.yml"
   expect "copier local path $s" "$s" "$d"
-  d=$(mk "answers-gh-$s"); printf '_src_path: gh:ika100/claude-platform/templates/%s\n' "$s" > "$d/.copier-answers.yml"
+  d=$(mk "answers-gh-$s"); printf '_src_path: gh:ika100/sdlc-foundry/templates/%s\n' "$s" > "$d/.copier-answers.yml"
   expect "copier gh: path $s" "$s" "$d"
 done
 
@@ -40,7 +40,7 @@ d=$(mk sniff-pysvc);    touch "$d/pyproject.toml" "$d/Dockerfile"; expect "sniff
 d=$(mk sniff-pylib);    touch "$d/pyproject.toml"; expect "sniff python library" library-python "$d"
 
 # Precedence + negatives
-d=$(mk prec-python-with-admin-ui); touch "$d/pyproject.toml" "$d/Dockerfile"; printf '_src_path: gh:ika100/claude-platform/templates/service-python\n' > "$d/.copier-answers.yml"; touch "$d/next.config.js"
+d=$(mk prec-python-with-admin-ui); touch "$d/pyproject.toml" "$d/Dockerfile"; printf '_src_path: gh:ika100/sdlc-foundry/templates/service-python\n' > "$d/.copier-answers.yml"; touch "$d/next.config.js"
 expect "copier answers beat sniffing" service-python "$d"
 d=$(mk unknown-answers-falls-back); printf '_src_path: gh:other/tpl\n' > "$d/.copier-answers.yml"; touch "$d/go.mod"; expect "unknown _src_path falls back to sniff" service-go "$d"
 d=$(mk empty); expect "empty repo -> no shape" "" "$d"

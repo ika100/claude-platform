@@ -66,26 +66,45 @@ def check_kube() -> list[dict]:
     return [check(WARN, "kube context", f"{cur} looks like a NON-local cluster", "scripts always pass an explicit --context; never run kubectl apply by hand here")]
 
 
-def installed_plugins() -> dict[str, str]:
+MARKETPLACE = "sdlc-foundry"
+LEGACY_MARKETPLACE = "ika100-claude"   # the marketplace id before the v3.0.0 rename
+
+
+def _plugins_of(marketplace: str) -> dict[str, str]:
     f = Path.home() / ".claude" / "plugins" / "installed_plugins.json"
     if not f.is_file():
         return {}
     data = json.loads(f.read_text())
     data = data.get("plugins", data)
-    return {k.split("@")[0]: v[0].get("version", "?") for k, v in data.items() if k.endswith("@ika100-claude") and v}
+    return {k.split("@")[0]: v[0].get("version", "?") for k, v in data.items() if k.endswith(f"@{marketplace}") and v}
+
+
+def installed_plugins() -> dict[str, str]:
+    return _plugins_of(MARKETPLACE)
+
+
+def legacy_plugins() -> dict[str, str]:
+    """Plugins still installed from the pre-v3.0.0 marketplace id (they never receive updates)."""
+    return _plugins_of(LEGACY_MARKETPLACE)
 
 
 def check_plugins() -> list[dict]:
     market = json.loads((PLATFORM_ROOT / ".claude-plugin" / "marketplace.json").read_text())
     avail = {p["name"]: p["version"] for p in market["plugins"]}
     have = installed_plugins()
+    legacy = legacy_plugins()
+    out_legacy = []
+    if legacy:
+        reinstall = " && ".join(f"/plugin install {n}@{MARKETPLACE}" for n in sorted(legacy))
+        out_legacy.append(check(WARN, "plugins (old marketplace)", f"installed from '{LEGACY_MARKETPLACE}', renamed to '{MARKETPLACE}' in v3.0.0: {', '.join(sorted(legacy))}",
+                                f"/plugin marketplace remove {LEGACY_MARKETPLACE} && /plugin marketplace add ika100/{MARKETPLACE} && {reinstall}, then RESTART Claude Code"))
     if not have:
-        return [check(WARN, "plugins", "none installed from ika100-claude", "/plugin marketplace add ika100/claude-platform && /plugin install shared@ika100-claude")]
+        return out_legacy or [check(WARN, "plugins", f"none installed from {MARKETPLACE}", f"/plugin marketplace add ika100/{MARKETPLACE} && /plugin install shared@{MARKETPLACE}")]
     stale = {n: (have[n], avail[n]) for n in have if n in avail and core.vtuple(have[n]) < core.vtuple(avail[n])}
-    out = []
+    out = list(out_legacy)
     if stale:
         names = ", ".join(f"{n} {a}→{b}" for n, (a, b) in stale.items())
-        out.append(check(WARN, "plugins", f"outdated: {names}", "claude plugin marketplace update ika100-claude && claude plugin update <name>@ika100-claude, then RESTART Claude Code (a running session keeps the old prompts)"))
+        out.append(check(WARN, "plugins", f"outdated: {names}", "claude plugin marketplace update sdlc-foundry && claude plugin update <name>@sdlc-foundry, then RESTART Claude Code (a running session keeps the old prompts)"))
     else:
         out.append(check(OK, "plugins", ", ".join(f"{n} {v}" for n, v in sorted(have.items()))))
     missing = sorted(set(avail) - set(have))

@@ -46,4 +46,4 @@ A coding agent will happily write a Dockerfile, a Deployment and a workflow. Wit
 4. **Keep humans in charge of outward actions:** previews, pull requests, explicit approval.
 5. **Stay open:** plain Kubernetes, standard telemetry, vendor-neutral contracts, so you can leave.
 
-That is what claude-platform is. See the [vision](/claude-platform/vision/) and the [client value](/claude-platform/value/).
+That is what sdlc-foundry is. See the [vision](/sdlc-foundry/vision/) and the [client value](/sdlc-foundry/value/).

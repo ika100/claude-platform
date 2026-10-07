@@ -6,7 +6,7 @@ Accepted on bootstrap.
 
 ## Context
 
-`{{ project_name }}` was created from the `service-java` Copier template at `ika100/claude-platform`. The template encodes the platform's Java conventions (platform ADR-009):
+`{{ project_name }}` was created from the `service-java` Copier template at `ika100/sdlc-foundry`. The template encodes the platform's Java conventions (platform ADR-009):
 
 - JDK {{ java_version }} LTS and Maven via devbox; Spring Boot 3.x
 - Spotless (google-java-format) + a minimal Checkstyle config as the quality gate
@@ -15,7 +15,7 @@ Accepted on bootstrap.
 - Multi-stage build → `gcr.io/distroless/java{{ java_version }}-debian12:nonroot` → `{{ docker_registry }}/{{ project_name }}`
 - No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD discovery
-- Claude Code agents from the `ika100-claude` marketplace (`svc-java` + `svc` + `shared`)
+- Claude Code agents from the `sdlc-foundry` marketplace (`svc-java` + `svc` + `shared`)
 
 ## Decision
 

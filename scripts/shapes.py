@@ -120,7 +120,7 @@ def check_contract(shapes: list[dict]) -> list[str]:
         else:
             st = settings.read_text()
             for plugin in (s["plugin"], "shared"):
-                if f'"{plugin}@ika100-claude": true' not in st:
+                if f'"{plugin}@sdlc-foundry": true' not in st:
                     errs.append(f"{sid}: .claude/settings.json does not enable '{plugin}'")
         # 2. plugin: agents
         if s["plugin"] != "gitops":

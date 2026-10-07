@@ -39,4 +39,4 @@ devbox run cluster-up                                   # installs the operators
 
 ## Limits to know
 
-The Postgres addon has no backups, point-in-time recovery or connection pooling; removing it never deletes the data. Observability forwards telemetry but ships no alert rules. See [Addons](/claude-platform/concepts/addons/), [Secrets](/claude-platform/concepts/secrets/) and [ADR-020](/claude-platform/reference/adr/020/), [021](/claude-platform/reference/adr/021/).
+The Postgres addon has no backups, point-in-time recovery or connection pooling; removing it never deletes the data. Observability forwards telemetry but ships no alert rules. See [Addons](/sdlc-foundry/concepts/addons/), [Secrets](/sdlc-foundry/concepts/secrets/) and [ADR-020](/sdlc-foundry/reference/adr/020/), [021](/sdlc-foundry/reference/adr/021/).

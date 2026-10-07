@@ -26,6 +26,6 @@ The commands detect the repository's shape (Python, Java, Go, Next.js) and route
 
 ## Across repositories
 
-`/app:build-feature` run in the GitOps repository plans a feature that spans several services (stories, a validated and topologically sorted plan, per-repository hand-off commands) and `/app:plans` tracks it. It is plan-only by design: you run the per-repository commands yourself ([ADR-007](/claude-platform/reference/adr/007/)).
+`/app:build-feature` run in the GitOps repository plans a feature that spans several services (stories, a validated and topologically sorted plan, per-repository hand-off commands) and `/app:plans` tracks it. It is plan-only by design: you run the per-repository commands yourself ([ADR-007](/sdlc-foundry/reference/adr/007/)).
 
-See the [agent model](/claude-platform/guides/agents/) for how the phases fit together.
+See the [agent model](/sdlc-foundry/guides/agents/) for how the phases fit together.

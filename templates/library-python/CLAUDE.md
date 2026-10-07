@@ -36,8 +36,8 @@ Canonical `devbox run` scripts:
 
 Plugins enabled in `.claude/settings.json`:
 
-- `svc@ika100-claude` — coder, architect, tester, quality gate
-- `shared@ika100-claude` — quality + security agents
+- `svc@sdlc-foundry` — coder, architect, tester, quality gate
+- `shared@sdlc-foundry` — quality + security agents
 
 Library repos don't need the `deployment` agent (no Dockerfile, no k8s) — leave those plugin commands unused.
 

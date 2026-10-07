@@ -1,6 +1,6 @@
 # Adopting the platform
 
-How to bring a repo onto the `ika100/claude-platform` marketplace, whether it's a brand-new repo or an existing one.
+How to bring a repo onto the `ika100/sdlc-foundry` marketplace, whether it's a brand-new repo or an existing one.
 
 ---
 
@@ -58,13 +58,13 @@ Edit `.claude/settings.json` to add the marketplace and enable the plugins:
 ```json
 {
   "extraKnownMarketplaces": {
-    "ika100-claude": {
-      "source": { "source": "github", "repo": "ika100/claude-platform", "ref": "main" }
+    "sdlc-foundry": {
+      "source": { "source": "github", "repo": "ika100/sdlc-foundry", "ref": "main" }
     }
   },
   "enabledPlugins": {
-    "svc@ika100-claude": true,
-    "shared@ika100-claude": true
+    "svc@sdlc-foundry": true,
+    "shared@sdlc-foundry": true
   }
 }
 ```
@@ -75,7 +75,7 @@ Keep your existing `permissions` block as-is.
 
 ```bash
 git rm -r .claude/agents/ .claude/commands/ .claude/AGENTS.md
-git commit -m "chore(agents): adopt ika100-claude marketplace, drop in-tree definitions"
+git commit -m "chore(agents): adopt sdlc-foundry marketplace, drop in-tree definitions"
 ```
 
 ### Step 3 — Drop the SessionStart hook from settings
@@ -98,7 +98,7 @@ If you also want skeleton updates (CI workflow, devbox recipes, Dockerfile, CLAU
 1. Pick your shape's template under `templates/` (`service-python`, `library-python`, `web-nextjs`, `gitops-app`, `service-java`, `service-go`) and create `.copier-answers.yml` at the repo root recording the answers your repo *would* have given — the questions are the top-level keys of that template's `copier.yml`. For `service-python`:
 
    ```yaml
-   _src_path: gh:ika100/claude-platform/templates/service-python
+   _src_path: gh:ika100/sdlc-foundry/templates/service-python
    project_name: <your-repo-name>
    module_name: <your_python_module>
    description: <one-liner>
@@ -163,6 +163,7 @@ What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo cr
 
 - **`403 Forbidden` when CI pushes the image to GHCR.** The package must be linked to the repository. Generated Dockerfiles carry `org.opencontainers.image.source`, which links a new package automatically on its first push. If the package already exists without a link (created by hand or by an older template), open `https://github.com/users/<user>/packages/container/<package>/settings` (organisations: the org's package settings), choose **Manage Actions access**, add the repository with role **Write**.
 - **`ImagePullBackOff` in the local cluster.** `devbox run cluster-up` creates the `ghcr-pull` secret from your `gh` login; the token needs `read:packages` (`gh auth refresh -s read:packages`, `/shared:doctor` checks it). Use `PULL_TOKEN` for a narrower token.
+- **Plugins stopped updating or `/shared:doctor` says "installed from 'ika100-claude'".** The marketplace was renamed to `sdlc-foundry` in v3.0.0. Reinstall: `/plugin marketplace remove ika100-claude`, `/plugin marketplace add ika100/sdlc-foundry`, then `/plugin install <name>@sdlc-foundry` for each plugin, and restart Claude Code. In each generated repo run `/shared:update-service` so `.claude/settings.json` points at the new marketplace.
 - **Something else looks like a platform bug.** Run `/shared:report-issue` (see the README).
 
 ## What you get after adoption

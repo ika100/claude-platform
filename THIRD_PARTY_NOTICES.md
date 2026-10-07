@@ -1,6 +1,6 @@
 # Third-party notices
 
-claude-platform is licensed under the [Apache License 2.0](LICENSE). The following third-party material is included in this repository (or copied into repositories generated from its templates) under its own terms. Full license texts are in [`LICENSES/`](LICENSES).
+sdlc-foundry is licensed under the [Apache License 2.0](LICENSE). The following third-party material is included in this repository (or copied into repositories generated from its templates) under its own terms. Full license texts are in [`LICENSES/`](LICENSES).
 
 | Material | Where | License | Source |
 |---|---|---|---|
@@ -14,4 +14,4 @@ Templates and scripts reference open-source software that is **downloaded when y
 
 ## Trademarks
 
-Claude and Claude Code are trademarks of Anthropic, PBC. Kubernetes, Docker, GitHub, Next.js, Spring, Argo, Grafana, Prometheus, OpenTelemetry, Kyverno and other product names are trademarks of their respective owners and are used only to describe compatibility. claude-platform is an independent project and is **not affiliated with, sponsored by or endorsed by** Anthropic or any of these owners.
+Claude and Claude Code are trademarks of Anthropic, PBC. Kubernetes, Docker, GitHub, Next.js, Spring, Argo, Grafana, Prometheus, OpenTelemetry, Kyverno and other product names are trademarks of their respective owners and are used only to describe compatibility. sdlc-foundry is an independent project and is **not affiliated with, sponsored by or endorsed by** Anthropic or any of these owners.

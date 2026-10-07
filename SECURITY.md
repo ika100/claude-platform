@@ -2,13 +2,13 @@
 
 ## Supported versions
 
-Security fixes are released for the **latest minor version** of claude-platform (for example 2.1.x) and, where relevant, the plugins published from it. Older minors receive fixes only when a maintainer decides the issue is severe.
+Security fixes are released for the **latest minor version** of sdlc-foundry (for example 2.1.x) and, where relevant, the plugins published from it. Older minors receive fixes only when a maintainer decides the issue is severe.
 
 ## Reporting a vulnerability
 
 Please **do not open a public issue** for a vulnerability. Report it privately through GitHub:
 
-**<https://github.com/ika100/claude-platform/security/advisories/new>** (Security tab → "Report a vulnerability")
+**<https://github.com/ika100/sdlc-foundry/security/advisories/new>** (Security tab → "Report a vulnerability")
 
 Include what you found, how to reproduce it, which version or commit, and the impact you expect. You can expect an acknowledgement within **5 working days** and an assessment (accepted, needs more information, or declined with a reason) within **14 days**. We will agree on a disclosure date with you, credit you in the advisory unless you prefer otherwise, and publish a fixed release before disclosure.
 

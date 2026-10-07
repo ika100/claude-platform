@@ -6,7 +6,7 @@ Accepted on bootstrap.
 
 ## Context
 
-`{{ project_name }}` was created from the `service-python` Copier template at `ika100/claude-platform`. The template encodes a set of conventions every service in the fleet shares:
+`{{ project_name }}` was created from the `service-python` Copier template at `ika100/sdlc-foundry`. The template encodes a set of conventions every service in the fleet shares:
 
 - Python {{ python_version }} via devbox
 - FastAPI for HTTP
@@ -16,7 +16,7 @@ Accepted on bootstrap.
 - Multi-stage Docker build → `{{ docker_registry }}/{{ project_name }}`
 - No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD auto-discovery
-- Claude Code agents from the `ika100-claude` marketplace (`svc` + `shared`)
+- Claude Code agents from the `sdlc-foundry` marketplace (`svc` + `shared`)
 {%- if needs_observability %}
 - structlog + Prometheus + OTel for observability
 {%- endif %}

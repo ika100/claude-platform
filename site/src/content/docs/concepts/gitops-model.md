@@ -21,6 +21,6 @@ flowchart LR
   F -.->|pinned by tag| B
 ```
 
-**Services ship only an image.** A service repository has no Kubernetes files, so Kubernetes defects cannot hide in many repositories, and nothing in CI or ArgoCD needs credentials to read other repositories ([ADR-017](/claude-platform/reference/adr/017/)).
+**Services ship only an image.** A service repository has no Kubernetes files, so Kubernetes defects cannot hide in many repositories, and nothing in CI or ArgoCD needs credentials to read other repositories ([ADR-017](/sdlc-foundry/reference/adr/017/)).
 
 ArgoCD owns reconciliation. Agents and scripts never `kubectl apply`; real clusters are bootstrapped once by a human.

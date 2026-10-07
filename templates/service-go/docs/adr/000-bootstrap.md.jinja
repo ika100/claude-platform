@@ -6,7 +6,7 @@ Accepted on bootstrap.
 
 ## Context
 
-`{{ project_name }}` was created from the `service-go` Copier template at `ika100/claude-platform`. The template encodes the platform's Go conventions (platform ADR-010):
+`{{ project_name }}` was created from the `service-go` Copier template at `ika100/sdlc-foundry`. The template encodes the platform's Go conventions (platform ADR-010):
 
 - Go {{ go_version }} via devbox; module `{{ module_name }}`
 - `chi` router, stdlib `log/slog` JSON logging
@@ -15,7 +15,7 @@ Accepted on bootstrap.
 - Static binary in `gcr.io/distroless/static-debian12:nonroot` → `{{ docker_registry }}/{{ project_name }}`; version injected via ldflags from the git tag
 - No Kubernetes manifests here: the product's gitops-app repo owns them (platform ADR-017); this repo ships a container image
 - GitHub topic `deployable-service` for ArgoCD discovery
-- Claude Code agents from the `ika100-claude` marketplace (`svc-go` + `svc` + `shared`)
+- Claude Code agents from the `sdlc-foundry` marketplace (`svc-go` + `svc` + `shared`)
 
 ## Decision
 

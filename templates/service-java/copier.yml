@@ -97,5 +97,5 @@ docker_registry:
 
 platform_marketplace_ref:
   type: str
-  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to (branch, tag, or commit)."
+  help: "Git ref of ika100/sdlc-foundry to pin the plugin marketplace to (branch, tag, or commit)."
   default: "main"

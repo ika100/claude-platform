@@ -61,5 +61,5 @@ python_version:
 
 platform_marketplace_ref:
   type: str
-  help: "Git ref of ika100/claude-platform to pin the plugin marketplace to."
+  help: "Git ref of ika100/sdlc-foundry to pin the plugin marketplace to."
   default: "main"

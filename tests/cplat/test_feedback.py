@@ -58,7 +58,7 @@ def test_without_gh_a_prefilled_browser_link_is_printed(tmp_path, monkeypatch, c
     monkeypatch.setattr(feedback, "create_issue", lambda *a: pytest.fail("no gh available"))
     feedback.main(["--title", "needs a link", "--what", "gh" "p_abcdefghijklmnopqrstuvwxyz0123456789", "--submit", "--repo-dir", str(tmp_path)])
     out = capsys.readouterr().out
-    assert "https://github.com/ika100/claude-platform/issues/new?title=needs%20a%20link" in out
+    assert "https://github.com/ika100/sdlc-foundry/issues/new?title=needs%20a%20link" in out
     assert "gh" "p_abcdefghij" not in out
 
 

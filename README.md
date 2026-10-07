@@ -1,15 +1,17 @@
-# claude-platform
+# sdlc-foundry
 
-[![CI](https://github.com/ika100/claude-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/ika100/claude-platform/actions/workflows/ci.yml)
+[![CI](https://github.com/ika100/sdlc-foundry/actions/workflows/ci.yml/badge.svg)](https://github.com/ika100/sdlc-foundry/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Docs](https://img.shields.io/badge/docs-ika100.github.io-4f46e5)](https://ika100.github.io/claude-platform/)
-[![Release](https://img.shields.io/github/v/release/ika100/claude-platform)](https://github.com/ika100/claude-platform/releases)
+[![Docs](https://img.shields.io/badge/docs-ika100.github.io-4f46e5)](https://ika100.github.io/sdlc-foundry/)
+[![Release](https://img.shields.io/github/v/release/ika100/sdlc-foundry)](https://github.com/ika100/sdlc-foundry/releases)
 
-**Claude Code agents, slash commands and Copier templates that take a product from "new repo" to "running in Kubernetes via GitOps".**
+**An agentic SDLC platform: Claude Code agents, slash commands and Copier templates that take a product from idea to "running in Kubernetes via GitOps".**
+
+> Formerly *claude-platform*. Renamed in v3.0.0 to stay clear of a third-party trademark; GitHub redirects the old repository URL. Installed plugins must be reinstalled from the new marketplace: see the [changelog](docs/CHANGELOG.md) and run `/shared:doctor`.
 
 You describe what you want in Claude Code; the platform scaffolds the repos (Python, Java, Go and Next.js services, plus a GitOps repo), builds and publishes multi-arch images, and renders every Kubernetes manifest from one declarative file in the GitOps repo. Secrets, a Postgres addon, OpenTelemetry observability and Kyverno guard rails are one declaration each; promotion between environments is a reviewed pull request. Everything that can be code is a tested script (`cplat`), and agents only orchestrate it.
 
-- **Documentation site:** <https://ika100.github.io/claude-platform/> has the vision, the problem statement, client value, usage scenarios and the full user documentation with search.
+- **Documentation site:** <https://ika100.github.io/sdlc-foundry/> has the vision, the problem statement, client value, usage scenarios and the full user documentation with search.
 - **Start here:** [docs/USER-JOURNEY.md](docs/USER-JOURNEY.md) (end-to-end walk-through) and [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md) (diagrams).
 - **Needs:** [Claude Code](https://claude.com/claude-code), `git`, `gh`, `uv`, [devbox](https://www.jetify.com/devbox) and Docker for local clusters; run `/shared:doctor` to check.
 - **Status:** used end to end on a real test application; see the [changelog](docs/CHANGELOG.md) and [ADRs](docs/adr).
@@ -67,9 +69,9 @@ See `docs/requirements/platform-vision.md` §7 for the end-to-end product flow (
 ## Install in an existing repo
 
 ```
-/plugin marketplace add ika100/claude-platform
-/plugin install svc@ika100-claude        # + web / svc-java / svc-go / gitops / app as your shapes need
-/plugin install shared@ika100-claude
+/plugin marketplace add ika100/sdlc-foundry
+/plugin install svc@sdlc-foundry        # + web / svc-java / svc-go / gitops / app as your shapes need
+/plugin install shared@sdlc-foundry
 ```
 
 …or pre-wire it by adding to `.claude/settings.json`:
@@ -77,13 +79,13 @@ See `docs/requirements/platform-vision.md` §7 for the end-to-end product flow (
 ```json
 {
   "extraKnownMarketplaces": {
-    "ika100-claude": {
-      "source": { "source": "github", "repo": "ika100/claude-platform", "ref": "main" }
+    "sdlc-foundry": {
+      "source": { "source": "github", "repo": "ika100/sdlc-foundry", "ref": "main" }
     }
   },
   "enabledPlugins": {
-    "svc@ika100-claude": true,
-    "shared@ika100-claude": true
+    "svc@sdlc-foundry": true,
+    "shared@sdlc-foundry": true
   }
 }
 ```
@@ -121,11 +123,11 @@ These two channels are independent — you can ship new agents without forcing a
 
 ## Using it for your own organisation
 
-The marketplace is published as `ika100/claude-platform` and installs as `ika100-claude`. Generated repositories use the `github_org` you are asked for (it defaults to the account `gh` is logged in as), so nothing in the output is tied to this repository's owner. To run your own variant, fork the repository, change the owner in `.claude-plugin/marketplace.json`, and add your fork with `/plugin marketplace add <you>/claude-platform`. Code generated from the templates is yours; this repository's license does not apply to it.
+The marketplace is published as `ika100/sdlc-foundry` and installs as `sdlc-foundry`. Generated repositories use the `github_org` you are asked for (it defaults to the account `gh` is logged in as), so nothing in the output is tied to this repository's owner. To run your own variant, fork the repository, change the owner in `.claude-plugin/marketplace.json`, and add your fork with `/plugin marketplace add <you>/sdlc-foundry`. Code generated from the templates is yours; this repository's license does not apply to it.
 
 ## Disclaimer, privacy, AI-assisted development
 
-- **Not affiliated.** claude-platform is an independent open-source project, not affiliated with, sponsored by or endorsed by Anthropic or the owners of the other product names it mentions (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). *Claude* and *Claude Code* are trademarks of Anthropic, PBC.
+- **Not affiliated.** sdlc-foundry is an independent open-source project, not affiliated with, sponsored by or endorsed by Anthropic or the owners of the other product names it mentions (see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)). *Claude* and *Claude Code* are trademarks of Anthropic, PBC.
 - **No warranty.** The software is provided "as is" under the [Apache License 2.0](LICENSE) (sections 7 and 8). Review what it generates (manifests, workflows, policies) before it touches a production cluster; the platform never runs `kubectl apply` on its own, and humans bootstrap real clusters.
 - **No telemetry.** The plugins and the `cplat` CLI send nothing anywhere on their own. Network access is what you would expect: `git`/`gh` against GitHub, package registries, GHCR. Generated applications export telemetry only to the endpoint you configure. `/shared:report-issue` shows you the full text first and files it only after your OK; **issues on this repository are public**, and the draft already has tokens, e-mail addresses and home-directory names removed.
 - **AI-assisted.** Much of this repository was written with Claude Code and reviewed, tested and committed by the maintainer (commits carry a `Co-Authored-By` trailer). Licensing is the maintainer's: AI-generated parts may be subject to limited copyright protection depending on jurisdiction.
@@ -137,7 +139,7 @@ The marketplace is published as `ika100/claude-platform` and installs as `ika100
 
 ## Reporting problems
 
-If something in a template, script, command or agent misbehaves, run **`/shared:report-issue`** in Claude Code. It drafts a GitHub issue with your platform and plugin versions, OS, tool availability and the error output, removes tokens, e-mail addresses and home-directory names, shows you the draft and files it only after your OK (without `gh` it prints a prefilled link). The agents suggest it themselves when a step fails for a platform reason. You can also open an issue by hand: [new issue](https://github.com/ika100/claude-platform/issues/new/choose).
+If something in a template, script, command or agent misbehaves, run **`/shared:report-issue`** in Claude Code. It drafts a GitHub issue with your platform and plugin versions, OS, tool availability and the error output, removes tokens, e-mail addresses and home-directory names, shows you the draft and files it only after your OK (without `gh` it prints a prefilled link). The agents suggest it themselves when a step fails for a platform reason. You can also open an issue by hand: [new issue](https://github.com/ika100/sdlc-foundry/issues/new/choose).
 
 ## License
 

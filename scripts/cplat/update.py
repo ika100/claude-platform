@@ -92,7 +92,7 @@ def execute(req: dict) -> Report:
         cmd += ["--data", kv]
     run(cmd, cwd=repo)
     answers = repo / ".copier-answers.yml"
-    answers.write_text(re.sub(r"^_src_path:.*$", f"_src_path: gh:ika100/claude-platform/templates/{req['template']}", answers.read_text(), flags=re.M))
+    answers.write_text(re.sub(r"^_src_path:.*$", f"_src_path: gh:ika100/sdlc-foundry/templates/{req['template']}", answers.read_text(), flags=re.M))
     core.write_stamp(repo, req["shape"], req["ref"])
     if req["migrate"] and (repo / "k8s").is_dir():
         import shutil
@@ -118,7 +118,7 @@ def execute(req: dict) -> Report:
     if new_keys:
         r.next_steps.append("new template answers took their defaults: " + ", ".join(new_keys))
     if notes:
-        r.next_steps.append("platform changes since your version are in docs/CHANGELOG.md of claude-platform (see changelog in --json output)")
+        r.next_steps.append("platform changes since your version are in docs/CHANGELOG.md of sdlc-foundry (see changelog in --json output)")
     r.next_steps.append("run the repo's checks: devbox run quality && devbox run test-fast, then push the branch and open a PR")
     r.undo.append(f"git checkout {cur} && git branch -D {branch}" if cur in ("main", "master") else "git reset --hard HEAD~1")
     return r

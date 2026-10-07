@@ -16,4 +16,4 @@ Opt in with `policies: {}` in `app.yaml`. The platform then renders a namespaced
 
 **Modes per environment:** `Audit` (report), `Enforce` (deny) or `Off`; defaults are Audit in dev and staging, Enforce in production.
 
-**Shift-left:** `devbox run validate` (and CI) build each overlay and evaluate it with the Kyverno CLI, so a violating change fails its pull request in every mode. Together with pinned CI actions, image scanning with an SBOM and least-privilege tokens this is the platform's [security posture](/claude-platform/scenarios/harden-for-audit/) ([ADR-019](/claude-platform/reference/adr/019/), [ADR-022](/claude-platform/reference/adr/022/)).
+**Shift-left:** `devbox run validate` (and CI) build each overlay and evaluate it with the Kyverno CLI, so a violating change fails its pull request in every mode. Together with pinned CI actions, image scanning with an SBOM and least-privilege tokens this is the platform's [security posture](/sdlc-foundry/scenarios/harden-for-audit/) ([ADR-019](/sdlc-foundry/reference/adr/019/), [ADR-022](/sdlc-foundry/reference/adr/022/)).

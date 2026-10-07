@@ -7,10 +7,10 @@ sidebar:
 
 <p class="lead">Seven ideas, each in a page you can read in a few minutes.</p>
 
-- [Shapes](/claude-platform/concepts/shapes/): what kind of repository this is decides its template and its agents.
-- [The GitOps model](/claude-platform/concepts/gitops-model/): one registry in, every manifest out.
-- [Environments and promotion](/claude-platform/concepts/environments/): how a version moves from dev to production.
-- [Addons](/claude-platform/concepts/addons/): backing services behind a stable contract.
-- [Secrets](/claude-platform/concepts/secrets/): created in the cluster, never in git.
-- [Guard rails](/claude-platform/concepts/guard-rails/): the platform's conventions as policy.
-- [Agents and orchestration](/claude-platform/concepts/agents/): scripts do the work, agents orchestrate.
+- [Shapes](/sdlc-foundry/concepts/shapes/): what kind of repository this is decides its template and its agents.
+- [The GitOps model](/sdlc-foundry/concepts/gitops-model/): one registry in, every manifest out.
+- [Environments and promotion](/sdlc-foundry/concepts/environments/): how a version moves from dev to production.
+- [Addons](/sdlc-foundry/concepts/addons/): backing services behind a stable contract.
+- [Secrets](/sdlc-foundry/concepts/secrets/): created in the cluster, never in git.
+- [Guard rails](/sdlc-foundry/concepts/guard-rails/): the platform's conventions as policy.
+- [Agents and orchestration](/sdlc-foundry/concepts/agents/): scripts do the work, agents orchestrate.

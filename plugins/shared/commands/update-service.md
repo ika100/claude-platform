@@ -7,7 +7,7 @@ Update the current repo with the platform script. **Request:** $ARGUMENTS
 Prefix for each call (one Bash call each):
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/claude-platform"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/claude-platform.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" update-service <ARGS>
+P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" update-service <ARGS>
 ```
 
 1. **Preview** with `--dry-run`; show it verbatim. Stop on errors (they carry a `fix:` line; typical: dirty tree, no `.copier-answers.yml`).

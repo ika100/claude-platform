@@ -6,6 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+### Renamed to sdlc-foundry (breaking), DCO sign-off
+
+- **The project is now `sdlc-foundry`** (formerly *claude-platform*): repository `ika100/sdlc-foundry`, documentation at <https://ika100.github.io/sdlc-foundry/>, and the plugin marketplace id `sdlc-foundry` (was `ika100-claude`), so plugins install as `shared@sdlc-foundry`. The old name contained a third-party trademark and described only part of the scope: this is an agentic SDLC platform. GitHub redirects the old repository URL; the old Pages URL is gone. **Slash commands do not change** (`/svc`, `/gitops`, `/shared`, `/app`, `/web`, `/svc-java`, `/svc-go`).
+- **Migration**: `/plugin marketplace remove ika100-claude`, `/plugin marketplace add ika100/sdlc-foundry`, `/plugin install <name>@sdlc-foundry` for each plugin, restart Claude Code; in every generated repo run `/shared:update-service` (the template-owned `.claude/settings.json` and the `_src_path` in `.copier-answers.yml` are rewritten; a regression test covers a repository generated before the rename). `/shared:doctor` detects plugins still installed under the old marketplace and prints these steps.
+- **DCO**: every commit of a pull request needs a `Signed-off-by` trailer (`git commit -s`), enforced by the `DCO sign-off` CI job (`scripts/check-dco.py`, bots exempt). See CONTRIBUTING.
+- Dependabot's grouped PR titles exceed the title limit, so the `pr-title` check skips Dependabot PRs. A naming guard test keeps the old names out of the tree. Plugins: shared 0.7.2, svc 2.1.2, gitops 1.3.2, web, svc-java and svc-go 0.2.3, app 0.1.4.
+
 ## [2.2.0] — 2026-10-07
 
 The platform is now an **open-source project with a documentation site**: <https://ika100.github.io/claude-platform/> (vision, problem statement, client value, usage scenarios, user documentation). It also gets a feedback loop for problems found in the field, a designed starter UI for new web services, and a leaner CI. No breaking changes.
