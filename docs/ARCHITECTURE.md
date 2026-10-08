@@ -26,7 +26,7 @@ The platform is multi-shape: `service-python`, `library-python`, `web-nextjs`, `
 
 **GitOps owns the manifests (v2).** Services ship an image; the product's `gitops-app` repo describes how each one runs in `services.yaml` and generates Deployment/Service/HTTPRoute with `render.py`. Argo reads only that repo, wiring between services is product configuration, and promotion pins an image tag (ADR-017).
 
-**Two kinds of GitOps repo.** The *platform* GitOps repo (one per fleet) discovers every `deployable-service` repo by topic. A *`gitops-app`* repo (one per SaaS product) lists the product's services in `services.yaml` and pins versions per environment (`dev` tracks main, `staging`/`prod` are pinned by `/gitops:promote`); the ApplicationSets and overlays are generated from it (ADR-006/014). `/app:build-feature` plans work across a product's repos (plan-only in v1, ADR-007/011).
+**Two kinds of GitOps repo.** The *platform* GitOps repo (one per fleet) discovers every `deployable-service` repo by topic. A *`gitops-app`* repo (one per SaaS product) lists the product's services in `services.yaml` and pins versions per environment (`dev` tracks main, `staging`/`prod` are pinned by `/gitops:promote`); the ApplicationSets and overlays are generated from it (ADR-006/014). `/app:spec`, `/app:plan` and `/app:build` take a feature across a product's repos: one product spec, its criteria assigned per repo, each repo built from its own slice (ADR-011/023/026).
 
 ## Why not GitHub Templates
 

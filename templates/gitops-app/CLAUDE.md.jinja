@@ -18,7 +18,7 @@ applications/{{ app_name }}/
 └── overlays/<env>/<service>/     GENERATED — deployment.yaml, service.yaml, [httproute.yaml], kustomization.yaml (image pin)
 bootstrap/{{ app_name }}-root.yaml        GENERATED — root Argo Application (app-of-apps), applied once by a human
 docs/specs/                       product specs (docs/specs/<NNN>-<slug>/spec.md)
-docs/plan/                        multi-repo plans written by /app:build-feature
+docs/plan/                        multi-repo plans written by /app:plan (one per product spec)
 ```
 
 Everything marked GENERATED is derived from `services.yaml` + `app.yaml` by `devbox run render` (existing image pins are preserved). Never hand-edit generated files; change `services.yaml` (by hand or with the commands below) and render. Argo only ever reads **this** repo.
@@ -69,12 +69,14 @@ Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `app` (
 | Add services to the app | `/gitops:compose add <service...> [--expose] [--env KEY=VALUE]` |
 | Remove services | `/gitops:compose remove <service...>` |
 | Promote versions | `/gitops:promote <service...> <from> <to> [version]` |
-| Plan a feature across repos | `/app:build-feature <description>` |
-| List / inspect / close plans | `/app:plans list\|show\|start\|done\|abandon` |
+| Write a product spec (first step) | `/app:spec <description>` |
+| Split it across the repos | `/app:plan <NNN>` |
+| Build every ready repo in parallel | `/app:build <NNN>` |
+| Specs and plan progress | `/app:specs [show\|done\|abandon]` |
 
 ### Spec first
 
-A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/app:build-feature <description>` writes the product spec in `docs/specs/` (it asks you its open questions and your approval) and the multi-repo plan in `docs/plan/<slug>.md`. Each repo then turns its part into its own spec with `/svc:spec --from-plan <plan> <repo-id>` and builds it with `/svc:plan` and `/svc:build`, or `/app:run-plan <slug>` does that for every repo that is ready. Each repo's PR lists the criteria it meets.
+A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/app:spec <description>` writes the product spec in `docs/specs/<NNN>-<slug>/spec.md` (it asks you its open questions and your approval); `/app:plan <NNN>` assigns every criterion to a component repo with the contract between them (`docs/plan/<spec_id>.md`, checked by `devbox run plan-check`); `/app:build <NNN>` builds every ready repo in parallel, each from its own slice of the spec (`/svc:spec --from-plan` → `/svc:plan` → `/svc:build`), and stops at open PRs. Each repo's PR lists the criteria it meets.
 
 ## Conventions
 

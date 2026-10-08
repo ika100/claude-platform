@@ -27,7 +27,7 @@ def route(repo: Path) -> dict:
         agents["migrations"] = "svc:migrations"
     out = {"shape": shape, "plugin": plugin, "deployable": entry["deployable"], "library": entry["library"], "agents": agents}
     if shape == "gitops-app":
-        out["unsupported"] = "/svc:* commands do not apply to a gitops-app repo; use /gitops:compose, /gitops:promote or /app:build-feature"
+        out["unsupported"] = "/svc:* commands do not apply to a gitops-app repo; use /gitops:compose, /gitops:promote or /app:spec"
     return out
 
 

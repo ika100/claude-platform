@@ -19,7 +19,7 @@ Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foun
 ## 1. Pre-flight
 
 1. `git status --porcelain` must be empty.
-2. Shape from the routing JSON (`SHAPE`, `agents`). `unsupported` → stop (gitops-app: `/app:build-feature`). No shape → continue; the plan records none.
+2. Shape from the routing JSON (`SHAPE`, `agents`). `unsupported` → stop (gitops-app: `/app:plan`). No shape → continue; the plan records none.
 3. `CPLAT spec check <id> --require approved`. If it fails, show the errors and the fix (`/svc:spec approve <NNN>` or `/svc:spec --amend …`) and stop.
 4. Switch to `feature/<spec_id>` (create it from `main` if it does not exist).
 5. If `plan.md` exists and any task has `done: true`, the spec is partly built: ask before re-planning (task progress is lost; the build would redo those tasks).

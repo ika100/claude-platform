@@ -26,8 +26,8 @@
     {
       "name": "app",
       "source": "./plugins/app",
-      "version": "0.3.0",
-      "description": "Multi-repo planning for gitops-app repos: /app:build-feature plans, /app:run-plan builds independent repos in parallel, /app:plans tracks the lifecycle.",
+      "version": "1.0.0",
+      "description": "Spec-driven features across a product's repos: /app:spec, /app:plan (criteria per repo, contract), /app:build (ready repos in parallel through their own specs), /app:specs.",
       "category": "agents",
       "tags": ["planning", "multi-repo", "gitops"]
     },

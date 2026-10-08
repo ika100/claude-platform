@@ -120,3 +120,37 @@ def test_build_writes_tests_first_verifies_and_resumes():
 @pytest.mark.parametrize("name", ["quick-task", "fix-bug"])
 def test_small_pipelines_stop_at_a_spec_change(name):
     assert "/svc:spec --amend <NNN>" in (COMMANDS / f"{name}.md").read_text()
+
+
+# ---------------- app 1.0 commands (STORY-040) ----------------
+
+APP = PLUGINS / "app"
+
+
+@pytest.mark.parametrize("name", ["spec", "plan", "build", "specs"])
+def test_app_commands_exist_with_a_usage_line(name):
+    meta = front(APP / "commands" / f"{name}.md")
+    assert f"/app:{name}" in meta["description"] and len(meta["description"]) < 260
+
+
+def test_app_plan_and_build_need_an_approved_product_spec():
+    for name in ("plan", "build"):
+        assert "spec check <id> --require approved" in (APP / "commands" / f"{name}.md").read_text() \
+            or "spec check <spec_id> --require approved" in (APP / "commands" / f"{name}.md").read_text()
+
+
+def test_app_build_runs_each_repo_through_its_own_spec_and_never_answers_questions():
+    text = (APP / "commands" / "build.md").read_text()
+    assert "/svc:spec --from-plan <abs plan path> <repo-id>" in text and "never answer them" in text
+    assert "never merge" in text.lower()
+
+
+def test_planner_assigns_criteria_instead_of_writing_prompts():
+    text = (APP / "agents" / "planner.md").read_text()
+    assert "acs: [AC-<NNN>.1" in text and "spec: <PLAN_ID>" in text and "Never restate criteria in `arguments`" in text
+
+
+def test_repo_specs_come_from_the_deterministic_slice():
+    text = (PLUGINS / "svc" / "commands" / "spec.md").read_text()
+    assert "CPLAT spec new --from-plan <abs plan path> <repo-id>" in text
+    assert "Product context" in (PLUGINS / "svc" / "agents" / "product-manager.md").read_text()

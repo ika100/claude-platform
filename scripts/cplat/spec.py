@@ -369,6 +369,56 @@ def new(root: Path, title: str, *, shape: str | None, priority: str, tracks: lis
     return read(sdir)
 
 
+def slice_from_plan(plan_path: Path, repo_id: str) -> dict:
+    """This repo's part of a product plan (ADR-026): title, priority, parent and the Product context section.
+
+    The plan lives in the gitops-app repo (docs/plan/<spec_id>.md); its spec next to it in docs/specs/<spec_id>/.
+    Plans written before ADR-026 have no `spec:`; their `arguments` prompt is then the whole context.
+    """
+    if not plan_path.is_file():
+        raise PlatformError(f"no such plan: {plan_path}", hint="pass the path to docs/plan/<id>.md in the gitops-app repo")
+    meta, body = load(plan_path)
+    repo = next((r for r in meta.get("repos") or [] if r.get("id") == repo_id), None)
+    if repo is None:
+        ids = ", ".join(str(r.get("id")) for r in meta.get("repos") or [])
+        raise PlatformError(f"plan {plan_path.name} has no repo '{repo_id}' (repos: {ids})")
+    app_root = plan_path.resolve().parents[2]
+    parts = [f"Slice of the product plan `{meta.get('plan_id')}` in `{meta.get('gitops_app')}` for `{repo_id}` "
+             f"({repo.get('shape')}). The product criteria and the contract below are binding: every criterion of this "
+             "spec implements one of them and names it: `(product AC-<NNN>.<n>)`."]
+    priority, problem = "P1", ""
+    if meta.get("spec"):
+        product = read(app_root / SPECS_DIR / str(meta["spec"]))
+        priority = product.meta.get("priority", "P1")
+        problem = sections(product.body).get("problem", "").strip()
+        wanted = set(repo.get("acs") or [])
+        lines = [ln for ln in sections(product.body).get("acceptance criteria", "").splitlines()
+                 if (m := AC_LINE.match(ln)) and m.group(2) in wanted and not m.group(1)]
+        parts.append("### Product criteria\n\n" + ("\n".join(lines) or "(none assigned)"))
+        design = product.dir / "design.md"
+        contract = sections(design.read_text()).get("contract", "").strip() if design.is_file() else ""
+    else:
+        contract = ""
+    contract = contract or sections(body).get("contract", "").strip()
+    if contract:
+        parts.append("### Contract\n\n" + contract)
+    if repo.get("arguments"):
+        parts.append("### Notes for this repo\n\n" + str(repo["arguments"]).strip())
+    parent = f"{meta.get('gitops_app')}:{meta.get('spec') or meta.get('plan_id')}"
+    return {"title": str(repo.get("summary") or repo_id), "priority": priority if priority in PRIORITIES else "P1",
+            "parent": parent, "problem": problem, "context": "\n\n".join(parts)}
+
+
+def new_from_plan(root: Path, plan_path: Path, repo_id: str, *, shape: str | None) -> Spec:
+    sl = slice_from_plan(plan_path, repo_id)
+    spec = new(root, sl["title"], shape=shape, priority=sl["priority"], tracks=[], parent=sl["parent"])
+    body = spec.body.replace("## Stories", f"## Product context\n\n{sl['context']}\n\n## Stories", 1)
+    if sl["problem"]:
+        body = re.sub(r"(## Problem\n\n)<!--.*?-->", lambda m: m.group(1) + sl["problem"], body, count=1, flags=re.S)
+    save(spec.dir / "spec.md", spec.meta, body)
+    return read(spec.dir)
+
+
 def approve(spec: Spec, shape: str | None) -> None:
     if spec.status != "draft":
         raise PlatformError(f"{spec.id} is '{spec.status}', only a draft can be approved")
@@ -403,11 +453,15 @@ def task_done(spec: Spec, task_id: str) -> None:
 
 # ---------------- list / index ----------------
 
-def next_step(spec: Spec, prefix: str = "/svc") -> str:
+def next_step(spec: Spec) -> str:
+    """The command that moves this spec on. Product specs (gitops-app) use /app:*, with the plan in docs/plan/<id>.md."""
     n = spec.number
+    product = spec.meta.get("shape") == "gitops-app"
+    prefix = "/app" if product else "/svc"
+    planned = (spec.dir.parents[2] / "docs" / "plan" / f"{spec.id}.md").is_file() if product else bool(spec.plan)
     if spec.status == "draft":
         return f"{prefix}:spec --amend {n}" if spec.open_questions() or not spec.active_acs() else f"{prefix}:spec approve {n}"
-    if spec.status == "approved" and not spec.plan:
+    if spec.status == "approved" and not planned:
         return f"{prefix}:plan {n}"
     if spec.status in {"approved", "building"}:
         return f"{prefix}:build {n}"
@@ -580,7 +634,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--repo", default=".")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("new", help="create docs/specs/<NNN>-<slug>/spec.md (draft)")
-    p.add_argument("title", nargs="+")
+    p.add_argument("title", nargs="*")
+    p.add_argument("--from-plan", nargs=2, metavar=("PLAN", "REPO_ID"),
+                   help="this repo's slice of a product plan (docs/plan/<id>.md in the gitops-app repo)")
     p.add_argument("--priority", default="P1", choices=sorted(PRIORITIES))
     p.add_argument("--tracks", type=int, nargs="*", default=[])
     p.add_argument("--parent")
@@ -612,8 +668,13 @@ def main(argv: list[str]) -> int:
     root = Path(ns.repo).resolve()
 
     if ns.cmd == "new":
-        spec = new(root, " ".join(ns.title), shape=None if ns.no_shape else repo_shape(root),
-                   priority=ns.priority, tracks=ns.tracks, parent=ns.parent)
+        shape = None if ns.no_shape else repo_shape(root)
+        if ns.from_plan:
+            spec = new_from_plan(root, Path(ns.from_plan[0]).expanduser(), ns.from_plan[1], shape=shape)
+        elif not ns.title:
+            raise PlatformError("a title or --from-plan PLAN REPO_ID is required")
+        else:
+            spec = new(root, " ".join(ns.title), shape=shape, priority=ns.priority, tracks=ns.tracks, parent=ns.parent)
         print(spec.dir.relative_to(root) / "spec.md")
         return 0
     if ns.cmd == "check":

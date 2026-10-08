@@ -483,12 +483,12 @@ As a contributor, I want `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify` a
 - [ ] `/svc:build-feature` and `/svc:plan-feature` are removed (svc 3.0.0) and the CHANGELOG maps old to new.
 
 #### STORY-040: Product specs are split into per-repo specs
-**Status:** planned · **Priority:** P1 · **Depends on:** STORY-039
+**Status:** done · **Priority:** P1 · **Depends on:** STORY-039 · **Code:** `plugins/app/commands/`, `scripts/cplat/spec.py` (`--from-plan`), `templates/gitops-app/scripts/plan.py`
 
 As a founder, I want `/app:spec`, `/app:plan`, `/app:build` and `/app:specs` to give each component repo its own slice of the product spec, so that every repo builds from criteria instead of a free-text prompt.
 
 **Acceptance criteria:**
-- [ ] The product plan lists per repo the criteria it implements and the contract; `plan-check` validates them.
+- [ ] The product plan lists per repo the criteria it implements (`acs:`) and the contract; `plan-check` fails when an active product criterion is assigned to no repo.
 - [ ] `cplat spec new --from <product-spec> <repo-id>` writes the repo's `spec.md` with `parent:` set.
 - [ ] `app` 1.0.0 replaces `build-feature`, `run-plan` and `plans`; ADR-011 is amended.
 
