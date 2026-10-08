@@ -1,7 +1,7 @@
 ---
 spec_id: 052-repo-specs-know-the-gitops-wiring
 title: Repo specs know the gitops wiring
-status: approved
+status: done
 priority: P1
 ---
 
@@ -37,3 +37,5 @@ None.
 
 - 2026-10-08 created from issue 10 of the todo end-to-end run
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

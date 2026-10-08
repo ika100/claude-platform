@@ -90,4 +90,6 @@ Driver-side notes, not platform defects: `/shared:new-app` and every later step 
 
 ## Follow-up
 
+**Status 2026-10-08:** all 17 issues are fixed and verified: specs 043–059 are `done`, each with a `verification.md` (PRs #83 wave 1, #84 wave 2, #85 wave 3, #86 waves 4–5). The next end-to-end run is the live check of the prompt-level fixes (044 probe, 045 gitops execution, 046 foreground agents, 047 resume, 051 PR fallback).
+
 Issues 1–3 block a clean unattended run and should be fixed first. Each issue is a draft spec (043–059, column *Spec*) in [`../specs/`](../specs/README.md): P0 for high, P1 for medium, P2 for low. Specs with open questions need answers (`/svc:spec --amend <id>`), the others only approval (`/svc:spec approve <id>`).
