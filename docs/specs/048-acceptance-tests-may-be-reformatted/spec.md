@@ -1,7 +1,7 @@
 ---
 spec_id: 048-acceptance-tests-may-be-reformatted
 title: Acceptance tests may be reformatted, never weakened
-status: approved
+status: done
 priority: P1
 ---
 
@@ -38,3 +38,5 @@ As a contributor, I want formatting fixes to acceptance tests to happen automati
 - 2026-10-08 created from issue 6 of the todo end-to-end run
 - 2026-10-08 open question answered: Python by token stream (import order ignored), other languages whitespace-insensitive.
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

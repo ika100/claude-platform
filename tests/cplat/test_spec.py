@@ -484,3 +484,69 @@ def test_trace_ignores_bytecode_caches(tmp_path):
     (tmp_path / "tests" / "__pycache__" / "test_a.cpython-313.pyc").write_bytes(b"\x00AC-007.1\x00")
     (tmp_path / "tests" / "test_a.py").write_text("# AC-007.1\n")
     assert spec.trace(tmp_path, s, ["tests/**/*"])["AC-007.1"] == ["tests/test_a.py"]
+
+
+# ---------------- spec 048: acceptance tests may be reformatted, never weakened ----------------
+
+PY_BEFORE = '''import os
+import json
+
+
+def test_alert():  # AC-007.1
+    assert send(rule("AAPL", 200), price=200.01, timeout=60) == {"sent": 1, "to": "owner"}
+'''
+
+
+@pytest.mark.parametrize("after, same", [
+    # reflowed call and wrapped assert: formatting only
+    ('''import os
+import json
+
+
+def test_alert():  # AC-007.1
+    assert send(
+        rule("AAPL", 200),
+        price=200.01,
+        timeout=60,
+    ) == {"sent": 1, "to": "owner"}
+''', True),
+    # imports sorted by the formatter: formatting only
+    (PY_BEFORE.replace("import os\nimport json", "import json\nimport os"), True),
+    # a changed literal weakens the test
+    (PY_BEFORE.replace("200.01", "199.0"), False),
+    # a removed assertion
+    (PY_BEFORE.replace('    assert send(rule("AAPL", 200), price=200.01, timeout=60) == {"sent": 1, "to": "owner"}\n', "    pass\n"), False),
+    # the criterion id changed (only in a comment)
+    (PY_BEFORE.replace("AC-007.1", "AC-007.2"), False),
+])
+def test_python_test_diff(after, same):
+    """AC-048.2 AC-048.3"""
+    ok, _ = spec.formatting_only(PY_BEFORE, after, "test_x.py")
+    assert ok is same
+
+
+@pytest.mark.parametrize("after, same", [
+    ('it("AC-007.1 sends",()=>{\n  expect(send(200.01)).toBe(1)\n})\n', True),
+    ('it("AC-007.1 sends", () => { expect(send(199)).toBe(1) })\n', False),
+])
+def test_other_languages_ignore_only_whitespace(after, same):
+    """AC-048.3"""
+    ok, _ = spec.formatting_only('it("AC-007.1 sends", () => {\n  expect(send(200.01)).toBe(1)\n})\n', after, "x.test.ts")
+    assert ok is same
+
+
+def test_test_diff_cli_compares_against_a_commit(tmp_path, capsys):
+    """AC-048.2 AC-048.3: exit 0 for formatting, 1 with the reason otherwise."""
+    import subprocess
+    make(tmp_path, status="building")
+    (tmp_path / "tests").mkdir()
+    f = tmp_path / "tests" / "test_x.py"
+    f.write_text(PY_BEFORE)
+    g = lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)  # noqa: E731
+    g("init", "-q"); g("add", "."); g("-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "red")
+    f.write_text(PY_BEFORE.replace("import os\nimport json", "import json\nimport os"))
+    assert spec.main(["--repo", str(tmp_path), "test-diff", "HEAD"]) == 0
+    assert "tests/test_x.py: formatting only" in capsys.readouterr().out
+    f.write_text(PY_BEFORE.replace("200.01", "1"))
+    assert spec.main(["--repo", str(tmp_path), "test-diff", "HEAD"]) == 1
+    assert "tests/test_x.py: changed" in capsys.readouterr().out

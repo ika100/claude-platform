@@ -307,6 +307,72 @@ def _ignored(rel: Path) -> bool:
         part in {"node_modules", ".venv", ".devbox", ".git", "target", "dist", ".next", "__pycache__"} for part in rel.parts)
 
 
+# ---------------- test-diff (spec 048) ----------------
+
+AC_ANY = re.compile(r"AC-\d{3,}\.\d+(?!\d)")
+
+
+def _py_shape(src: str) -> list[str]:
+    """Top-level statements as AST dumps: formatting, comments and line numbers do not count; runs of top-level
+    imports are sorted (formatters reorder them); string constants are compared with whitespace collapsed."""
+    import ast
+
+    class _Strings(ast.NodeTransformer):
+        def visit_Constant(self, node):
+            if isinstance(node.value, str):
+                return ast.copy_location(ast.Constant(" ".join(node.value.split())), node)
+            return node
+
+    tree = _Strings().visit(ast.parse(src))
+    out, run = [], []
+    for node in tree.body:
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            run.append(ast.dump(node))
+            continue
+        out += sorted(run)
+        run = []
+        out.append(ast.dump(node))
+    return out + sorted(run)
+
+
+def formatting_only(old: str, new: str, name: str) -> tuple[bool, str]:
+    """True when `new` differs from `old` only in formatting (spec 048); else False and the first difference."""
+    if sorted(AC_ANY.findall(old)) != sorted(AC_ANY.findall(new)):
+        return False, f"criterion ids changed: {sorted(set(AC_ANY.findall(old)) ^ set(AC_ANY.findall(new)))}"
+    if name.endswith(".py"):
+        try:
+            a, b = _py_shape(old), _py_shape(new)
+        except SyntaxError as e:
+            return False, f"does not parse: {e.msg} (line {e.lineno})"
+        if a == b:
+            return True, ""
+        i = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+        return False, f"top-level statement {i + 1} differs" + (" (statements added or removed)" if len(a) != len(b) else "")
+    squash = lambda t: re.sub(r"\s+", "", t)  # noqa: E731
+    if squash(old) == squash(new):
+        return True, ""
+    a, b = squash(old), squash(new)
+    i = next((i for i, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
+    return False, f"differs near …{b[max(0, i - 20):i + 20]}…"
+
+
+def test_diff(root: Path, base: str, files: list[str]) -> dict[str, tuple[bool, str]]:
+    """Each changed test file (default: test files that name a criterion of a `building` spec) against `base`."""
+    import subprocess
+    if not files:
+        changed = subprocess.run(["git", "-C", str(root), "diff", "--name-only", base], capture_output=True, text=True,
+                                 check=True).stdout.split()
+        ids = {a for s in all_specs(root) if s.status == "building" for a in (x.id for x in s.acs())}
+        files = [f for f in changed if (root / f).is_file() and not _ignored(Path(f))
+                 and set(AC_ANY.findall((root / f).read_text(errors="ignore"))) & ids]
+    out = {}
+    for f in files:
+        old = subprocess.run(["git", "-C", str(root), "show", f"{base}:{f}"], capture_output=True, text=True)
+        new = (root / f).read_text() if (root / f).is_file() else ""
+        out[f] = (False, "new or deleted file") if old.returncode != 0 or not new else formatting_only(old.stdout, new, f)
+    return out
+
+
 # ---------------- writing ----------------
 
 def today() -> str:
@@ -708,6 +774,9 @@ def main(argv: list[str]) -> int:
     p = sub.add_parser("list")
     p.add_argument("--all", action="store_true", help="include done and superseded")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("test-diff", help="acceptance tests changed only in formatting since BASE? (exit 1 otherwise)")
+    p.add_argument("base", help="the commit with the red acceptance tests (Phase 1)")
+    p.add_argument("files", nargs="*")
     p = sub.add_parser("ci", help="check every spec and trace built ones; GitHub annotations (warnings unless --strict)")
     p.add_argument("--strict", action="store_true")
     p = sub.add_parser("migrate", help="convert STORY-NNN stories in docs/backlog.md into spec folders")
@@ -773,6 +842,13 @@ def main(argv: list[str]) -> int:
                 oq = f", {r['open_questions']} open q" if r["open_questions"] else ""
                 print(f"{r['id']:40} {r['priority']:3} {r['status']:10} {r['acs']:>2} AC{oq:12} {tasks:12} next: {r['next']}")
         return 0
+    if ns.cmd == "test-diff":
+        result = test_diff(root, ns.base, ns.files)
+        for f, (ok, why) in result.items():
+            print(f"{f}: formatting only" if ok else f"{f}: changed — {why}")
+        if not result:
+            print("no acceptance test changed")
+        return 0 if all(ok for ok, _ in result.values()) else 1
     if ns.cmd == "ci":
         return ci(root, ns.strict)
     if ns.cmd == "migrate":

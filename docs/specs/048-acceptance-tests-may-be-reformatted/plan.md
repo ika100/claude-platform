@@ -9,6 +9,7 @@ tasks:
   covers: [AC-048.2, AC-048.3]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Build runs lint-fix on acceptance tests and checks them
   files: [plugins/svc/commands/build.md, plugins/svc/skills/spec-format/references/testing.md, plugins/svc/agents/coder.md,
@@ -16,12 +17,14 @@ tasks:
   covers: [AC-048.1, AC-048.2]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 - id: t3
   title: Contract tests
   files: [tests/cplat/test_spec_agents.py]
   covers: [AC-048.1, AC-048.2]
   parallel_safe: false
   depends_on: [t2]
+  done: true
 ---
 
 ## t1 — Add `cplat spec test-diff`

@@ -19,6 +19,7 @@ It must report `shape: gitops-app`, else stop.
 ## Pre-flight
 
 1. Resolve `<spec_id>` (`cplat spec list --all --json`). `cplat spec check <spec_id> --require approved` must pass; `docs/plan/<spec_id>.md` must exist (otherwise `/app:plan <NNN>`).
+   `git fetch -q origin`, then compare with `git diff --quiet origin/main -- docs/plan/<spec_id>.md docs/specs/<spec_id>/` (and check the file exists there). If the plan is missing on `origin/main` or differs from it, say so: component agents in fresh clones and reviewers see the version on `main`. Ask whether to continue from the local file, or merge the spec PR first (spec 050).
 2. `devbox run plan-check`; the plan must be `draft` or `in_progress`. `devbox run -- uv run scripts/plan.py start <spec_id>` (draft → in_progress); if the spec is `approved`, `cplat spec set-status <spec_id> building`. Commit both on the plan's branch or `main` as the user prefers.
 3. Show `devbox run -- uv run scripts/plan.py show <spec_id>` and ask the user to confirm: this opens PRs in several repositories.
 
