@@ -160,6 +160,15 @@ v2 moves every Kubernetes manifest into the product's gitops-app repo (ADR-017).
 
 What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo credentials for service repos, `deploy`/`deploy-check` recipes and the `k3d`/`kubectl`/`k9s` packages in service repos, per-service `overlays/` and PrometheusRule files (alerting is a gitops-side follow-up).
 
+## Unattended runs
+
+Specs, plans and builds can run without anyone at the keyboard (`claude -p`, `/loop`, `/schedule`, CI). Four things differ from an interactive session:
+
+- **Background agents:** headless Claude Code stops background subagents after 600 s ("Background tasks still running after 600s; terminating"). `/app:build` runs its repo agents in the foreground, so it is not affected; for your own long headless runs set `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`.
+- **Permissions:** nobody answers prompts, so run with `--permission-mode acceptEdits` plus the template allowlist, or `bypassPermissions` in a throwaway workspace.
+- **Workspace trust:** in a workspace that was never opened interactively, Claude Code ignores the project's `permissions.allow` list but still applies its `ask` list. Open the repo once interactively (accept the trust dialog) to use the template allowlist.
+- **Pull requests:** `gh pr create` is in the `ask` list on purpose. Unattended pipelines push the branch and end with the exact `gh pr create` command to run (spec 051).
+
 ## Troubleshooting
 
 - **`403 Forbidden` when CI pushes the image to GHCR.** The package must be linked to the repository. Generated Dockerfiles carry `org.opencontainers.image.source`, which links a new package automatically on its first push. If the package already exists without a link (created by hand or by an older template), open `https://github.com/users/<user>/packages/container/<package>/settings` (organisations: the org's package settings), choose **Manage Actions access**, add the repository with role **Write**.

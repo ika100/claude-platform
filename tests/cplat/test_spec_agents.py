@@ -201,3 +201,33 @@ def test_security_agent_summarises_unfixable_base_image_findings():
     """AC-059.2"""
     text = (PLUGINS / "shared" / "agents" / "security.md").read_text().lower()
     assert "no fix released" in text and "base image" in text and "fixable" in text
+
+
+# ---------------- wave 2 (specs 046, 047, 053) ----------------
+
+def test_app_build_waits_for_repo_agents_in_the_foreground():
+    """AC-046.1: print mode stops background agents after 600 s; foreground calls in one message still run in parallel."""
+    text = (APP / "commands" / "build.md").read_text()
+    assert "foreground" in text and "never `run_in_background`" in text
+
+
+def test_unattended_runs_are_documented():
+    """AC-046.2"""
+    doc = (ROOT / "docs" / "ADOPTING.md").read_text()
+    section = doc.split("## Unattended runs", 1)[1].split("\n## ", 1)[0]
+    assert "CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS" in section and "--permission-mode" in section and "trust" in section
+
+
+def test_build_resumes_an_interrupted_task():
+    """AC-047.1 AC-047.2 AC-047.3 AC-047.4"""
+    text = (COMMANDS / "build.md").read_text()
+    pre = text.split("## Phase 0", 1)[1].split("## Phase 1", 1)[0]
+    assert "wip(<task-id>): interrupted" in pre and "git restore --staged" in pre
+    assert "not `building`" in pre and "clean" in pre
+    assert "squash-merge" in text.split("## Phase 7", 1)[1]
+
+
+def test_planner_writes_errors_and_timeouts_into_the_contract():
+    """AC-053.2"""
+    text = (APP / "agents" / "planner.md").read_text()
+    assert "### Errors" in text and "### Timeouts" in text and "not list" in text

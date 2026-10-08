@@ -1,7 +1,7 @@
 ---
 spec_id: 054-new-repos-protect-main
 title: New repos protect main
-status: approved
+status: done
 priority: P2
 ---
 
@@ -37,3 +37,5 @@ As a founder, I want `main` of every new repo protected by its required checks, 
 - 2026-10-08 created from issue 12 of the todo end-to-end run
 - 2026-10-08 open question answered: status checks only; no review requirement (solo founders cannot approve their own PRs).
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

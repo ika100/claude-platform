@@ -34,7 +34,7 @@ All repo-local commands go through `devbox run <script>`. Reading other repos go
      - {env: {TODO_API_URL: 'http://todo-api'}, service: todo-web}
    ```
    Only `addon`, `uses`, `expose` and `env` exist; every service must be in `services.yaml` or be a repo of the plan. Quote values that contain `:`. `/app:build` runs these with `cplat addon add` and `cplat compose set`.
-5. **Write the contract** between the repos in the plan body's `## Contract` section: endpoints, request/response fields, status codes and error format, events. It is copied into every repo's spec and their acceptance tests are written against it, so it must be complete. For a large contract, write `docs/specs/<PLAN_ID>/design.md` with a `## Contract` section instead (it takes precedence).
+5. **Write the contract** between the repos in the plan body's `## Contract` section: endpoints, request/response fields, status codes, events. With two or more repos it must also have `### Errors` (the error format, and how a caller treats a response the contract does not list) and `### Timeouts` (the timeout of every call and the behaviour when the other side is down or slow); `plan-check` refuses a contract without them (spec 053). Every question a repo would otherwise ask belongs here. It is copied into every repo's spec and their acceptance tests are written against it, so it must be complete. For a large contract, write `docs/specs/<PLAN_ID>/design.md` with a `## Contract` section instead (it takes precedence).
 6. **Order by real dependencies.** `depends_on` captures "library before its consumers" and "service before a service that needs its code". A backend and the UI that calls it need no `depends_on` when the contract is written: they build in parallel. No cosmetic ordering.
 7. **Plan the pins.** `gitops_pin` lists which services get pinned in which overlay and when: in `staging` after their own PR merges (`apply_after: <repo-id>`) or after everything merges (`apply_after: merge_of_all`). Libraries are never pinned (they are consumed through the service's lockfile bump, ADR-016).
 8. **Write `docs/plan/<PLAN_ID>.md`** in exactly this format, then run `devbox run plan-check` and fix every reported error:
@@ -70,7 +70,15 @@ gitops_pin:
 
 ## Contract
 
-<endpoints, fields, status codes, errors, events between the repos>
+<endpoints, fields, status codes, events between the repos>
+
+### Errors
+
+<error format; how a caller treats a response the contract does not list>
+
+### Timeouts
+
+<timeout of every call; behaviour when the other side is down or slow>
 
 ## gitops-app PR
 

@@ -9,12 +9,14 @@ tasks:
   covers: [AC-053.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Planner instructions
   files: [plugins/app/agents/planner.md]
   covers: [AC-053.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — plan-check requires errors and timeouts in multi-repo contracts

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shlex
 from pathlib import Path
 
 import yaml
@@ -126,6 +127,7 @@ def plan(req: dict) -> Report:
             r.will_do.append(f"[outward] create {req['visibility'].upper()} GitHub repo {req['org']}/{req['name']} and push")
             if req["entry"]["deployable"]:
                 r.will_do.append("[outward] add topic deployable-service (so it can be composed into a gitops-app)")
+            r.will_do.append("[outward] protect main: require the CI checks " + ", ".join(req["entry"].get("ci_checks") or []) + " (no review requirement)")
         else:
             r.will_do.append("gh is not available: skip GitHub steps and print the commands instead")
     if req["ignored_app"]:
@@ -144,6 +146,13 @@ def _next_steps(req: dict) -> list[str]:
             f'/svc:spec "{desc}"   # spec first: docs/specs/<NNN>-<slug>/spec.md, it asks you its open questions; approve it',
             "/svc:plan <NNN>   # the architect plans the approved spec (design.md, plan.md); review it",
             "/svc:build <NNN>   # failing acceptance tests first, then the code, verified against the spec; the bootstrap CI runs in parallel, do not wait for it"]
+
+
+def protection_cmd(slug: str, checks: list[str]) -> list[str]:
+    """Spec 054: main requires the shape's CI checks; no review requirement (solo founders cannot approve their own PRs)."""
+    cmd = ["gh", "api", "-X", "PUT", f"repos/{slug}/branches/main/protection", "-F", "required_status_checks[strict]=false"]
+    cmd += [f for c in checks for f in ("-f", f"required_status_checks[contexts][]={c}")]
+    return cmd + ["-F", "enforce_admins=false", "-F", "required_pull_request_reviews=null", "-F", "restrictions=null"]
 
 
 def execute(req: dict) -> Report:
@@ -192,6 +201,14 @@ def execute(req: dict) -> Report:
         if req["entry"]["deployable"]:
             run(["gh", "repo", "edit", slug, "--add-topic", "deployable-service"])
             r.did.append("added topic deployable-service")
+        protect = protection_cmd(slug, req["entry"].get("ci_checks") or [])
+        res = run(protect, check=False)
+        if res.returncode == 0:
+            r.did.append("protected main: " + ", ".join(req["entry"].get("ci_checks") or []) + " must pass before merging")
+        else:
+            reason = (res.stderr or res.stdout or "").strip().splitlines()[-1:] or ["unknown error"]
+            r.did.append(f"WARNING: could not protect main ({reason[0]}); private repos on free plans cannot use branch protection")
+            r.next_steps.append("protect main by hand when your plan allows it: " + " ".join(shlex.quote(c) for c in protect))
         r.undo.append(f"gh repo delete {slug} --yes   (needs the delete_repo scope: gh auth refresh -s delete_repo)")
     elif req["want_github"]:
         cmds_if_manual = [f"gh repo create {slug} --{req['visibility']} --source=. --remote=origin --push"]
