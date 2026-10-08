@@ -4,43 +4,43 @@ description: "Build an approved, planned spec: failing acceptance tests first �
 
 You are the **build orchestrator** ([ADR-026](../../../docs/adr/026-feature-specs.md)). The approved spec defines done: you turn its criteria into failing tests, have coders make them pass, and prove the result against the spec before opening one PR. Delegate all code and test writing to subagents.
 
-**Spec:** $ARGUMENTS (number, slug or full id; empty → `CPLAT spec list` and ask which)
+**Spec:** $ARGUMENTS (number, slug or full id; empty → `cplat spec list` and ask which)
 
 Work through the phases in order. After each, print `## Phase N complete — <one line>`. A re-run of `/svc:build <id>` **resumes**: phases whose result already exists are skipped (each phase says how it detects that).
 
 ## cplat
 
-First call (updates the cached platform checkout, one Bash call) — it is also the shape dispatch:
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call, also the shape dispatch:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-It prints JSON: `shape`, `plugin`, `deployable`, `library`, `agents` (the subagent type for every role — spawn each role with exactly that type, e.g. `agents.coder`). `unsupported` → stop and show it. A repo without a shape cannot be built (no coder to route to): stop. Roles missing from `agents` (e.g. deployment for a library) are skipped. Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`. Print its output verbatim.
+It prints JSON: `shape`, `plugin`, `deployable`, `library`, `agents` (the subagent type for every role — spawn each role with exactly that type, e.g. `agents.coder`). `unsupported` → stop and show it. A repo without a shape cannot be built (no coder to route to): stop. Roles missing from `agents` (e.g. deployment for a library) are skipped. Print its output verbatim.
 
 ---
 
 ## Phase 0 — Pre-flight
 
 1. `git status --porcelain` must be empty.
-2. `CPLAT spec check <id> --require approved` must pass, and `docs/specs/<spec_id>/plan.md` must exist. Otherwise stop with the fix: `/svc:spec approve <NNN>`, `/svc:plan <NNN>`, or for `spec_hash` drift `/svc:plan <NNN>` again.
+2. `cplat spec check <id> --require approved` must pass, and `docs/specs/<spec_id>/plan.md` must exist. Otherwise stop with the fix: `/svc:spec approve <NNN>`, `/svc:plan <NNN>`, or for `spec_hash` drift `/svc:plan <NNN>` again.
 3. Switch to `feature/<spec_id>` (create it from `main` if missing). `$FEATURE_BRANCH` = it.
 4. `BASE_REF=$(git merge-base main HEAD)` — the build's diff baseline, stable across re-runs.
 5. `<project-map>` = `ls -d */` without `.devbox`, `.venv`, `.git`, `node_modules`. Prepend it to every subagent prompt.
-6. Status: `approved` → `CPLAT spec set-status <id> building` and commit `docs(spec): start building <spec_id>`. `building` → this is a resume: print which tasks are already `done` (`CPLAT spec list --json`).
+6. Status: `approved` → `cplat spec set-status <id> building` and commit `docs(spec): start building <spec_id>`. `building` → this is a resume: print which tasks are already `done` (`cplat spec list --json`).
 
 Do not wait for CI on `main`.
 
 ## Phase 1 — Acceptance tests (red)
 
-**Skip** (resume) when `CPLAT spec trace <id>` already passes: every criterion has a test.
+**Skip** (resume) when `cplat spec trace <id>` already passes: every criterion has a test.
 
 **tester** agent (`agents.tester`), prompt: "**Acceptance mode.** `SPEC_DIR: docs/specs/<spec_id>/`" + `<project-map>`. It writes criterion-tagged tests against the spec and `design.md`'s contract, confirms they fail because the behaviour is missing, and commits only test files.
 
 Then:
-- `CPLAT spec trace <id>` must pass; otherwise send the missing ids back to the tester (once).
+- `cplat spec trace <id>` must pass; otherwise send the missing ids back to the tester (once).
 - `devbox run test-fast`: the new tests fail, nothing else newly fails. A test that errors for another reason goes back to the tester.
-- `CPLAT spec trace <id> --json` → hold `TRACE` (criterion → test files) for Phase 2.
+- `cplat spec trace <id> --json` → hold `TRACE` (criterion → test files) for Phase 2.
 
 ## Phase 2 — Implement (parallel via git worktrees)
 
@@ -69,7 +69,7 @@ Before the first parallel batch, run a throwaway Agent with `isolation: "worktre
 
 **Sequential task:** one coder without isolation on `$FEATURE_BRANCH`; commit for it if it did not.
 
-After each task is merged and green: `CPLAT spec task-done <id> <task-id>`; commit the plan change together with the batch: `chore(plan): <spec_id> <task ids> done`.
+After each task is merged and green: `cplat spec task-done <id> <task-id>`; commit the plan change together with the batch: `chore(plan): <spec_id> <task ids> done`.
 
 ### 2.5 All green
 
@@ -89,7 +89,7 @@ Reconcile: quality failures → coder (lint/type only), tester bugs → coder; a
 
 ## Phase 4 — Verify against the spec
 
-1. `CPLAT spec trace <id> --json` must pass.
+1. `cplat spec trace <id> --json` must pass.
 2. **reviewer** (`agents.reviewer`), prompt: `SPEC_DIR`, `BASE_REF`, `<touched-files>`, the trace JSON and the Phase 3 test summary.
 3. `RESULT: fail` → send each `NOT MET` item to the coder of a task covering that criterion, re-run `devbox run test-fast` and the reviewer. At most 2 cycles; then stop and escalate with `verification.md`.
 4. Commit `docs/specs/<spec_id>/verification.md`: `docs(spec): verify <spec_id>`.
@@ -100,8 +100,8 @@ Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` i
 
 ## Phase 6 — Close the spec
 
-1. `CPLAT spec set-status <id> done`.
-2. `CPLAT spec index` (refreshes the table in `docs/backlog.md`). If it refuses because the backlog still holds legacy `STORY-NNN` stories, skip it and mention `/svc:specs migrate` in the Final Report.
+1. `cplat spec set-status <id> done`.
+2. `cplat spec index` (refreshes the table in `docs/backlog.md`). If it refuses because the backlog still holds legacy `STORY-NNN` stories, skip it and mention `/svc:specs migrate` in the Final Report.
 3. Commit: `docs(spec): <spec_id> done`.
 
 ## Phase 7 — Pull request
@@ -168,7 +168,7 @@ Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` i
 - **Acceptance tests are fixed** once Phase 1 committed them. If one is wrong, stop and take it to the user; a changed test is a changed spec.
 - **Push only in Phase 7**; `git push` and `gh pr create` require confirmation.
 - **Never resolve merge conflicts automatically**; they mean the plan's `files` were wrong.
-- **Every shell command goes through `devbox run <script>`** (see `CLAUDE.md`), except git, gh and `CPLAT`.
+- **Every shell command goes through `devbox run <script>`** (see `CLAUDE.md`), except git, gh and `cplat`.
 - **No `--no-verify`, no `--no-gpg-sign`.**
 
 > If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

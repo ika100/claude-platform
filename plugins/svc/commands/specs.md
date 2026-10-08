@@ -4,10 +4,10 @@ description: "List the repo's feature specs with status, criteria, task progress
 
 Show and maintain the repo's specs with the platform script ([ADR-026](../../../docs/adr/026-feature-specs.md)). **Request:** $ARGUMENTS
 
-Every call uses this prefix, which keeps a cached checkout of the platform up to date (one Bash call each):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" spec <ARGS>
+cplat spec <ARGS>
 ```
 
 - **(no argument) / `--all`**: run `list` (`list --all` includes done and superseded). Print the output verbatim. If it is empty, suggest `/svc:spec <description>`; if `docs/backlog.md` contains `STORY-NNN` stories, suggest `/svc:specs migrate`.

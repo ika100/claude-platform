@@ -8,13 +8,13 @@ You are the **spec orchestrator** ([ADR-026](../../../docs/adr/026-feature-specs
 
 ## cplat
 
-Run the first platform call with this prefix (it brings the cached platform checkout up to date, one Bash call):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-Every later call in this command is `CPLAT <args>`, meaning: `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`. Print cplat output verbatim; never validate a spec yourself.
+Print cplat output verbatim; never validate a spec yourself.
 
 ## 0. Pre-flight
 
@@ -26,33 +26,33 @@ Every later call in this command is `CPLAT <args>`, meaning: `uv run "${XDG_CACH
 
 ## A. approve <id>
 
-1. `CPLAT spec approve <id>`. If it refuses, show the reasons and the fix (usually `/svc:spec --amend <id> …` for open questions).
+1. `cplat spec approve <id>`. If it refuses, show the reasons and the fix (usually `/svc:spec --amend <id> …` for open questions).
 2. Switch to `feature/<spec_id>` if it exists. Commit `docs/specs/<spec_id>/spec.md`: `docs(spec): approve <spec_id>`.
 3. Print the next step: `/svc:plan <NNN>`.
 
 ## B. New spec
 
-1. Derive a short title (≤ 60 chars, the feature's name, not the whole request) and any `#N` issue numbers in the request. Run `CPLAT spec new "<title>" [--tracks N …] [--no-shape]`; it prints `docs/specs/<spec_id>/spec.md`.
+1. Derive a short title (≤ 60 chars, the feature's name, not the whole request) and any `#N` issue numbers in the request. Run `cplat spec new "<title>" [--tracks N …] [--no-shape]`; it prints `docs/specs/<spec_id>/spec.md`.
 2. `git checkout -b feature/<spec_id>` (from `main`).
-3. **product-manager** agent (`agents.product-manager` from the routing; `svc:product-manager` in a repo without a shape), prompt: `MODE: new`, `SPEC_DIR: docs/specs/<spec_id>/`, the request verbatim, the `<project-map>` (`ls -d */` without `.devbox`, `.venv`, `.git`, `node_modules`), and the list of other specs (`CPLAT spec list --all`).
-4. `CPLAT spec check <spec_id>`. On errors, send them back to the product-manager once; if they persist, stop and show them.
+3. **product-manager** agent (`agents.product-manager` from the routing; `svc:product-manager` in a repo without a shape), prompt: `MODE: new`, `SPEC_DIR: docs/specs/<spec_id>/`, the request verbatim, the `<project-map>` (`ls -d */` without `.devbox`, `.venv`, `.git`, `node_modules`), and the list of other specs (`cplat spec list --all`).
+4. `cplat spec check <spec_id>`. On errors, send them back to the product-manager once; if they persist, stop and show them.
 5. **Questions loop** (section Q).
 6. Commit `docs(spec): <spec_id> — <title>` and finish with section F.
 
 ## C. --amend <id> <change>
 
-1. `CPLAT spec list --all --json` to find the spec and its status. Switch to `feature/<spec_id>` (create it from `main` if the spec is already merged).
-2. If the status is not `draft`: `CPLAT spec set-status <id> draft --reason "amend: <one line>"`. Tell the user that it needs a new approval, and, if it has a plan and the criteria change, a new plan.
+1. `cplat spec list --all --json` to find the spec and its status. Switch to `feature/<spec_id>` (create it from `main` if the spec is already merged).
+2. If the status is not `draft`: `cplat spec set-status <id> draft --reason "amend: <one line>"`. Tell the user that it needs a new approval, and, if it has a plan and the criteria change, a new plan.
 3. **product-manager**: `MODE: amend`, `SPEC_DIR`, the change verbatim, plus any answers the user gave.
-4. `CPLAT spec check <id>`, then the questions loop (Q), then commit `docs(spec): amend <spec_id> — <one line>` and section F.
+4. `cplat spec check <id>`, then the questions loop (Q), then commit `docs(spec): amend <spec_id> — <one line>` and section F.
 
 ## D. --from-plan <plan> [<repo-id>] (this repo's slice of a product plan)
 
 The plan lives in the gitops-app repo (`docs/plan/<spec_id>.md`, ADR-011/026); never edit it from here.
 
-1. `<repo-id>` defaults to this repo's name (or `repo` in `.platform-app.yml`). Run `CPLAT spec new --from-plan <abs plan path> <repo-id>` (add `--no-shape` only in a repo without a shape): it writes this repo's spec with the product's problem, a **Product context** section (the product criteria assigned to this repo, the contract, notes) and `parent:` set. Then `git checkout -b feature/<spec_id>`.
-2. **product-manager**: `MODE: new`, `SPEC_DIR`, and "the Product context section is binding: write this repo's criteria so that together they implement each listed product criterion and follow the contract; every criterion names the product criterion it serves, `(product AC-<NNN>.<n>)`". Then `CPLAT spec check`, and section B from step 5 on (questions loop, commit, finish).
-3. **When run unattended by `/app:build`** (its prompt says so): skip the questions loop. If `OPEN QUESTIONS` is `none`, run `CPLAT spec approve <id>` (the user approved the product plan) and continue with `/svc:plan` and `/svc:build` as instructed; otherwise stop and report the questions verbatim. Never answer them yourself.
+1. `<repo-id>` defaults to this repo's name (or `repo` in `.platform-app.yml`). Run `cplat spec new --from-plan <abs plan path> <repo-id>` (add `--no-shape` only in a repo without a shape): it writes this repo's spec with the product's problem, a **Product context** section (the product criteria assigned to this repo, the contract, notes) and `parent:` set. Then `git checkout -b feature/<spec_id>`.
+2. **product-manager**: `MODE: new`, `SPEC_DIR`, and "the Product context section is binding: write this repo's criteria so that together they implement each listed product criterion and follow the contract; every criterion names the product criterion it serves, `(product AC-<NNN>.<n>)`". Then `cplat spec check`, and section B from step 5 on (questions loop, commit, finish).
+3. **When run unattended by `/app:build`** (its prompt says so): skip the questions loop. If `OPEN QUESTIONS` is `none`, run `cplat spec approve <id>` (the user approved the product plan) and continue with `/svc:plan` and `/svc:build` as instructed; otherwise stop and report the questions verbatim. Never answer them yourself.
 4. When run by hand, remind the user that `/app:build` (or `/app:specs done <id> <repo-id>`, in the gitops-app repo) records the repo as done after its PR merges.
 
 ## Q. Questions loop
@@ -61,7 +61,7 @@ The product-manager ends with an `OPEN QUESTIONS:` list. While it is not `none` 
 
 1. Ask the user with **AskUserQuestion**, up to 4 questions per call. For each: the question as the header text, the suggested answer as the first option marked "(Recommended)", one or two sensible alternatives; the user can always type their own answer.
 2. Send the answers to the product-manager: `MODE: amend`, "answers to open questions: …". It strikes the questions through and folds the answers into criteria.
-3. `CPLAT spec check <spec_id>` again.
+3. `cplat spec check <spec_id>` again.
 
 If the user wants to stop answering, leave the remaining questions in the spec: it stays `draft` and cannot be approved until they are answered.
 
@@ -81,7 +81,7 @@ If there are no open questions, ask with AskUserQuestion whether to approve now 
 
 ## Rules
 
-- Never write code, a plan, or tests. Never change `status` except through `CPLAT spec`.
+- Never write code, a plan, or tests. Never change `status` except through `cplat spec`.
 - Never answer an open question on the user's behalf; never approve without the user's word (the only exception is D.3, where the user approved the product plan).
 - Commits stay local; nothing is pushed here (`/svc:build` opens the PR).
 

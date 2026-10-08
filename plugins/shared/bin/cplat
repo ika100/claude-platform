@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# cplat — run the sdlc-foundry platform script (scripts/cplat, ADR-026 STORY-042) at the version of the installed
+# plugins. The shared plugin's bin/ is on the Bash tool's PATH while the plugin is enabled, so commands call `cplat …`.
+#
+# Resolution order:
+#   1. $CPLAT_PLATFORM          a local platform checkout (platform development, tests)
+#   2. $CPLAT_REF               that git ref, e.g. a release tag, fetched into a cache (`--ref` of update/new-service)
+#   3. the plugin's own repo    the plugin is loaded in place from a checkout (--plugin-dir, a local-path marketplace)
+#   4. the marketplace checkout ~/.claude/plugins/marketplaces/<marketplace>/: the version the plugins were installed from,
+#                               no network
+#   5. main, fetched into ~/.cache/sdlc-foundry (the behaviour before this launcher)
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+cache="${XDG_CACHE_HOME:-$HOME/.cache}"
+
+fetch() {  # fetch <ref> <dir>: shallow checkout of <ref>, reusing <dir> when it is already a clone
+  if [ -d "$2/.git" ] && git -C "$2" fetch -q --depth 1 origin "$1" && git -C "$2" checkout -q FETCH_HEAD; then
+    return 0
+  fi
+  rm -rf "$2" && mkdir -p "$2"
+  git -C "$2" init -q && git -C "$2" remote add origin https://github.com/ika100/sdlc-foundry.git
+  git -C "$2" fetch -q --depth 1 origin "$1" && git -C "$2" checkout -q FETCH_HEAD
+}
+
+plugin_dir=$(dirname "$here")                 # …/cache/<marketplace>/shared/<version>  or  <repo>/plugins/shared
+if [ -n "${CPLAT_PLATFORM:-}" ]; then
+  root=$CPLAT_PLATFORM; source=platform
+elif [ -n "${CPLAT_REF:-}" ]; then
+  root="$cache/sdlc-foundry-ref/$CPLAT_REF"; source="ref $CPLAT_REF"
+  fetch "$CPLAT_REF" "$root" >&2
+elif [ -f "$plugin_dir/../../scripts/cplat/cplat.py" ]; then
+  root="$plugin_dir/../.."; source=in-place
+else
+  mkt_dir=$(dirname "$(dirname "$plugin_dir")")           # …/plugins/cache/<marketplace>
+  market="$(dirname "$(dirname "$mkt_dir")")/marketplaces/$(basename "$mkt_dir")"
+  if [ -f "$market/scripts/cplat/cplat.py" ]; then
+    root=$market; source=marketplace
+  else
+    root="$cache/sdlc-foundry"; source=main
+    fetch main "$root" >&2
+  fi
+fi
+export CPLAT_SOURCE="$source $root"   # shown by `cplat doctor`
+exec uv run "$root/scripts/cplat/cplat.py" "$@"

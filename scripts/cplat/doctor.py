@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -113,6 +114,19 @@ def check_plugins() -> list[dict]:
     return out
 
 
+def check_platform_source() -> list[dict]:
+    """Which platform copy the commands run (plugins/shared/bin/cplat sets CPLAT_SOURCE, STORY-042)."""
+    src = os.environ.get("CPLAT_SOURCE", "")
+    kind, _, where = src.partition(" ")
+    if not src:
+        return [check(WARN, "platform scripts", f"run directly from {PLATFORM_ROOT} (not through the `cplat` launcher)",
+                      "update the shared plugin (0.11+) so commands call `cplat` at your plugins' version instead of fetching main")]
+    if kind == "main":
+        return [check(WARN, "platform scripts", f"fetched main into {where}: no marketplace checkout found next to the installed plugins",
+                      f"/plugin marketplace add ika100/{MARKETPLACE} (the commands then run the version your plugins came from, offline)")]
+    return [check(OK, "platform scripts", f"{kind}: {where} (v{core.platform_version()})")]
+
+
 def check_repo(repo: Path) -> list[dict]:
     if not (repo / ".git").exists():
         return []
@@ -166,7 +180,7 @@ def check_policies(repo: Path) -> list[dict]:
 
 
 def run_checks(repo: Path) -> list[dict]:
-    return [*check_tools(), *check_gh(), *check_docker(), *check_kube(), *check_plugins(), *check_repo(repo)]
+    return [*check_tools(), *check_gh(), *check_docker(), *check_kube(), *check_plugins(), *check_platform_source(), *check_repo(repo)]
 
 
 def main(argv: list[str]) -> int:

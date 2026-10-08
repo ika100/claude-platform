@@ -13,7 +13,7 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 | `.claude-plugin/marketplace.json` | Marketplace catalog. Bump plugin versions here when a plugin changes. |
 | `plugins/<name>/.claude-plugin/plugin.json` | Per-plugin manifest. Mirror the version in the marketplace catalog. |
 | `plugins/<name>/agents/*.md` | Subagent definitions (YAML frontmatter + system prompt). |
-| `plugins/<name>/commands/*.md` | Slash commands (description frontmatter + body using `$ARGUMENTS`). Commands stay thin: they run `scripts/cplat` and relay its output. |
+| `plugins/<name>/commands/*.md` | Slash commands (description frontmatter + body using `$ARGUMENTS`). Commands stay thin: they run `cplat <command>` (the launcher in `plugins/shared/bin/`, which runs `scripts/cplat`) and relay its output. |
 | `plugins/<name>/hooks/hooks.json` | Plugin-scoped hooks (e.g. the SessionStart hook that checks devbox and runs `devbox install`). |
 | `plugins/<name>/settings.json` | Plugin-scoped permission allowlists. |
 | `shapes.yml` | The shape registry: one entry per template/plugin pair, validated by `scripts/shapes.py check`. |
@@ -22,6 +22,7 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 | `scripts/*.py`, `scripts/ci-local.sh` | Repository checks: shape registry, pinned Actions, Markdown links, local CI. |
 | `tests/cplat/`, `tests/e2e/` | pytest suite for the CLI and renderer; the full-stack cluster test. |
 | `devbox.json` | Repo-root devbox env + smoke-test scripts (`validate`, `smoke-*`, `ci-local`). |
+| `docs/specs/` | The platform's own feature specs (ADR-026), indexed by the generated table in `docs/backlog.md`. |
 | `docs/` | Guides, `docs/adr/` (decisions, indexed in its README), `docs/CHANGELOG.md`, `docs/AGENTS.md` (orchestration model: read before changing agents or commands). |
 
 ## Conventions
@@ -30,6 +31,7 @@ This repo is **the source of truth** for Claude Code agents, slash commands, and
 - **Bump versions in both places.** When a plugin changes, update both `marketplace.json` and `plugins/<name>/.claude-plugin/plugin.json`. Use semver — major bump only for breaking changes consumers must react to (renamed commands, removed agents).
 - **Template Jinja gotcha.** GitHub Actions uses `${{ var }}` syntax, which Copier (Jinja) would otherwise interpret. The escape pattern is `${{ '{{' }} var {{ '}}' }}` — already applied in the existing CI workflows. Don't unescape it.
 - **Don't put project-specific content in plugin agents.** Agents are shared across repos. Anything project-specific belongs in the Copier template (which gets parameterised per-repo) or in the consumer's own `CLAUDE.md`.
+- **Platform changes start with a spec.** Run `/svc:spec <description>` here (no shape needed for spec, plan, verify, specs), write an ADR for decisions that outlive the change, and keep `cplat spec check` green.
 - **No backwards-compat hacks for old marketplace ref.** When breaking, ship a new major version and document the migration in `docs/CHANGELOG.md`.
 
 ## Common changes

@@ -462,3 +462,16 @@ def test_ci_does_not_trace_product_specs(tmp_path, product):
     s = spec.read(product / "docs" / "specs" / "012-billing")
     spec.set_status(s, "building", None)
     assert spec.ci_problems(product) == []
+
+
+@pytest.mark.parametrize("text, status", [("done", "done"), ("Done", "done"), ("done (superseded by STORY-037)", "superseded"),
+                                          ("in progress", "building"), ("partial", "building"), ("planned", "draft"),
+                                          ("open", "draft"), ("not built", "draft")])
+def test_legacy_status_words(text, status):
+    assert spec.legacy_status(text) == status
+
+
+def test_migrated_links_still_resolve():
+    text = "[ADR](adr/024-x.md) [web](https://x.io/a) [here](#top) [abs](/docs/a.md) [up](../README.md) [mail](mailto:a@b.c)"
+    assert spec.relink(text) == ("[ADR](../../adr/024-x.md) [web](https://x.io/a) [here](#top) [abs](/docs/a.md) "
+                                 "[up](../../../README.md) [mail](mailto:a@b.c)")

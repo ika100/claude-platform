@@ -4,10 +4,10 @@ description: "Product specs and their multi-repo plans in a gitops-app repo: sta
 
 Show and track the product's specs and plans ([ADR-011](../../../docs/adr/011-multi-repo-plan-format.md), [ADR-026](../../../docs/adr/026-feature-specs.md)). **Arguments:** $ARGUMENTS (default: list)
 
-Platform calls use this prefix, which keeps a cached checkout of the platform up to date (one Bash call each):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" <ARGS>
+cplat <ARGS>
 ```
 
 Run `shape` first: it must report `gitops-app`. `scripts/plan.py` must exist (otherwise `/shared:update-service`).

@@ -8,13 +8,13 @@ You are the **product spec orchestrator** ([ADR-026](../../../docs/adr/026-featu
 
 ## cplat
 
-First call (updates the cached platform checkout, one Bash call):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-It must report `shape: gitops-app`; otherwise stop: in a service repo the command is `/svc:spec`. Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`. Print its output verbatim.
+It must report `shape: gitops-app`; otherwise stop: in a service repo the command is `/svc:spec`. Print its output verbatim.
 
 ## 0. Pre-flight
 
@@ -25,22 +25,22 @@ It must report `shape: gitops-app`; otherwise stop: in a service repo the comman
 
 ## A. approve <id>
 
-`CPLAT spec approve <id>`; on refusal show the reasons and the fix. Commit `docs(spec): approve <spec_id>`. Next: `/app:plan <NNN>`.
+`cplat spec approve <id>`; on refusal show the reasons and the fix. Commit `docs(spec): approve <spec_id>`. Next: `/app:plan <NNN>`.
 
 ## B. New product spec
 
-1. `CPLAT spec new "<short title>"` (the shape `gitops-app` is recorded) → `git checkout -b docs/spec-<spec_id>`.
+1. `cplat spec new "<short title>"` (the shape `gitops-app` is recorded) → `git checkout -b docs/spec-<spec_id>`.
 2. **product-manager** (`svc:product-manager`): `MODE: new`, `SPEC_DIR: docs/specs/<spec_id>/`, the request verbatim, the component list, and "this is a product spec: criteria describe what users of the product observe; each story names the repos that take part (`**Repos:** …`)".
-3. `CPLAT spec check <spec_id>`; errors go back once.
+3. `cplat spec check <spec_id>`; errors go back once.
 4. Questions loop (Q), commit `docs(spec): <spec_id> — <title>`, finish (F).
 
 ## C. --amend <id> <change>
 
-If the spec is not `draft`: `CPLAT spec set-status <id> draft --reason "amend: <one line>"` and say that its plan must be redone if criteria change (`plan-check` reports criteria no repo implements). **product-manager** `MODE: amend` with the change; `CPLAT spec check`; questions loop (Q); commit `docs(spec): amend <spec_id> — <one line>`; finish (F).
+If the spec is not `draft`: `cplat spec set-status <id> draft --reason "amend: <one line>"` and say that its plan must be redone if criteria change (`plan-check` reports criteria no repo implements). **product-manager** `MODE: amend` with the change; `cplat spec check`; questions loop (Q); commit `docs(spec): amend <spec_id> — <one line>`; finish (F).
 
 ## Q. Questions loop
 
-While the product-manager's `OPEN QUESTIONS:` is not `none` (at most 3 rounds): ask the user with **AskUserQuestion** (up to 4 per call; suggested answer first, marked "(Recommended)"; the user can type their own), send the answers back (`MODE: amend`, "answers to open questions: …"), run `CPLAT spec check` again. Remaining questions stay in the spec; it cannot be approved until they are answered.
+While the product-manager's `OPEN QUESTIONS:` is not `none` (at most 3 rounds): ask the user with **AskUserQuestion** (up to 4 per call; suggested answer first, marked "(Recommended)"; the user can type their own), send the answers back (`MODE: amend`, "answers to open questions: …"), run `cplat spec check` again. Remaining questions stay in the spec; it cannot be approved until they are answered.
 
 ## F. Finish
 

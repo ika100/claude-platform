@@ -509,7 +509,16 @@ def write_index(root: Path) -> Path:
 # ---------------- migrate (legacy backlog.md stories -> spec folders) ----------------
 
 STORY_HEAD = re.compile(r"^#### +STORY-(\d+)\s*(?:—|-|:)\s*(.+?)\s*$", re.M)
-STATUS_MAP = {"done": "done", "in progress": "building", "in_progress": "building"}
+def legacy_status(text: str) -> str:
+    """A legacy story's free-text status as a spec status: superseded, done, building (in progress, partial) or draft."""
+    t = text.strip().lower()
+    if "superseded" in t:
+        return "superseded"
+    if t.startswith("done"):
+        return "done"
+    if t.startswith(("in progress", "in_progress", "partial")):
+        return "building"
+    return "draft"  # open, planned, not built: needs review and approval
 
 
 def parse_stories(text: str) -> list[dict]:
@@ -532,6 +541,11 @@ def parse_stories(text: str) -> list[dict]:
     return out
 
 
+def relink(text: str) -> str:
+    """Relative Markdown links written in docs/backlog.md, rewritten for docs/specs/<id>/spec.md (two levels deeper)."""
+    return re.sub(r"\]\((?![a-z][a-z0-9+.-]*:|#|/)([^)\s]+)\)", r"](../../\1)", text)
+
+
 def migrate_plan(root: Path, shape: str | None) -> tuple[list[tuple[Path, dict, str]], str]:
     """(spec files to write, new backlog.md text). Pure: writes nothing."""
     path = root / BACKLOG
@@ -549,7 +563,7 @@ def migrate_plan(root: Path, shape: str | None) -> tuple[list[tuple[Path, dict, 
     files = []
     for s in stories:
         sid = f"{s['number']}-{slugify(s['title'])}"
-        meta = {"spec_id": sid, "title": s["title"], "status": STATUS_MAP.get(s["status"], "draft"),
+        meta = {"spec_id": sid, "title": s["title"], "status": legacy_status(s["status"]),
                 "priority": s["priority"] if s["priority"] in PRIORITIES else "P1"}
         if shape:
             meta["shape"] = shape
@@ -564,7 +578,7 @@ def migrate_plan(root: Path, shape: str | None) -> tuple[list[tuple[Path, dict, 
                 f"## Acceptance criteria\n\n{acs}\n\n## Non-goals\n\n## Open questions\n\n"
                 + ("## References\n\n" + "\n".join(refs) + "\n\n" if refs else "")
                 + f"## Changelog\n\n- {today()} migrated from STORY-{s['number']} in docs/backlog.md\n")
-        files.append((specs_dir(root) / sid / "spec.md", meta, body))
+        files.append((specs_dir(root) / sid / "spec.md", meta, relink(body)))
     rest = text
     for i, s in reversed(list(enumerate(stories))):  # the index takes the place of the first story
         rest = rest[:s["start"]] + (f"{START}\n{END}\n\n" if i == 0 else "") + rest[s["end"]:]
