@@ -60,18 +60,23 @@ Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answer
 
 `/svc:build` Phase 2 fans coder agents out in parallel using the Agent tool's `isolation: "worktree"` mode. Each parallel coder works in its own git worktree on its own branch; the orchestrator merges branches back onto the base branch sequentially with a quality gate between each merge.
 
+Worktrees must start at the **feature branch**, where the spec, the plan and the red acceptance tests are: every template sets `worktree.baseRef: "head"` in `.claude/settings.json` (Claude Code's default branches from `main`), and the probe before the first batch checks the worktree's HEAD; on a mismatch the build runs sequentially and says why.
+
 The flow only works when the architect's plan is machine-readable. `docs/specs/<id>/plan.md` starts with a YAML metadata block (exact format: `plugins/svc/skills/spec-format/references/plan.md`; `cplat spec check` validates it):
 
 ```yaml
 ---
-plan_id: <slug>
+spec_id: <NNN>-<slug>
 shape: <shape-id>      # service-python | web-nextjs | service-java | service-go | …
+spec_hash: <from cplat spec hash>   # the plan is invalid once the criteria change
 tasks:
   - id: t1
     title: ...
     files: [<paths the task will touch>]
+    covers: [AC-<NNN>.1]           # every active criterion is covered by some task
     parallel_safe: true
     depends_on: []
+    # done: true                   # written by the build as tasks merge; a re-run resumes
 ---
 ```
 
@@ -80,7 +85,7 @@ The orchestrator:
 1. **Topologically sorts** tasks by `depends_on`.
 2. At each dependency level, **greedily groups `parallel_safe: true` tasks into batches** whose `files` sets are disjoint.
 3. For each batch ≥ 2: spawns one coder per task **in one assistant turn** (multiple Agent tool calls in parallel), each in its own worktree. Each coder commits inside its worktree before returning.
-4. **Merges sequentially** back onto the base branch with `git merge --no-ff`. After each merge: `devbox run quality` and `devbox run test-fast`. On failure, hand back to that task's coder for lint/type fixes only.
+4. **Merges sequentially** back onto the base branch with `git merge --no-ff`. After each merge: `devbox run lint-fix`, then `cplat spec test-diff <red commit>` (acceptance tests may only be reformatted), `devbox run quality` and `devbox run test-fast`. On failure, hand back to that task's coder for lint/type fixes only. Each merged task is marked `done` in the plan.
 5. Cleans up worktrees and branches as it merges.
 
 **Merge conflicts are escalated, never auto-resolved.** A conflict means the architect's `files` declarations were inaccurate — the fix is to update the plan, not to paper over it.

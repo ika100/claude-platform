@@ -8,30 +8,42 @@ A guided walk-through of the whole platform, told through one made-up product, *
 
 ## The mental model (2 minutes)
 
-```
-                          ┌────────────────────────────┐
-                          │  ika100/sdlc-foundry    │   one marketplace repo
-                          │  plugins  +  templates     │
-                          └──────────┬─────────────────┘
-        /plugin install              │ /shared:new-service            /shared:update-service
-        (agents & commands)          ▼ (skeleton, once)               (skeleton, later)
-  ┌───────────────┐   ┌────────────────────────────────────────────────────────────┐
-  │ Claude Code   │   │  Your repos                                                  │
-  │ + devbox      │   │  taskboard           (gitops-app: which services, which     │
-  └───────────────┘   │                       version runs in dev/staging/prod)     │
-                      │  taskboard-api       (service-python)                        │
-                      │  taskboard-web       (web-nextjs)                            │
-                      └────────────────────────────────────────────────────────────┘
-                                                     │  ArgoCD reconciles
-                                                     ▼
-                                                Kubernetes
+```mermaid
+flowchart TB
+  subgraph PLATFORM["ika100/sdlc-foundry — one marketplace repo"]
+    direction LR
+    PL["Plugins<br/>agents · commands · cplat"]
+    TP["Templates<br/>one per shape"]
+  end
+  CC["You: Claude Code + devbox"]
+  subgraph REPOS["Your repos on GitHub"]
+    direction LR
+    GIT["taskboard<br/><i>gitops-app</i>: which services,<br/>which version runs where"]
+    subgraph SVC["Service repos"]
+      direction LR
+      API["taskboard-api<br/><i>service-python</i>"]
+      WEB["taskboard-web<br/><i>web-nextjs</i>"]
+    end
+  end
+  IMG[("Images<br/>GHCR")]
+  K8S["Kubernetes<br/>dev · staging · prod"]
+
+  PL -- "/plugin install" --> CC
+  TP -- "/shared:new-service (once)<br/>/shared:update-service (later)" --> REPOS
+  CC -- "/svc:spec → plan → build<br/>pull requests" --> SVC
+  CC -- "/app:spec → plan → build<br/>/gitops:compose · promote" --> GIT
+  SVC -- "CI on main" --> IMG
+  GIT -- "ArgoCD reconciles" --> K8S
+  IMG -. "pulled" .-> K8S
 ```
 
-Three ideas carry everything:
+
+Four ideas carry everything:
 
 1. **Shapes.** Every repo has a *shape* (`service-python`, `web-nextjs`, `gitops-app`, `service-java`, `service-go`, `library-python`). The shape decides which template creates it and which agents work on it. You never pick agents; commands detect the shape.
 2. **`devbox run <recipe>` is the only way anything runs** (`test`, `quality`, `security`, `image-build`, …). Same recipes in every shape, so humans, CI and agents behave identically.
-3. **Two update channels.** Agents and commands update with `/plugin marketplace update`; the project skeleton (CI, Dockerfile, devbox, CLAUDE.md) updates with `/shared:update-service`. Your own code is never touched by either.
+3. **Specs drive the work.** A feature starts as a spec in `docs/specs/` with numbered acceptance criteria you approve; the build writes failing tests from them first, then the code, and verifies every criterion before the pull request. Small changes and bug fixes skip the spec.
+4. **Two update channels.** Agents and commands update with `/plugin marketplace update`; the project skeleton (CI, Dockerfile, devbox, CLAUDE.md) updates with `/shared:update-service`. Your own code is never touched by either.
 
 ---
 
@@ -152,9 +164,10 @@ Wiring and exposure are decided here, in the product repo — not in the service
 ```
 /gitops:compose add taskboard-api
 /gitops:compose add taskboard-web --expose --env API_URL=http://taskboard-api
+/gitops:compose set taskboard-web --env FEATURE_X=on     # later: change a service that is already composed
 ```
 
-`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
+`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port, or the next free one that `cluster-up` prints; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
 
 ---
 
@@ -188,6 +201,8 @@ Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exact
 ```
 
 `/app:spec` writes one **product spec** in `docs/specs/` with criteria users of the product observe, asking you its open questions and for approval. `/app:plan` has the planner assign **every criterion to a repo** (`plan-check` refuses a plan that leaves one out), order the repos by real dependencies (library → API; an API and the web app that calls it run in parallel when the plan's `## Contract` section fixes the interface) and plan the version pins.
+
+When the feature needs wiring in this repo (an addon, exposure, an env variable), the plan lists it as `gitops:` operations on the `taskboard` entry; `/app:build` applies them here with `cplat addon add` and `cplat compose set` and opens that PR first, marked **merge first**.
 
 `/app:build` then starts one agent per ready repo **in parallel**. Each runs `/svc:spec --from-plan` in its repo: the platform writes the repo's own spec with the product criteria it owns and the contract, the product-manager turns them into the repo's criteria, and the normal Chapter 3 pipeline (`/svc:plan`, `/svc:build`) runs to an open PR. Questions a repo spec raises come back to you. You merge; it moves on to the next level and finally prints the `/gitops:promote` commands. By hand, the same per repo: `cd ../taskboard-api && /svc:spec --from-plan <plan> taskboard-api`, then `/svc:plan` and `/svc:build`. `/app:specs` shows the progress.
 

@@ -4,7 +4,7 @@ description: "Promote services dev→staging→prod in a gitops-app repo by pinn
 
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS
 
-Prefix for every call (one Bash call each; run it from the repo root):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from; one call per Bash invocation, from the repo root:
 
 ```bash
 cplat promote <ARGS>

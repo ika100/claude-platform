@@ -14,7 +14,7 @@ Run `shape` first: it must report `gitops-app`. `scripts/plan.py` must exist (ot
 
 | Arguments | Run |
 |---|---|
-| *(none)* / `--all` | `spec list [--all]` (prefix), then `devbox run -- uv run scripts/plan.py list [--all]` |
+| *(none)* / `--all` | `cplat spec list [--all]`, then `devbox run -- uv run scripts/plan.py list [--all]` |
 | `show <id>` | `devbox run -- uv run scripts/plan.py show <spec_id>` |
 | `done <id> <repo-id>` | `devbox run -- uv run scripts/plan.py done <spec_id> <repo-id>`; when the plan reports `completed`, also `spec set-status <spec_id> done` and `spec index` |
 | `abandon <id>` | ask for confirmation, then `devbox run -- uv run scripts/plan.py abandon <spec_id>` and `spec set-status <spec_id> superseded --reason "abandoned"` |

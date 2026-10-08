@@ -13,7 +13,7 @@ devbox run cluster-down    # removes the cluster and its registry
 
 ## What `cluster-up` does
 
-1. Creates (or reuses) a k3d cluster named `<app>-local` on a pinned k3s image, mapping port `8088` to the Gateway.
+1. Creates (or reuses) a k3d cluster named `<app>-local` on a pinned k3s image, mapping port `8088` to the Gateway, or the next free port when 8088 is taken (it says which; `LOCAL_HTTP_PORT=<port>` forces one).
 2. Enables the Gateway API on k3s' built-in Traefik, so `HTTPRoute`s work and `*.localhost` host names resolve without any DNS setup.
 3. Installs ArgoCD, hands it read access to your private GitOps repository, pre-creates the `<app>-dev`, `-staging` and `-prod` namespaces with an image pull secret for GHCR, and applies the root Application.
 4. Installs only what your declarations need: External Secrets Operator, CloudNativePG (if `addons.postgres`), Kyverno (if `policies:`), a Grafana dev stack (if `observability: {ui: lgtm}`).

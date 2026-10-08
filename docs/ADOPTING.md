@@ -12,7 +12,7 @@ From any directory (needs `copier`, `git`, and — for the GitHub steps — `gh`
 /shared:new-service payments-api Stripe webhooks to Postgres
 ```
 
-One command: renders the template, commits, creates a **private** GitHub repo, and (for deployable shapes) adds the `deployable-service` topic so ArgoCD discovers it. The first word is the repo name (kebab-case), everything else is the description; flags can go anywhere.
+One command: renders the template, commits, creates a **private** GitHub repo, protects `main` with the shape's CI checks, and (for deployable shapes) adds the `deployable-service` topic so ArgoCD discovers it. The first word is the repo name (kebab-case), everything else is the description; flags can go anywhere.
 
 | You want | Flag | Shape | GitOps topic |
 |---|---|---|---|
