@@ -1,19 +1,26 @@
 # svc plugin
 
-Orchestrators (`/svc:*`) and the shape-agnostic product-manager and architect agents, plus the Python agents (coder, tester, migrations, observability, release, deployment). Commands detect the repo shape (`shapes.yml`) and route coder/tester/deployment/observability/release to the shape's plugin (`web`, `svc-java`, `svc-go`). Pair with the `shared` plugin for quality/security and the `service-python` Copier template for the canonical project skeleton.
+Orchestrators (`/svc:*`) and the shape-agnostic product-manager, architect and reviewer agents, plus the Python agents (coder, tester, migrations, observability, release, deployment). Commands detect the repo shape (`shapes.yml`) and route coder/tester/deployment/observability/release to the shape's plugin (`web`, `svc-java`, `svc-go`). Pair with the `shared` plugin for quality/security and the `service-python` Copier template for the canonical project skeleton.
 
 ## Agents
 
 | Agent | Model | Purpose |
 |---|---|---|
-| `product-manager` | sonnet | User stories, acceptance criteria, backlog grooming, folding triaged issues into the backlog |
-| `architect` | opus | ADRs, implementation plans with parallel-safe YAML metadata |
+| `product-manager` | opus | Feature specs: stories, acceptance criteria `AC-<NNN>.<n>`, non-goals, open questions; folds triaged issues into specs |
+| `architect` | opus | `design.md` + `plan.md` (tasks with `covers`), ADRs |
+| `reviewer` | opus | Verifies a build against its spec, writes `verification.md` |
 | `coder` | sonnet | Python implementation following the architect's plan |
-| `tester` | sonnet | pytest suite, coverage gate (≥80%), bandit |
+| `tester` | sonnet | Acceptance tests from the spec first; pytest suite, coverage gate (≥80%), bandit |
 | `migrations` | sonnet | Alembic migrations and seed scripts |
 | `observability` | sonnet | structlog + Prometheus + OTel scaffolding, alerting rules |
 | `release` | sonnet | Semver bump, CHANGELOG, release branch + PR |
 | `deployment` | sonnet | Dockerfile and GHCR CI pipeline (image only) |
+
+## Skills
+
+| Skill | Purpose |
+|---|---|
+| `spec-format` | The formats of `docs/specs/<NNN>-<slug>/` (spec, design, plan, verification, test tagging); the agents read its references ([ADR-026](../../docs/adr/026-feature-specs.md)) |
 
 ## Commands
 

@@ -80,6 +80,8 @@ def test_build_feature_documents_plan_and_plan_feature_points_to_it():
     assert "--plan docs/plan/<slug>.md" in (PLUGIN / "commands" / "plan-feature.md").read_text()
 
 
-def test_plans_and_stories_reference_each_other():
-    assert "stories:" in (PLUGIN / "agents" / "architect.md").read_text()
-    assert "STORY-NNN" in (PLUGIN / "agents" / "product-manager.md").read_text()
+def test_plans_cover_the_criteria_of_their_spec():
+    """ADR-026 replaced ADR-024's `stories:` link: plans cite criteria (`covers`) and record the spec they came from."""
+    plan = (PLUGIN / "skills" / "spec-format" / "references" / "plan.md").read_text()
+    assert "covers:" in plan and "spec_hash:" in plan
+    assert "AC-<NNN>.<n>" in (PLUGIN / "agents" / "product-manager.md").read_text()

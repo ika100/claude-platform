@@ -1,6 +1,6 @@
 # ADR-026: Feature specs drive the build
 
-**Status:** Accepted (S1, the `cplat spec` core, is built; S2–S6 follow, see [STORY-037](../backlog.md) to STORY-042)
+**Status:** Accepted (S1 `cplat spec` and S2 agents are built; S3–S6 follow, see [STORY-037](../backlog.md) to STORY-042)
 **Date:** 2026-10-08
 **Builds on:** [ADR-024](024-spec-driven-bootstrap.md), [ADR-011](011-multi-repo-plan-format.md), [ADR-015](015-shape-registry-as-code.md)
 **Supersedes, when S3 ships:** the `--plan` flag of ADR-024 and the single-repo half of STORY-036
@@ -23,8 +23,9 @@ ADR-024 put a plan before the build, but the spec still does not drive the build
 3. **Lifecycle:** `draft → approved → building → done`, and `superseded`. Only `cplat spec approve` moves `draft → approved`, and it refuses while an open question is unanswered or no criterion exists. An amendment moves a spec back to `draft`.
 4. **Plans cite criteria:** each task has `covers: [AC-…]`; every active criterion is covered; `spec_hash` records the criteria the plan was made from, and a changed spec fails the check until it is re-planned. Tasks carry `done` so a build can resume.
 5. **Tests cite criteria:** every active criterion appears in at least one test (name or comment). The test locations come from `test_globs` in `shapes.yml`, so the trace is the same for every language. The build writes these tests first, from the spec, and they must fail before any code is written.
-6. **All of it is `cplat spec`:** `new`, `check [--require STATUS]`, `approve`, `set-status`, `task-done`, `hash`, `trace`, `index`, `list`, `migrate`. Commands and agents call it; they never validate specs in prose.
-7. **Commands are renamed in a new major** (`svc` 3.0, `app` 1.0): `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify`, `/svc:specs` and the same verbs under `/app:`. Quick tasks and bug fixes stay spec-free but update a spec whose criteria they change.
+6. **One format reference:** the `spec-format` skill in the svc plugin (enabled in every repo) holds the formats; the product-manager, architect and reviewer read its files through `${CLAUDE_PLUGIN_ROOT}`, which Claude Code substitutes only inside the agent's own plugin. Testers in other plugins carry just their language's tagging idiom. The product-manager returns open questions instead of guessing; a read-only reviewer writes `verification.md`.
+7. **All of it is `cplat spec`:** `new`, `check [--require STATUS]`, `approve`, `set-status`, `task-done`, `hash`, `trace`, `index`, `list`, `migrate`. Commands and agents call it; they never validate specs in prose.
+8. **Commands are renamed in a new major** (`svc` 3.0, `app` 1.0): `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify`, `/svc:specs` and the same verbs under `/app:`. Quick tasks and bug fixes stay spec-free but update a spec whose criteria they change.
 
 ## Consequences
 

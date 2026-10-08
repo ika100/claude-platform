@@ -126,8 +126,8 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
                                                                                   ▼
                                                                           changelog + tag + PR
 
-/gitops:promote <svc...> <from> <to>   ──►  promote agent  ──►  PR (Argo reconciles on merge)
-/gitops:compose add|remove <svc...>    ──►  compose agent  ──►  PR (services.yaml + generated ApplicationSets)
+/gitops:promote <svc...> <from> <to>   ──►  cplat promote  ──►  PR (Argo reconciles on merge)
+/gitops:compose add|remove <svc...>    ──►  cplat compose  ──►  PR (services.yaml + generated ApplicationSets)
 /app:build-feature <desc>              ──►  product-manager ──► planner ──►  docs/plan/<slug>.md  (then /svc:build-feature --from-plan per repo)
 ```
 
@@ -139,16 +139,19 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 
 | Agent | Model | Job |
 |---|---|---|
-| `product-manager` | sonnet | User stories, acceptance criteria, backlog folding for issues handed over by `/shared:triage` |
-| `architect` | opus | ADRs, implementation plans with parallel-safe metadata |
-| `coder` | sonnet | Python implementation |
-| `tester` | sonnet | pytest, coverage, bandit |
+| `product-manager` | opus | Specs (`docs/specs/<id>/spec.md`): stories, acceptance criteria `AC-<NNN>.<n>`, non-goals, open questions for the user; folds triaged issues into specs |
+| `architect` | opus | `design.md` (decisions, contract), `plan.md` (tasks with `files`, `covers`, `parallel_safe`, `depends_on`), ADRs |
+| `reviewer` | opus | Checks a build against its spec (criteria, non-goals, plan, contract); writes `verification.md`; read-only on code |
+| `coder` | sonnet | Python implementation; done when the acceptance tests of its task pass |
+| `tester` | sonnet | Acceptance tests from the spec before the code; pytest, coverage, bandit |
 | `migrations` | sonnet | Alembic migrations |
 | `observability` | sonnet | structlog + Prometheus + OTel scaffolding |
 | `release` | sonnet | Semver, CHANGELOG, release branch + PR |
 | `deployment` | sonnet | Dockerfile and GHCR CI (image only — manifests live in the gitops-app repo, ADR-017) |
 
-Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`<plugin>:<role>`; `cplat shape` prints the routing); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `quality` and `security` are shape-agnostic.
+Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `release` to the plugin that owns the repo's shape (`<plugin>:<role>`; `cplat shape` prints the routing); for `service-python` / `library-python` that is `svc`. `product-manager`, `architect`, `reviewer`, `quality` and `security` are shape-agnostic.
+
+The spec formats (`spec.md`, `design.md`, `plan.md`, `verification.md`, test tagging) live in one place, the `svc:spec-format` skill (`plugins/svc/skills/spec-format/`). Agents read its reference files through `${CLAUDE_PLUGIN_ROOT}` instead of restating them; testers in other plugins carry only their language's tagging idiom ([ADR-026](adr/026-feature-specs.md)).
 
 ### `web` plugin (`web-nextjs`)
 
@@ -185,8 +188,8 @@ Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `rel
 | Agent | Model | Job |
 |---|---|---|
 | `deployment` | sonnet | ArgoCD ApplicationSet, cluster add-ons, overrides (platform GitOps repo) |
-| `promote` | sonnet | Cross-environment version pinning (platform repo and gitops-app repos, batch) |
-| `compose` | sonnet | Add/remove services in a gitops-app repo (`services.yaml` → generated ApplicationSets/overlays); validates the `deployable-service` topic |
+
+`/gitops:promote`, `/gitops:compose`, `/gitops:addon` and `/gitops:secret` have no agent: they run `cplat promote|compose|addon|secret` and relay its output.
 
 ### `app` plugin
 
@@ -226,7 +229,7 @@ Orchestrators dispatch `coder`, `tester`, `deployment`, `observability` and `rel
 
 ## Model selection convention
 
-- `model: opus` — agents whose primary output is *decisions* downstream agents consume (`product-manager`, `architect`). One bad plan poisons the whole run, so the reasoning headroom pays for itself.
+- `model: opus` — agents whose primary output is *decisions* downstream agents consume (`product-manager`, `architect`, `app:planner`) or that judge the result (`reviewer`). One bad plan poisons the whole run, so the reasoning headroom pays for itself.
 - `model: sonnet` — execution agents (everything else).
 
 When adding a new agent that needs to run shell commands, copy the **devbox rule** from `coder.md` or `quality.md` into the system prompt so the new agent inherits the same convention: shell only via `devbox run <script>`, recipes pinned in `devbox.json`.

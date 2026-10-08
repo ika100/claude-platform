@@ -101,6 +101,7 @@ def test_shape_routing(repo, tmp_path):
     import shapecmd
     r = shapecmd.route(repo)
     assert r["shape"] == "service-go" and r["agents"]["coder"] == "svc-go:coder" and r["agents"]["architect"] == "svc:architect"
+    assert r["agents"]["reviewer"] == "svc:reviewer"
     newsvc.main(["g-app", "d", "--gitops", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"])
     g = shapecmd.route(tmp_path / "g-app")
     assert g["shape"] == "gitops-app" and "deployment" not in g["agents"] and "unsupported" in g
