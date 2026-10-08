@@ -62,6 +62,9 @@ def validate(shapes: list[dict]) -> list[str]:
                     errs.append(f"{sid}: runtime.metrics must be a path starting with /")
                 if not isinstance(rt.get("user"), int) or rt.get("user", 0) < 1:
                     errs.append(f"{sid}: runtime.user must be a numeric non-root UID")
+        globs = s.get("test_globs")
+        if s.get("status") != "planned" and (not isinstance(globs, list) or not globs or not all(isinstance(g, str) and g for g in globs)):
+            errs.append(f"{sid}: test_globs must list where tests live (ADR-026: `cplat spec trace` searches them for AC ids)")
         if s.get("library") and s.get("deployable"):
             errs.append(f"{sid}: a library cannot be deployable")
     return errs

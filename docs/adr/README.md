@@ -31,3 +31,4 @@ Decisions that shape how the platform works, with the context and the alternativ
 | [023](023-parallel-plan-execution.md) | Multi-repo plans run in parallel waves; merging and pinning stay human |
 | [024](024-spec-driven-bootstrap.md) | Spec-driven bootstrap: new repos start with plan-feature, build-feature consumes the plan |
 | [025](025-issue-triage.md) | Issue triage: `/shared:triage` classifies, discusses and routes issues; labels are the state |
+| [026](026-feature-specs.md) | Feature specs drive the build: spec folders, AC ids, tests first, `cplat spec` |
