@@ -6,6 +6,16 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [4.0.0] — 2026-10-08
+
+**Spec-driven development.** A feature is now built from an approved spec ([ADR-026](adr/026-feature-specs.md)): `/svc:spec` writes `docs/specs/<NNN>-<slug>/spec.md` with numbered acceptance criteria and asks *you* its open questions; `/svc:plan` plans the approved spec; `/svc:build` writes failing tests from the criteria first, builds until they pass, has a reviewer verify every criterion and opens the PR. Products work the same way across repos with `/app:spec`, `/app:plan` and `/app:build`. Every check is the tested `cplat spec`; every generated repo checks its specs in CI.
+
+**Breaking:** `/svc:plan-feature`, `/svc:build-feature`, `/app:build-feature`, `/app:run-plan` and `/app:plans` are replaced — the migration table is in the *svc 3.0.0 and app 1.0.0* entry below. After `/plugin marketplace update`, run `/shared:update-service` in each repo, and `/svc:specs migrate` where `docs/backlog.md` still holds `STORY-NNN` stories.
+
+**Plugins:** svc 3.0.0, app 1.0.0, shared 0.11.0, gitops 1.4.0, web / svc-java / svc-go 0.2.4.
+
+**Verified end to end:** a todo product (gitops-app, Python API with Postgres, Next.js web; public repos) went from an empty folder to a verified deployment in 60.5 min; the 17 issues that run found are fixed in this release ([run log](e2e/2026-10-08-todo-spec-driven.md)). Also in this release: `/shared:new-app`, `/shared:triage`, the `cplat` launcher, branch protection for new repos, and secret scans that actually scan in every template.
+
 - **Docs for the release; `/gitops:compose set`** (gitops 1.4.0): the slash command now offers `set <service> [--env K=V] [--expose [HOST]] [--uses ADDON] [--replicas N]` (until now only `/app:build` could call `cplat compose set`). README, HOW-IT-WORKS, ADOPTING, USER-JOURNEY and AGENTS.md describe branch protection of new repos, the `specs` CI check, `cplat spec test-diff` and resume, `worktree.baseRef: "head"`, the gitops operations of product plans and the free local port; the AGENTS.md plan example shows the current format. The website's *Ship a product* scenario starts with `/shared:new-app` and the spec-first product flow, and the [end-to-end run log](e2e/2026-10-08-todo-spec-driven.md) is published under Reference. Leftover "prefix" wording from the `cplat` launcher change removed from three commands.
 
 - **Fixes from the todo end-to-end run, waves 4–5** (specs 051, 052): when `gh pr create` is not allowed (headless, untrusted workspace, declined), `/svc:build`, `/svc:quick-task`, `/svc:fix-bug` and `/app:build` push the branch, write `.git/PR_BODY.md` and end with the exact `gh pr create` command, one per repo for `/app:build` (051). A repo spec sliced from a product plan lists under *Provided by the product* the env variables, addons (with their env names from the addon contract) and exposure the gitops entry wires for it, and `/svc:build` asks only for wiring that is missing (052). All 17 issues of the run are fixed (specs 043–059 `done`).
