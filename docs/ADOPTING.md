@@ -25,7 +25,7 @@ One command: renders the template, commits, creates a **private** GitHub repo, a
 
 Other options: `--org <org>` (default: your `gh` login), `--python 3.12|3.13` (Python shapes), `--ref <tag>` (pin the platform version), `--app <org>/<gitops-app-repo>` (service shapes: writes `.platform-app.yml` so `/gitops:promote` finds the application repo).
 
-Then, in the new repo: `cd <name> && devbox shell`, `devbox run quality && devbox run test`, `/svc:plan-feature <first feature>`. Later, pull skeleton improvements with `/shared:update-service`.
+Then, in the new repo: `cd <name> && devbox shell`, `devbox run quality && devbox run test`, `/svc:spec <first feature>` (then `/svc:plan` and `/svc:build`). Later, pull skeleton improvements with `/shared:update-service`.
 
 ## New product (end to end)
 
@@ -36,11 +36,12 @@ A product = one `gitops-app` repo + its services/frontend (+ libraries):
 /shared:new-service my-saas-api Backend API --app ika100/my-saas          # service, linked to the app
 /shared:new-service my-saas-web Frontend --web --app ika100/my-saas
 # in each service repo:
-/svc:build-feature "ping endpoint"                                        # PM → architect → coders → QA → PR
+/svc:spec "ping endpoint"                                                 # spec with acceptance criteria; answer, approve
+/svc:plan 001 && /svc:build 001                                           # plan → failing tests → coders → QA → verify → PR
 # in the my-saas repo:
 /gitops:compose add my-saas-api my-saas-web                               # declare services (one PR)
 /gitops:promote my-saas-api my-saas-web dev staging                       # pin staging (one PR), Argo reconciles
-/app:build-feature "add billing"                                          # cross-repo plan → run /svc:build-feature --from-plan per repo
+/app:build-feature "add billing"                                          # product spec + cross-repo plan → /app:run-plan or /svc:spec --from-plan per repo
 ```
 
 `--app` takes the full `<org>/<repo>` of the GitOps repo, which is named after the project you passed with `--gitops` (here `my-saas`, so `ika100/my-saas`).
@@ -168,7 +169,7 @@ What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo cr
 
 ## What you get after adoption
 
-- Slash commands: `/svc:plan-feature`, `/svc:build-feature`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:build-feature`, `/app:plans`.
+- Slash commands: `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify`, `/svc:specs`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:build-feature`, `/app:plans`.
 - Shape-specific agents (`coder`, `tester`, `deployment`, `observability`, `release`) from the plugin that owns your shape, plus the shape-agnostic `product-manager`, `architect`, `quality`, `security`.
 - For Python repos, a SessionStart hook runs `devbox run -- uv sync --all-extras` (only when `pyproject.toml` exists); the web, Java and Go plugins run their own dependency check on session start.
 - One source of truth: agent updates flow via `/plugin marketplace update`, skeleton updates flow via `/shared:update-service`. The two channels are independent.

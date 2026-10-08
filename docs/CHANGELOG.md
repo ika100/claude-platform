@@ -6,7 +6,27 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
-- **Spec-driven agents** ([ADR-026](adr/026-feature-specs.md), [STORY-038](backlog.md); ships with svc 3.0, no version bump yet): new `svc:spec-format` skill holds the formats of `spec.md`, `design.md`, `plan.md`, `verification.md` and the test tagging. The product-manager (now opus, shape-agnostic) writes specs and returns open questions for the user instead of guessing; the architect writes `design.md` and a `plan.md` whose tasks `cover` criteria; every tester gets an acceptance mode that writes failing, criterion-tagged tests before the code; coders never weaken them; a new read-only `reviewer` agent writes `verification.md` and is routed by `cplat shape`. `docs/AGENTS.md` fixed (product-manager model, gitops commands that have no agent) and now tested against the agent files.
+- **BREAKING — svc 3.0.0: spec → plan → build → verify** ([ADR-026](adr/026-feature-specs.md), [STORY-038](backlog.md), [STORY-039](backlog.md); app 0.3.0, shared 0.10.0, web/svc-java/svc-go 0.2.4). A feature is a folder `docs/specs/<NNN>-<slug>/` and is built only from an approved spec:
+  - `/svc:spec <desc>` — the product-manager writes `spec.md` (acceptance criteria `AC-<NNN>.<n>`, non-goals, open questions); the command asks **you** each open question, folds the answers in and asks for approval. `/svc:spec approve <id>`, `/svc:spec --amend <id> <change>`, `/svc:spec --from-plan <plan> <repo-id>` (multi-repo).
+  - `/svc:plan <id>` — the architect writes `design.md` (contract) and `plan.md` (tasks that `cover` criteria); refused for unapproved specs; `cplat spec check` validates coverage, cycles, parallel file overlap and spec drift.
+  - `/svc:build <id>` — the tester writes failing, criterion-tagged acceptance tests first; coders (parallel worktrees) work until they pass and never weaken them; quality ‖ tester ‖ security; the new read-only **reviewer** checks every criterion and writes `verification.md`; image; PR listing every criterion. Tasks are marked done as they merge, so a re-run resumes.
+  - `/svc:verify [<id>]` (reviewer only, no code changes) and `/svc:specs [--all|index|migrate]` (status with the next command, backlog table, legacy migration).
+  - New `svc:spec-format` skill holds every format; product-manager (opus, shape-agnostic) returns open questions instead of guessing; architect, testers (acceptance mode) and coders updated in all four code plugins. `/svc:quick-task` and `/svc:fix-bug` stop when a change would contradict a criterion.
+  - `/app:build-feature` writes an approved product spec before planning; per-repo hand-off and `/app:run-plan` use `/svc:spec --from-plan`. `/shared:triage` folds features into specs (`Tracked as spec <id>`). Bootstrap next steps, templates' `CLAUDE.md` and the seeded `docs/backlog.md` (now a generated spec index) follow.
+  - `docs/AGENTS.md` fixed (product-manager model, gitops commands that have no agent) and tested against the agent files.
+
+  **Migration**
+
+  | Before (svc 2.x) | Now (svc 3.0) |
+  |---|---|
+  | `/svc:plan-feature <desc>` | `/svc:spec <desc>` → answer, approve → `/svc:plan <id>` |
+  | `/svc:build-feature --plan docs/plan/<slug>.md` | `/svc:build <id>` |
+  | `/svc:build-feature <desc>` (one step) | `/svc:spec` → `/svc:plan` → `/svc:build` (no one-step path: a build needs an approved spec) |
+  | `/svc:build-feature --no-pm <precise request>` | `/svc:spec <precise request>` (few or no questions), approve, plan, build |
+  | `/svc:build-feature --from-plan <plan> <repo>` | `/svc:spec --from-plan <plan> <repo>` → `/svc:plan` → `/svc:build` |
+  | `STORY-NNN` in `docs/backlog.md`, plans in `docs/plan/` | `docs/specs/<NNN>-<slug>/`; `/svc:specs migrate` converts existing stories (numbers kept) |
+
+  Update the plugins (`/plugin marketplace update`), then in each repo run `/shared:update-service` for the new `CLAUDE.md` rule. Repos with stories in `docs/backlog.md` run `/svc:specs migrate`; the project-owned backlog is never overwritten by the update.
 
 - **`cplat spec`** ([ADR-026](adr/026-feature-specs.md), [STORY-037](backlog.md)): the deterministic core for spec-driven development. Feature specs live in `docs/specs/<NNN>-<slug>/` (`spec.md`, `plan.md`, …) with acceptance criteria `AC-<NNN>.<n>`. `new`, `check [--require STATUS]` (criteria ids, shape, plan coverage, cycles, parallel file overlap, drift via `spec_hash`), `approve` (refused with open questions), `set-status`, `task-done`, `hash`, `trace` (every criterion named by a test, via the new `test_globs` per shape in `shapes.yml`), `index` (table in `docs/backlog.md`), `list`, `migrate` (legacy `STORY-NNN` stories → spec folders, dry run by default). No command uses it yet; the renamed `/svc:spec|plan|build|verify` commands follow in svc 3.0 (STORY-038 to STORY-042).
 

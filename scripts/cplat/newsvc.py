@@ -141,8 +141,9 @@ def _next_steps(req: dict) -> list[str]:
                 '/app:build-feature "<first feature of the product>"   # spec first: a reviewed plan across the repos, then /app:run-plan <slug>',
                 "devbox run cluster-up   # local k3d + ArgoCD (needs Docker)"]
     return [f"cd {n} && devbox shell", "devbox run quality && devbox run test",
-            f'/svc:plan-feature "{desc}"   # spec first: stories in docs/backlog.md and a plan in docs/plan/; review both',
-            "/svc:build-feature --plan docs/plan/<slug>.md   # builds the approved plan on its own feature branch right away; the bootstrap CI runs in parallel, do not wait for it"]
+            f'/svc:spec "{desc}"   # spec first: docs/specs/<NNN>-<slug>/spec.md, it asks you its open questions; approve it',
+            "/svc:plan <NNN>   # the architect plans the approved spec (design.md, plan.md); review it",
+            "/svc:build <NNN>   # failing acceptance tests first, then the code, verified against the spec; the bootstrap CI runs in parallel, do not wait for it"]
 
 
 def execute(req: dict) -> Report:

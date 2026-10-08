@@ -23,7 +23,7 @@ A consumer repo that installs any of these plugins is therefore devbox-aware out
 
 ## Permissions allowlist
 
-Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a committed allowlist that pre-approves the safe, frequent operations the pipeline needs — so `/svc:build-feature` and `/svc:quick-task` don't pause for permission prompts mid-flight.
+Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a committed allowlist that pre-approves the safe, frequent operations the pipeline needs — so `/svc:build` and `/svc:quick-task` don't pause for permission prompts mid-flight.
 
 **Auto-allowed (in every template; the Python-only `uv`/`python` entries exist only in the Python templates, `pnpm add`/`pnpm remove` prompt in the web template):**
 - Every `devbox run <recipe>` (the canonical entry point)
@@ -46,15 +46,15 @@ Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a 
 
 ## Shapes and agent dispatch
 
-Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:build-feature`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (`cplat shape` prints the routing). The multi-repo flow: `/app:build-feature` writes a plan → run `/svc:build-feature --from-plan <plan> <repo-id>` in each repo → `/app:plans done` → `/gitops:promote`.
+Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:spec`, `/svc:plan` or `/svc:build`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (`cplat shape` prints the routing). The multi-repo flow: `/app:build-feature` writes a product spec and a plan → `/svc:spec --from-plan <plan> <repo-id>`, `/svc:plan`, `/svc:build` in each repo (or `/app:run-plan`) → `/app:plans done` → `/gitops:promote`.
 
 ---
 
 ## Parallel implementation via git worktrees
 
-`/svc:build-feature` Phase 3 fans coder agents out in parallel using the Agent tool's `isolation: "worktree"` mode. Each parallel coder works in its own git worktree on its own branch; the orchestrator merges branches back onto the base branch sequentially with a quality gate between each merge.
+`/svc:build` Phase 2 fans coder agents out in parallel using the Agent tool's `isolation: "worktree"` mode. Each parallel coder works in its own git worktree on its own branch; the orchestrator merges branches back onto the base branch sequentially with a quality gate between each merge.
 
-The flow only works when the architect's plan is machine-readable. Plans must start with a YAML metadata block (see `plugins/svc/agents/architect.md` for the exact spec):
+The flow only works when the architect's plan is machine-readable. `docs/specs/<id>/plan.md` starts with a YAML metadata block (exact format: `plugins/svc/skills/spec-format/references/plan.md`; `cplat spec check` validates it):
 
 ```yaml
 ---
@@ -83,7 +83,7 @@ The orchestrator:
 
 ## Feature branch and PR lifecycle
 
-Both `/svc:quick-task` and `/svc:build-feature` include:
+Both `/svc:quick-task` and `/svc:build` include:
 
 - **Phase 0** (pre-flight): if on `main`, create `feature/<slug>` branch before any work starts.
 - **Final PR phase**: after all quality/test/security gates pass, push the branch and open a PR. Both push and PR creation are in the `ask` permission list — user must confirm.
@@ -93,7 +93,7 @@ Both `/svc:quick-task` and `/svc:build-feature` include:
 The PR phase explicitly scans for GitHub issue references — `#NNN` patterns — in:
 - The task/feature description (`$ARGUMENTS`)
 - The last 10–20 commit messages on the branch
-- `docs/backlog.md` user stories (`build-feature` only)
+- the spec's `tracks:` issues (`build` only)
 
 Each candidate issue is verified via `gh issue view` to confirm it is `OPEN`. Live `Closes #NNN` lines (not HTML comments) are injected into the PR body. When the PR merges into `main`, GitHub automatically closes each linked issue.
 
@@ -104,17 +104,19 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 ## Overview
 
 ```
-/svc:plan-feature  ──►  product-manager  ──►  architect
-                          │                    │
-                          ▼                    ▼
-                     user stories        implementation plan
-                     (docs/backlog.md)   (docs/plan/<slug>.md, YAML metadata)
+/svc:spec   ──►  product-manager  ──►  your answers to its open questions  ──►  your approval
+                    │
+                    ▼
+               docs/specs/<NNN>-<slug>/spec.md   (criteria AC-<NNN>.<n>, non-goals)
 
-/svc:build-feature --plan <plan> ──► skips the two phases above and builds the reviewed plan (ADR-024)
-/svc:build-feature ──►  [above] ──►  coders ║parallel║  ──►  merge+quality  ──►  tester  ──►  security  ──►  deployment
-                                       │   (1 worktree per task)   │              │             │               │
-                                       ▼                           ▼              ▼             ▼               ▼
-                                  Python code               ruff+mypy/test    pytest+cov   CVE+secrets    Dockerfile image
+/svc:plan   ──►  architect  ──►  design.md (contract) + plan.md (tasks covering every criterion; cplat spec check)
+
+/svc:build  ──►  tester (acceptance mode) ──► coders ║parallel║ ──► merge+quality ──► quality ‖ tester ‖ security ──► reviewer ──► deployment ──► PR
+                       │                         │ (1 worktree per task)                │                              │              │
+                       ▼                         ▼                                      ▼                              ▼              ▼
+                failing tests per AC     code until they pass                 lint, coverage, CVEs            verification.md   Dockerfile image
+
+/svc:verify ──►  cplat spec trace + reviewer (no code changes)
 
 /svc:fix-bug       ──►  coder (diagnose) ──►  coder (fix) ──►  tester (verify)
                                   └──────────── loop (max 3) ──────────────┘
@@ -128,7 +130,7 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 
 /gitops:promote <svc...> <from> <to>   ──►  cplat promote  ──►  PR (Argo reconciles on merge)
 /gitops:compose add|remove <svc...>    ──►  cplat compose  ──►  PR (services.yaml + generated ApplicationSets)
-/app:build-feature <desc>              ──►  product-manager ──► planner ──►  docs/plan/<slug>.md  (then /svc:build-feature --from-plan per repo)
+/app:build-feature <desc>              ──►  product-manager ──► planner ──►  docs/specs/ + docs/plan/<slug>.md  (then /svc:spec --from-plan per repo)
 ```
 
 ---
@@ -210,9 +212,9 @@ The spec formats (`spec.md`, `design.md`, `plan.md`, `verification.md`, test tag
 
 | Path | Purpose |
 |---|---|
-| `docs/backlog.md` | Prioritized product backlog (P0/P1/P2 stories) |
-| `docs/prd/<feature>.md` | Product requirements documents |
-| `docs/plan/<feature-slug>.md` | Architect's numbered implementation plans |
+| `docs/specs/<NNN>-<slug>/` | Feature specs: `spec.md`, `design.md`, `plan.md`, `verification.md` ([ADR-026](adr/026-feature-specs.md)) |
+| `docs/backlog.md` | One-line index of the specs (generated table) plus your own notes |
+| `docs/plan/<slug>.md` (gitops-app repo) | Multi-repo plans (ADR-011) |
 | `docs/adr/<nnn>-<title>.md` | Architecture decision records |
 | `docs/env-vars.md` | Required environment variables |
 | `docs/security/scan-<date>.md` | Security scan reports |

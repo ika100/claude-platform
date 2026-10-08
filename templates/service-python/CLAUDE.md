@@ -56,8 +56,10 @@ Read the platform's `docs/AGENTS.md` for the full orchestration model.
 
 | Task | Command |
 |---|---|
-| Plan a feature, no code (first step) | `/svc:plan-feature <description>` |
-| Build the approved plan | `/svc:build-feature --plan docs/plan/<slug>.md` |
+| Write a feature spec (first step) | `/svc:spec <description>` |
+| Plan the approved spec | `/svc:plan <NNN>` |
+| Build it: tests first, verified | `/svc:build <NNN>` |
+| Where specs stand | `/svc:specs` |
 | Small change | `/svc:quick-task <description>` |
 | Fix a bug | `/svc:fix-bug <description or error>` |
 | Read-only quality + security audit | `/shared:check-quality` |
@@ -65,7 +67,7 @@ Read the platform's `docs/AGENTS.md` for the full orchestration model.
 
 ### Spec first
 
-A feature starts with a spec, not code: run `/svc:plan-feature <description>`, review the stories in `docs/backlog.md` and the plan in `docs/plan/<slug>.md`, then build it with `/svc:build-feature --plan docs/plan/<slug>.md`. The PR cites the story ids (`STORY-NNN`). Small changes (`/svc:quick-task`) and bug fixes (`/svc:fix-bug`) are exempt.
+A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/svc:spec <description>` writes `docs/specs/<NNN>-<slug>/spec.md` with acceptance criteria `AC-<NNN>.<n>` and asks you its open questions; approve it (`/svc:spec approve <NNN>`), plan it (`/svc:plan <NNN>`), then build it (`/svc:build <NNN>`): acceptance tests are written from the criteria first and fail, the code makes them pass, a reviewer checks the result against the spec, and the PR lists every criterion. Tests that name a criterion are the spec in code: never weaken them; change the spec instead (`/svc:spec --amend <NNN> <change>`). `/svc:specs` shows where each spec stands. Small changes (`/svc:quick-task`) and bug fixes (`/svc:fix-bug`) need no spec, but stop when they would change a criterion.
 
 ## Feature Branch Workflow
 
@@ -81,7 +83,7 @@ PR title format: `<type>(<optional-scope>): <description ≤72 chars>`. Valid ty
 - **HTTP services:** expose `/health` and `/ready` endpoints
 - **Logging:** structured JSON{% if needs_observability %} via structlog{% endif %}
 - **Tests:** pytest, in `tests/`, fixtures in `conftest.py`
-- **Docs:** plans in `docs/plan/`, ADRs in `docs/adr/`, backlog in `docs/backlog.md`
+- **Docs:** feature specs in `docs/specs/` (index in `docs/backlog.md`), ADRs in `docs/adr/`
 
 ## Docker image pipeline
 

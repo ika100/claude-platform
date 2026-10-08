@@ -17,6 +17,7 @@ applications/{{ app_name }}/
 ├── applicationset.yaml           GENERATED — one ApplicationSet per env
 └── overlays/<env>/<service>/     GENERATED — deployment.yaml, service.yaml, [httproute.yaml], kustomization.yaml (image pin)
 bootstrap/{{ app_name }}-root.yaml        GENERATED — root Argo Application (app-of-apps), applied once by a human
+docs/specs/                       product specs (docs/specs/<NNN>-<slug>/spec.md)
 docs/plan/                        multi-repo plans written by /app:build-feature
 ```
 
@@ -73,7 +74,7 @@ Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `app` (
 
 ### Spec first
 
-A feature starts with a spec, not code: run `/app:build-feature <description>`, review `docs/plan/<slug>.md`, then build each repo from it with `/svc:build-feature --from-plan` (or `/app:run-plan <slug>` for every repo that is ready). Each repo's PR cites its story ids (`STORY-NNN`).
+A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/app:build-feature <description>` writes the product spec in `docs/specs/` (it asks you its open questions and your approval) and the multi-repo plan in `docs/plan/<slug>.md`. Each repo then turns its part into its own spec with `/svc:spec --from-plan <plan> <repo-id>` and builds it with `/svc:plan` and `/svc:build`, or `/app:run-plan <slug>` does that for every repo that is ready. Each repo's PR lists the criteria it meets.
 
 ## Conventions
 

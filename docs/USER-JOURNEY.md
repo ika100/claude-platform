@@ -101,32 +101,37 @@ devbox run quality && devbox run test      # sanity check — should be green ou
 
 ---
 
-## Chapter 3 — Build a feature with the agent pipeline
+## Chapter 3 — Build a feature from a spec
 
 You can start immediately after Chapter 1: the feature branch is cut from the bootstrap commit, so the first pipeline run on `main` does not need to finish (or even be merged anywhere) before work begins. Its only job is to publish the first image, which you need again only when you deploy.
 
 In `taskboard-api`, inside Claude Code:
 
 ```
-/svc:plan-feature "ping endpoint"           # stories in docs/backlog.md + a plan in docs/plan/; no code. Review both.
-/svc:build-feature --plan docs/plan/ping-endpoint.md   # builds exactly that plan
+/svc:spec "ping endpoint"     # docs/specs/001-ping-endpoint/spec.md; asks you its open questions, then whether to approve
+/svc:plan 001                 # design.md + plan.md for the approved spec; review the plan
+/svc:build 001                # tests first, then the code, verified against the spec, then a PR
 ```
 
-What `/svc:build-feature` does (you watch phase headers, you are only asked before pushing):
+**The spec** (`/svc:spec`) is the contract: the product-manager writes the problem, stories, **acceptance criteria** with ids (`AC-001.1` … in Given / when / then), non-goals and open questions. It never guesses a decision that is yours: the command asks you each open question (with a suggested answer) and folds your answers in. A spec is built only after you approve it (`/svc:spec approve 001`, or "Approve" when the command asks). Changing it later: `/svc:spec --amend 001 "<change>"`.
+
+**The plan** (`/svc:plan`): the architect writes `design.md` (decisions and the API contract) and `plan.md` (tasks with files, dependencies and the criteria each task `covers`). `cplat spec check` rejects a plan that leaves a criterion uncovered or lets two parallel tasks touch the same file, and rejects it again if the spec's criteria change afterwards.
+
+What `/svc:build` does (you watch phase headers, you are only asked before pushing):
 
 | Phase | Who | Output |
 |---|---|---|
-| 0 | orchestrator | detects shape, creates `feature/<slug>`, refuses a dirty tree; tiny change? suggests `/svc:quick-task` instead |
-| 1 | product-manager | user stories + acceptance criteria → `docs/backlog.md` |
-| 2 | architect | `docs/plan/<slug>.md` with tasks, files, dependencies (and `shape:`) |
-| 3 | shape's **coder** agents, in parallel git worktrees | implementation, merged with a quality gate between merges |
-| 4 | quality ‖ tester ‖ security, in parallel | lint/types, tests + coverage, CVE + secrets scan |
+| 0 | orchestrator | detects shape, switches to `feature/<spec_id>`, refuses a dirty tree or an unapproved spec |
+| 1 | shape's **tester**, acceptance mode | one or more tests per criterion, named after it (`# AC-001.1`), committed while they **fail** |
+| 2 | shape's **coder** agents, in parallel git worktrees | implementation until those tests pass, merged with a quality gate between merges; tasks are marked done, so a re-run resumes |
+| 3 | quality ‖ tester ‖ security, in parallel | lint/types, full tests + coverage, CVE + secrets scan |
+| 4 | **reviewer** | every criterion checked against tests and code → `verification.md` (met / not met, with evidence) |
 | 5 | deployment | container image verified (`devbox run image-build`, smoke start) — never Kubernetes manifests |
-| 7 | orchestrator | asks to push, opens a PR with a summary, linked issues, checklist |
+| 6–7 | orchestrator | spec marked done, asks to push, opens a PR listing every criterion, linked issues, checklist |
 
-You review and merge the PR. CI re-runs the same recipes and, on merge to `main`, **pushes a multi-arch image** (`latest`, `sha-<7>`).
+`/svc:specs` shows every spec with its status and the next command. You review and merge the PR. CI re-runs the same recipes and, on merge to `main`, **pushes a multi-arch image** (`latest`, `sha-<7>`).
 
-Smaller jobs: `/svc:quick-task "…"` (coder → quality → tester) and `/svc:fix-bug "stack trace or description"`. Any time: `/shared:check-quality` (read-only audit).
+Smaller jobs need no spec: `/svc:quick-task "…"` (coder → quality → tester) and `/svc:fix-bug "stack trace or description"`. Both stop and point to `/svc:spec --amend` when the change would contradict a criterion. Any time: `/shared:check-quality` (read-only audit).
 
 Same commands in `taskboard-web`: the orchestrator detects `web-nextjs` and uses the web coder/tester (Vitest, App Router idioms) instead.
 
@@ -180,11 +185,11 @@ Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exact
 /app:build-feature "add billing with Stripe checkout"
 ```
 
-`/app:build-feature` plans (and `/app:run-plan` executes in parallel): it reads every registered service, asks the product-manager for stories tagged per repo, and the planner writes `docs/plan/add-billing….md` — repos in dependency order (library → API → web) with a paste-ready prompt for each and when to pin versions. It validates the plan and prints the hand-off:
+`/app:build-feature` plans (and `/app:run-plan` executes in parallel): it reads every registered service, has the product-manager write a product spec in `docs/specs/` (asking you its open questions and your approval), and the planner writes `docs/plan/add-billing….md` — repos in dependency order (library → API → web) with a paste-ready prompt for each and when to pin versions. It validates the plan and prints the hand-off:
 
 ```
-Level 1:  cd ../taskboard-api && /svc:build-feature --from-plan <plan> taskboard-api
-Level 2:  cd ../taskboard-web && /svc:build-feature --from-plan <plan> taskboard-web
+Level 1:  cd ../taskboard-api && /svc:spec --from-plan <plan> taskboard-api   then /svc:plan and /svc:build
+Level 2:  cd ../taskboard-web && /svc:spec --from-plan <plan> taskboard-web   then /svc:plan and /svc:build
 Then:     /gitops:promote taskboard-api taskboard-web dev staging
 ```
 
@@ -230,19 +235,19 @@ Everything here is a declaration in the GitOps repo; `render.py` turns it into m
 /shared:new-service taskboard-api  Task API --app me/taskboard
 /shared:new-service taskboard-web  Frontend --web --app me/taskboard
 
-(in each service)   /svc:plan-feature "first feature" → review → /svc:build-feature --plan docs/plan/<slug>.md  → PR → merge → image pushed
+(in each service)   /svc:spec "first feature" → answer, approve → /svc:plan 001 → /svc:build 001  → PR → merge → image pushed
 (in taskboard)      /gitops:compose add taskboard-api taskboard-web
                     /gitops:promote taskboard-api taskboard-web dev staging
 (in each service)   /svc:release                              → vX.Y.Z → semver image
 (in taskboard)      /gitops:promote taskboard-api taskboard-web staging prod
-(any time)          /app:build-feature "add billing"          → plan → /svc:build-feature --from-plan …
+(any time)          /app:build-feature "add billing"          → product spec + plan → /app:run-plan <slug>
                     /shared:check-quality     /shared:update-service     /svc:fix-bug "…"
 ```
 
 ## Honest limits to mention when presenting
 
 - The deterministic work (`new-service`, `update-service`, `compose`, `promote`, `addon`, `secret`, `doctor`, `status`) is a tested script (`cplat`) with a preview; the slash commands that call it, and the agent pipelines (`/svc:*`), are Claude prompts: they follow the documented flow and ask before pushing or opening PRs, but their wording is not deterministic.
-- Cross-repo work is **plan-only**: `/app:build-feature` produces a validated plan; you run `/svc:build-feature --from-plan` in each repo yourself.
+- Cross-repo work is planned in one place and built per repo: `/app:build-feature` produces a validated plan; `/svc:spec --from-plan` (by you, or by `/app:run-plan`) turns each repo's part into its own spec, and nothing merges without you.
 - The cluster itself, ArgoCD installation and its repo/registry credentials are outside the platform; the only manual cluster step is `devbox run bootstrap` once (Chapter 1).
 - Skeleton updates overwrite customised skeleton files by design; the review branch is where you keep or restore your changes.
 - Operators (External Secrets, CloudNativePG, Kyverno) are installed by `cluster-up` on the local cluster only; real clusters need them installed by their owner. The Postgres addon has no backups, point-in-time recovery or pooling.
@@ -263,4 +268,4 @@ Every generated repo has issue forms (bug report, feature request) that label ne
 /shared:triage --waiting  # issues parked as needs-info, after the reporter answered
 ```
 
-For each issue you get a proposed class and reason. A bug goes to `/svc:fix-bug`, a small change to `/svc:quick-task`, a feature becomes a story in `docs/backlog.md` (then `/svc:plan-feature`), questions, duplicates and out-of-scope requests get a comment. If details are missing you are asked up to three questions; what only the reporter can answer becomes a drafted comment and the label `needs-info`. Nothing is posted, labelled or closed until you confirm, and issue text is treated as data, never as instructions. To run it regularly, schedule it with `/loop` or `/schedule`.
+For each issue you get a proposed class and reason. A bug goes to `/svc:fix-bug`, a small change to `/svc:quick-task`, a feature becomes a spec in `docs/specs/` or is added to an existing one (then `/svc:spec approve` and `/svc:plan`), questions, duplicates and out-of-scope requests get a comment. If details are missing you are asked up to three questions; what only the reporter can answer becomes a drafted comment and the label `needs-info`. Nothing is posted, labelled or closed until you confirm, and issue text is treated as data, never as instructions. To run it regularly, schedule it with `/loop` or `/schedule`.

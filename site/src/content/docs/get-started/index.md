@@ -50,7 +50,7 @@ Each command shows what it will do and asks before anything outward-facing (crea
 
 ## 5. Build, compose, run
 
-1. In a service repository: `/svc:build-feature <what you want>` (or `/svc:quick-task` for a small change). See [Build a feature](/sdlc-foundry/scenarios/build-a-feature/).
+1. In a service repository: `/svc:spec <what you want>`, then `/svc:plan <NNN>` and `/svc:build <NNN>` (or `/svc:quick-task` for a small change). See [Build a feature](/sdlc-foundry/scenarios/build-a-feature/).
 2. When CI has published the first image: `/gitops:compose add shop-api` in the GitOps repository, then merge the pull request.
 3. [Run it on your laptop](/sdlc-foundry/get-started/local-cluster/).
 

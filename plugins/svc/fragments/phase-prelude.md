@@ -1,17 +1,17 @@
 # Phase prelude (canonical workflow)
 
-Every `svc` orchestration command (`build-feature`, `quick-task`, `fix-bug`) runs the same checks before any agent is spawned. This file is the **canonical source of truth** for that workflow — keep each command's inline Phase 0 in sync with the steps below.
+Every `svc` orchestration command that changes code (`build`, `quick-task`, `fix-bug`) runs the same checks before any agent is spawned. This file is the **canonical source of truth** for that workflow — keep each command's inline Phase 0 in sync with the steps below.
 
 ## The five checks
 
 1. **Working tree clean.** Run `git status --porcelain`. If non-empty, stop and tell the user to commit or stash first. Never auto-stash.
-2. **Identify the branch.** Run `git symbolic-ref --short HEAD`. Record it as `$WORK_BRANCH` (build-feature uses `$FEATURE_BRANCH`).
+2. **Identify the branch.** Run `git symbolic-ref --short HEAD`. Record it as `$WORK_BRANCH` (`build` uses `$FEATURE_BRANCH`).
 3. **Branch off `main` when needed.** If currently on `main`, derive a slug from the user's request (lowercase, hyphens for spaces, ≤40 chars) and create the branch with the command-specific prefix:
-   - `/svc:build-feature` → `feature/<slug>`
+   - `/svc:spec`, `/svc:plan`, `/svc:build` → `feature/<spec_id>` (one branch per spec, shared by all three)
    - `/svc:quick-task` → `feature/<slug>` (or `fix/`, `chore/`, `docs/` based on task type)
    - `/svc:fix-bug` → `fix/<slug>`
    Then `git checkout -b <prefix>/<slug>` and update `$WORK_BRANCH`.
-4. **Capture base ref.** `BASE_REF=$(git rev-parse HEAD)` — used later for diff scope and for the touched-files context.
+4. **Capture base ref.** `BASE_REF=$(git rev-parse HEAD)` (`/svc:build` uses `git merge-base main HEAD` so a resumed build keeps its baseline) — used later for diff scope and for the touched-files context.
 5. **Pre-compute subagent context.** Build a short context block to prepend to every subagent prompt:
    ```
    <project-map>

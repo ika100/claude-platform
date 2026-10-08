@@ -2,7 +2,7 @@
 description: "Plan a feature across several repos from a gitops-app repo (plan-only): stories → validated topo-sorted plan → per-repo hand-off commands. Usage: /app:build-feature <description>"
 ---
 
-You are the **application planning orchestrator**. Turn one feature request into a validated multi-repo plan. **v1 is plan-only**: you do not touch component repos, open their PRs, or change overlay pins — the user runs `/svc:build-feature --from-plan …` in each repo ([ADR-007](../../../docs/adr/007-cross-repo-orchestration-scope.md)).
+You are the **application planning orchestrator**. Turn one feature request into a validated multi-repo plan. **v1 is plan-only**: you do not touch component repos, open their PRs, or change overlay pins — the user runs `/svc:spec --from-plan …` → `/svc:plan` → `/svc:build` in each repo, or `/app:run-plan` does it ([ADR-007](../../../docs/adr/007-cross-repo-orchestration-scope.md)).
 
 **Feature request:** $ARGUMENTS
 
@@ -22,18 +22,21 @@ Print `## Phase 1 complete — app repo <GITOPS_APP>, slug <SLUG>, <N> services 
 
 ---
 
-## Phase 2 — Stories (multi-repo)
+## Phase 2 — Product spec ([ADR-026](../../../docs/adr/026-feature-specs.md))
 
-Use the **product-manager** agent (`svc:product-manager`). Prompt:
-> Feature: `<FEATURE>`. This product consists of these component repos: `<name (shape)>` list from services.yaml (plus shared libraries if relevant). Produce user stories with acceptance criteria, tagging each story with the repo (or shape) it targets (`**Repo:** <name> (<shape>)`). Save to `docs/backlog.md` (append or create). Do not write code.
+`CPLAT spec new "<short title>"` creates `docs/specs/<spec_id>/spec.md` (`CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>` (the checkout the shape call above brought up to date)).
 
-Print `## Phase 2 complete — <N> stories`.
+Use the **product-manager** agent (`svc:product-manager`), prompt: `MODE: new`, `SPEC_DIR: docs/specs/<spec_id>/`, the feature verbatim, and the product's component repos (`<name (shape)>` from services.yaml, plus shared libraries if relevant). Then `CPLAT spec check <spec_id>`.
+
+Ask the user every question in its `OPEN QUESTIONS` with AskUserQuestion (suggested answer first, marked "(Recommended)"), send the answers back (`MODE: amend`), and repeat at most 3 rounds, exactly like `/svc:spec`. The spec must have no open questions before planning; ask the user to approve it, then `CPLAT spec approve <spec_id>`.
+
+Print `## Phase 2 complete — spec <spec_id>, <N> criteria, approved`.
 
 ---
 
 ## Phase 3 — Plan
 
-Use the **planner** agent (`app:planner`) with `FEATURE`, `SLUG`, `GITOPS_APP`, and the stories from Phase 2. It writes `docs/plan/<SLUG>.md` and runs `devbox run plan-check`.
+Use the **planner** agent (`app:planner`) with `FEATURE`, `SLUG`, `GITOPS_APP`, and `SPEC: docs/specs/<spec_id>/spec.md` from Phase 2. It writes `docs/plan/<SLUG>.md` and runs `devbox run plan-check`.
 
 Then verify yourself:
 ```bash
@@ -48,9 +51,9 @@ Print `## Phase 3 complete — plan valid, <N> repos in <L> levels`.
 
 ## Phase 4 — Commit and hand off
 
-Commit the plan and backlog on the planning branch:
+Commit the spec and the plan on the planning branch:
 ```bash
-git add docs/plan/<SLUG>.md docs/backlog.md
+git add docs/plan/<SLUG>.md docs/specs/<spec_id>/
 git commit -m "docs(plan): <SLUG> — multi-repo plan for <short feature>"
 ```
 Push and open a PR only after asking the user (`git push -u origin docs/plan-<SLUG>`, `gh pr create` both require confirmation). The plan is useful even unmerged — the next step can run from the local file.
@@ -61,9 +64,9 @@ Print the hand-off, in topological order, one block per level (repos in a level 
 ## Plan ready: <feature>   (docs/plan/<SLUG>.md)
 
 Level 1:
-  cd ../<repo-a> && /svc:build-feature --from-plan <abs-path-to-plan> <repo-a>
+  cd ../<repo-a> && /svc:spec --from-plan <abs-path-to-plan> <repo-a>   then /svc:plan <NNN> and /svc:build <NNN>
 Level 2 (after Level 1 PRs merge):
-  cd ../<repo-b> && /svc:build-feature --from-plan <abs-path-to-plan> <repo-b>
+  cd ../<repo-b> && /svc:spec --from-plan <abs-path-to-plan> <repo-b>   then /svc:plan <NNN> and /svc:build <NNN>
 ...
 Finally, in this repo, pin the released images:
   /gitops:promote <service> dev staging      (per gitops_pin in the plan)
@@ -75,7 +78,7 @@ Track progress with /app:plans show <SLUG>; mark repos done with /app:plans done
 
 ## Rules
 
-- **Plan-only.** Never run `/svc:build-feature` in another repo, never open PRs in component repos, never edit `services.yaml` or overlays.
+- **Plan-only.** Never run `/svc:*` in another repo, never open PRs in component repos, never edit `services.yaml` or overlays.
 - Every shell command goes through `devbox run`. Never `kubectl apply`.
 - Never push or open a PR without the user's confirmation.
 - Never overwrite an existing plan; use a new slug.

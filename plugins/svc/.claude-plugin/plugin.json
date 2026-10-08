@@ -1,7 +1,7 @@
 {
   "name": "svc",
-  "version": "2.2.1",
-  "description": "Multi-agent pipeline for Python service repos. Provides product-manager, architect, coder, tester, migrations, observability, release, and deployment agents plus the build-feature/plan-feature/quick-task/fix-bug/release commands. Requires `devbox run` recipes from the service-python Copier template.",
+  "version": "3.0.0",
+  "description": "Spec-driven pipeline: spec → plan → build → verify. Provides product-manager, architect, reviewer, and the Python coder, tester, migrations, observability, release and deployment agents, the spec-format skill, and the /svc:spec, plan, build, verify, specs, quick-task, fix-bug and release commands. Requires `devbox run` recipes from the platform templates.",
   "author": {
     "name": "Eike Hensler",
     "email": "eike.hensler@gmail.com"

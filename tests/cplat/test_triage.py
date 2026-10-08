@@ -111,11 +111,11 @@ def test_setup_labels_creates_only_the_missing_ones(monkeypatch, capsys):
 
 def test_apply_edits_labels_and_comments_and_never_closes(gh, tmp_path, capsys):
     note = tmp_path / "c.md"
-    note.write_text("Tracked as STORY-040")
+    note.write_text("Tracked as spec 040-price-alerts")
     assert run("apply", "12", "--add", "tracked", "--add", "enhancement", "--remove", "triage", "--comment-file", str(note)) == 0
     edit = next(c for c in gh.calls if c[:2] == ["issue", "edit"])
     assert edit == ["issue", "edit", "12", "--add-label", "tracked", "--add-label", "enhancement", "--remove-label", "triage"]
-    assert ["issue", "comment", "12", "--body", "Tracked as STORY-040"] in gh.calls
+    assert ["issue", "comment", "12", "--body", "Tracked as spec 040-price-alerts"] in gh.calls
     assert not any("close" in c for c in gh.calls)
     assert "To undo" in capsys.readouterr().out
 

@@ -26,9 +26,12 @@ Orchestrators (`/svc:*`) and the shape-agnostic product-manager, architect and r
 
 | Command | Purpose |
 |---|---|
-| `/svc:plan-feature <desc>` | product-manager → architect (no code) |
-| `/svc:build-feature <desc>` | Full pipeline: PM → architect → parallel coders → quality → tester → security → deployment → PR |
-| `/svc:quick-task <desc>` | Lightweight: coder → quality → tester → PR |
+| `/svc:spec <desc>` | product-manager writes `docs/specs/<NNN>-<slug>/spec.md`; you answer its open questions; `--amend <id> <change>`, `approve <id>`, `--from-plan <plan> <repo-id>` |
+| `/svc:plan <id>` | architect writes `design.md` + `plan.md` for an approved spec, checked by `cplat spec check` |
+| `/svc:build <id>` | Failing acceptance tests first → parallel coders until green → quality ‖ tests ‖ security → reviewer verifies against the spec → image → PR. Resumable |
+| `/svc:verify [<id>]` | Trace + reviewer against the spec; writes `verification.md`, changes no code |
+| `/svc:specs [--all\|index\|migrate]` | Spec status with the next command; refresh the backlog table; migrate legacy `STORY-NNN` stories |
+| `/svc:quick-task <desc>` | Lightweight, no spec: coder → quality → tester → PR (stops if the change alters a spec criterion) |
 | `/svc:fix-bug <desc>` | Diagnose → fix → regression test → PR |
 | `/svc:release` | Quality gate → test gate → security gate → version bump → tag → close issues |
 

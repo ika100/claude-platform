@@ -96,8 +96,10 @@ See `docs/ADOPTING.md` for the full migration guide.
 
 | Command | Plugin | Purpose |
 |---|---|---|
-| `/svc:plan-feature <desc>` | svc | PM + architect only — produce plan & ADR, no code |
-| `/svc:build-feature <desc>` | svc | Full pipeline: PM → architect → parallel coders → quality → tester → security → deployment → PR (shape-aware; `--from-plan` for multi-repo plans) |
+| `/svc:spec <desc>` | svc | Feature spec with acceptance criteria `AC-<NNN>.<n>`; asks you its open questions; `approve <id>`, `--amend <id>`, `--from-plan` for multi-repo plans |
+| `/svc:plan <id>` | svc | Architect: `design.md` + `plan.md` for an approved spec, checked by `cplat spec` |
+| `/svc:build <id>` | svc | Failing acceptance tests → parallel coders → quality ‖ tests ‖ security → reviewer verifies the spec → image → PR (shape-aware, resumable) |
+| `/svc:verify [<id>]` · `/svc:specs` | svc | Check code against a spec · list specs with the next step, migrate legacy stories |
 | `/svc:quick-task <desc>` | svc | Lightweight: coder → quality → tester → PR |
 | `/svc:fix-bug <desc>` | svc | Diagnose → fix → regression test → PR |
 | `/svc:release` | svc | Quality gate → test gate → security gate → version bump → tag → close issues |

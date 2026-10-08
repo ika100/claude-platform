@@ -1,4 +1,4 @@
-"""Spec-driven bootstrap (ADR-024): every template seeds backlog/plan and the rule; bootstrap output leads with the plan."""
+"""Spec-driven bootstrap (ADR-024, ADR-026): every template seeds the spec index and the rule; bootstrap output leads with the spec."""
 import re
 
 import pytest
@@ -28,13 +28,18 @@ def test_template_seeds_plan_dir_and_the_spec_first_rule(shape):
     assert (t / "docs" / "plan").is_dir()
     text = claude_md(shape)
     assert "### Spec first" in text
-    assert ("/app:build-feature" if shape == "gitops-app" else "/svc:plan-feature") in text
+    assert ("/app:build-feature" if shape == "gitops-app" else "/svc:spec <description>") in text
+    assert "plan-feature" not in text and "build-feature --" not in text
 
 
 @pytest.mark.parametrize("shape", [i for i in IDS if i != "gitops-app"])
-def test_service_like_templates_seed_a_backlog_with_the_story_format(shape):
+def test_service_like_templates_seed_the_generated_spec_index(shape, tmp_path):
+    import spec
     backlog = (template(shape) / "docs" / "backlog.md").read_text()
-    assert "STORY-001" in backlog and "No stories yet." in backlog and "{{" not in backlog
+    assert "STORY-" not in backlog and "{{" not in backlog
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "backlog.md").write_text(backlog)
+    assert spec.write_index(tmp_path).read_text() == backlog  # the seed is exactly what `cplat spec index` writes
 
 
 @pytest.mark.parametrize("shape", [i for i in IDS if i != "gitops-app"])
@@ -50,10 +55,9 @@ def test_gitops_app_keeps_plans_project_owned():
 @pytest.mark.parametrize("shape", [i for i in IDS if i != "gitops-app"])
 def test_bootstrap_leads_with_the_plan_not_a_bare_build(shape):
     steps = newsvc._next_steps({"name": "x-svc", "shape": shape, "description": "Task API"})
-    plan = next(i for i, s in enumerate(steps) if s.startswith('/svc:plan-feature "Task API"'))
-    build = next(i for i, s in enumerate(steps) if s.startswith("/svc:build-feature --plan docs/plan/<slug>.md"))
-    assert plan < build
-    assert not any(re.match(r"/svc:build-feature (?!--plan)", s) for s in steps)
+    order = [next(i for i, s in enumerate(steps) if s.startswith(p)) for p in ('/svc:spec "Task API"', "/svc:plan <NNN>", "/svc:build <NNN>")]
+    assert order == sorted(order)
+    assert not any(re.search(r"build-feature|plan-feature", s) for s in steps)
 
 
 def test_gitops_bootstrap_points_to_the_product_plan():
@@ -73,11 +77,13 @@ def test_new_app_ends_with_the_product_plan(tmp_path, monkeypatch, capsys):
 PLUGIN = ROOT / "plugins" / "svc"
 
 
-def test_build_feature_documents_plan_and_plan_feature_points_to_it():
-    build = (PLUGIN / "commands" / "build-feature.md").read_text()
-    assert "[--plan <path>]" in build.splitlines()[1] and "Phase 1 skipped — --plan" in build and "Phase 2 skipped — --plan" in build
-    assert "mutually exclusive with `--from-plan`" in build.lower()
-    assert "--plan docs/plan/<slug>.md" in (PLUGIN / "commands" / "plan-feature.md").read_text()
+def test_the_old_commands_are_gone_and_nothing_points_to_them():
+    """svc 3.0 (ADR-026) replaced plan-feature and build-feature; no command, agent, template or script may still name them."""
+    assert not (PLUGIN / "commands" / "build-feature.md").exists() and not (PLUGIN / "commands" / "plan-feature.md").exists()
+    stale = [str(p.relative_to(ROOT)) for d in ("plugins", "templates", "scripts") for p in (ROOT / d).rglob("*")
+             if p.is_file() and p.suffix in {".md", ".jinja", ".py", ".json"} and "__pycache__" not in p.parts
+             and re.search(r"/svc:(plan-feature|build-feature)", p.read_text(errors="ignore"))]
+    assert stale == []
 
 
 def test_plans_cover_the_criteria_of_their_spec():

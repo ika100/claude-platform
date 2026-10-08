@@ -432,7 +432,7 @@ As a maintainer of a repo built on the platform (or of the platform itself), I w
 - [ ] Shapes without svc-style pipelines (gitops-app) and repos without a shape (the platform) get classification, discussion, labels, comments and backlog entries, but are told which command would handle a bug there (`/gitops:*` or a PR by hand) instead of an unavailable `/svc:*`.
 - [ ] Deterministic parts (listing, fetching with comments, label setup, applying a decision) are in `cplat triage` with tests using a faked `gh`.
 #### STORY-036: Plans are approved before they are built
-**Status:** planned · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
+**Status:** done (superseded by STORY-037/039: specs are approved, plans are checked against them) · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
 
 As a founder, I want a plan to be explicitly approved before `build-feature` consumes it, so that the review step between planning and building is real and recorded.
 
@@ -471,7 +471,7 @@ As a founder, I want the product-manager, architect, testers and a new reviewer 
 - [ ] A read-only `reviewer` agent compares the diff with the criteria, non-goals and plan and writes `verification.md`; `cplat shape` routes it.
 
 #### STORY-039: svc commands follow spec, plan, build, verify
-**Status:** planned · **Priority:** P0 · **Depends on:** STORY-038
+**Status:** done · **Priority:** P0 · **Depends on:** STORY-038 · **Code:** `plugins/svc/commands/{spec,plan,build,verify,specs}.md`
 
 As a contributor, I want `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify` and `/svc:specs`, so that each step of a feature has one obvious command and the build is driven by approved criteria.
 

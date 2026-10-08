@@ -84,3 +84,39 @@ def test_agents_doc_matches_the_agent_files():
             listed[(plugin, name)] = model
     actual = {(p.parent.parent.name, p.stem): front(p)["model"] for p in PLUGINS.glob("*/agents/*.md")}
     assert listed == actual
+
+
+# ---------------- svc 3.0 commands (STORY-039) ----------------
+
+COMMANDS = PLUGINS / "svc" / "commands"
+
+
+@pytest.mark.parametrize("name", ["spec", "plan", "build", "verify", "specs"])
+def test_spec_commands_exist_with_a_usage_line(name):
+    meta = front(COMMANDS / f"{name}.md")
+    assert f"/svc:{name}" in meta["description"] and len(meta["description"]) < 260
+
+
+def test_spec_command_asks_the_user_and_never_approves_alone():
+    text = (COMMANDS / "spec.md").read_text()
+    assert "AskUserQuestion" in text and "CPLAT spec approve" in text and "OPEN QUESTIONS" in text
+    assert "Never answer an open question on the user's behalf" in text
+
+
+def test_plan_and_build_refuse_unapproved_specs():
+    for name in ("plan", "build"):
+        assert "spec check <id> --require approved" in (COMMANDS / f"{name}.md").read_text()
+
+
+def test_build_writes_tests_first_verifies_and_resumes():
+    text = (COMMANDS / "build.md").read_text()
+    phases = [text.index(h) for h in ("## Phase 1 — Acceptance tests (red)", "## Phase 2 — Implement",
+                                      "## Phase 3 — QA", "## Phase 4 — Verify", "## Phase 7 — Pull request")]
+    assert phases == sorted(phases)
+    assert "**Acceptance mode.**" in text and "agents.reviewer" in text
+    assert "skip tasks with `done: true`" in text and "CPLAT spec task-done" in text and "set-status <id> done" in text
+
+
+@pytest.mark.parametrize("name", ["quick-task", "fix-bug"])
+def test_small_pipelines_stop_at_a_spec_change(name):
+    assert "/svc:spec --amend <NNN>" in (COMMANDS / f"{name}.md").read_text()
