@@ -20,6 +20,7 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 - **AC-045.1** Given a product plan with a repo entry of shape `gitops-app`, when `/app:build` runs its wave, then that entry is built in the gitops-app repo with `/gitops:addon` and `/gitops:compose` (never `/svc:*`) and ends like the other repos at a pushed branch with a pull request or its exact `gh pr create` command.
 - **AC-045.2** Given that entry, when the planner writes it, then it lists the operations as data (for example addon `postgres` for todo-api, expose `todo-web` at a host, env `TODO_API_URL` on todo-web) and `plan-check` rejects an unknown operation or service.
 - **AC-045.3** Given service repos that depend on the gitops operations (a database), when `/app:build` reports the wave, then it says to merge the gitops pull request first.
+- **AC-045.4** Given the gitops entry was built in a separate worktree or clone, when its pull request is merged or the build stops, then the worktree is removed (`git worktree remove`) and the run leaves no extra folder next to the repos.
 
 ## Non-goals
 
@@ -36,3 +37,4 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 ## Changelog
 
 - 2026-10-08 created from issue 3 of the todo end-to-end run
+- 2026-10-08 AC-045.4 added: the run left the worktree `todo-build-001` behind
