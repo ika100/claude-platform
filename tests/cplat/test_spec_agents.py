@@ -175,3 +175,29 @@ def test_planner_writes_gitops_operations():
     """AC-045.2"""
     text = (APP / "agents" / "planner.md").read_text()
     assert "gitops:" in text and "{uses: postgres, service:" in text
+
+
+def test_criteria_stay_environment_neutral():
+    """AC-056.1"""
+    ref = (SKILL / "references" / "spec.md").read_text()
+    assert "no host ports, local hostnames or machine paths" in ref
+    assert "host ports" in (PLUGINS / "svc" / "agents" / "product-manager.md").read_text()
+
+
+def test_spec_format_is_hidden_from_the_command_list():
+    """AC-058.1: reference material, not a command."""
+    assert front(SKILL / "SKILL.md").get("user-invocable") is False
+
+
+@pytest.mark.parametrize("agent", ["product-manager", "architect", "reviewer"])
+def test_agents_still_read_the_hidden_references(agent):
+    """AC-058.2"""
+    text = (PLUGINS / "svc" / "agents" / f"{agent}.md").read_text()
+    refs = re.findall(r"\$\{CLAUDE_PLUGIN_ROOT\}/(skills/spec-format/references/[\w.-]+)", text)
+    assert refs and all((PLUGINS / "svc" / r).is_file() for r in refs)
+
+
+def test_security_agent_summarises_unfixable_base_image_findings():
+    """AC-059.2"""
+    text = (PLUGINS / "shared" / "agents" / "security.md").read_text().lower()
+    assert "no fix released" in text and "base image" in text and "fixable" in text

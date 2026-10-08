@@ -1,7 +1,7 @@
 ---
 spec_id: 044-parallel-coders-build-on-the-feature
 title: Parallel coders build on the feature branch
-status: building
+status: done
 priority: P0
 ---
 
@@ -40,3 +40,4 @@ As a contributor, I want parallel coders to start from the feature branch, so th
 - 2026-10-08 open question answered: yes: worktree.baseRef "head" in settings (Claude Code docs, "Choose the base branch"); the templates set it.
 - 2026-10-08 approved
 - 2026-10-08 building
+- 2026-10-08 done

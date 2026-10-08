@@ -11,18 +11,21 @@ tasks:
   covers: [AC-044.1, AC-044.2]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Assert the worktree base in the build's probe
   files: [plugins/svc/commands/build.md]
   covers: [AC-044.3, AC-044.4]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t3
   title: Tests for the template setting and the probe rule
   files: [tests/cplat/test_spec_driven.py, tests/cplat/test_spec_agents.py]
   covers: [AC-044.1, AC-044.2, AC-044.3]
   parallel_safe: false
   depends_on: [t1, t2]
+  done: true
 ---
 
 ## t1 — Set worktree.baseRef to head in every template

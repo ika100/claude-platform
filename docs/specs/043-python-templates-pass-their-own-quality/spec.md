@@ -1,7 +1,7 @@
 ---
 spec_id: 043-python-templates-pass-their-own-quality
 title: Python templates pass their own quality gate
-status: building
+status: done
 priority: P0
 ---
 
@@ -40,3 +40,4 @@ As a founder, I want every generated Python repo to start green, so that my firs
 - 2026-10-08 open question answered: uv only in CI; devbox run smoke stays the full local check.
 - 2026-10-08 approved
 - 2026-10-08 building
+- 2026-10-08 done

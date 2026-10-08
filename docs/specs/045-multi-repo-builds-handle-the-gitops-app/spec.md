@@ -1,7 +1,7 @@
 ---
 spec_id: 045-multi-repo-builds-handle-the-gitops-app
 title: Multi-repo builds handle the gitops-app entry
-status: building
+status: done
 priority: P0
 ---
 
@@ -41,3 +41,4 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 - 2026-10-08 open question answered: structured operations in the plan; /app:build runs them through cplat addon and cplat compose.
 - 2026-10-08 approved
 - 2026-10-08 building
+- 2026-10-08 done

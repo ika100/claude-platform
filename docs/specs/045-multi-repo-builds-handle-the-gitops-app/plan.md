@@ -9,24 +9,28 @@ tasks:
   covers: [AC-045.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Validate `gitops:` operations in plan.py
   files: [templates/gitops-app/scripts/plan.py, tests/cplat/test_plan.py]
   covers: [AC-045.2]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t3
   title: Planner writes the operations; /app:build runs them
   files: [plugins/app/agents/planner.md, plugins/app/commands/build.md, docs/adr/011-multi-repo-plan-format.md]
   covers: [AC-045.1, AC-045.3, AC-045.4]
   parallel_safe: false
   depends_on: [t1, t2]
+  done: true
 - id: t4
   title: Contract tests for the gitops entry
   files: [tests/cplat/test_spec_agents.py]
   covers: [AC-045.1, AC-045.3, AC-045.4]
   parallel_safe: false
   depends_on: [t3]
+  done: true
 ---
 
 ## t1 — Add `cplat compose set` to change an existing service

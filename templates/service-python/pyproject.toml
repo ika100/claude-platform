@@ -54,6 +54,8 @@ packages = ["src/{{ module_name }}"]
 
 [tool.ruff]
 line-length = 100
+# docs/ holds specs and designs (ADR-026); their code examples are not lint targets (spec 049)
+extend-exclude = ["docs"]
 target-version = "py{{ python_version | replace('.', '') }}"
 
 [tool.ruff.lint]

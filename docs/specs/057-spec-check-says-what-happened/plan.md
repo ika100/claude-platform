@@ -11,6 +11,7 @@ tasks:
   covers: [AC-057.1, AC-057.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — Clear messages in spec-check.sh

@@ -1,7 +1,7 @@
 ---
 spec_id: 058-reference-skills-stay-out-of-the-command
 title: Reference skills stay out of the command list
-status: building
+status: done
 priority: P2
 ---
 
@@ -38,3 +38,4 @@ As a contributor, I want the command list to contain only commands, so that I fi
 - 2026-10-08 open question answered: yes: `user-invocable: false` in SKILL.md frontmatter (Claude Code skills docs); Claude can still use the skill.
 - 2026-10-08 approved
 - 2026-10-08 building
+- 2026-10-08 done
