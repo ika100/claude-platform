@@ -493,14 +493,14 @@ As a founder, I want `/app:spec`, `/app:plan`, `/app:build` and `/app:specs` to 
 - [ ] `app` 1.0.0 replaces `build-feature`, `run-plan` and `plans`; ADR-011 is amended.
 
 #### STORY-041: Templates ship the spec contract
-**Status:** planned · **Priority:** P1 · **Depends on:** STORY-039
+**Status:** done · **Priority:** P1 · **Depends on:** STORY-039 · **Code:** `templates/*/scripts/spec-check.sh`, `templates/*/.github/workflows/specs.yml`, `cplat spec ci`
 
 As a founder, I want every new repo to start with `docs/specs/`, the rule in `CLAUDE.md` and a `spec-check` CI job, so that the workflow is the default everywhere.
 
 **Acceptance criteria:**
 - [ ] Every template seeds `docs/specs/README.md`, a backlog with the index markers, and `docs/specs/**` in `_skip_if_exists`.
 - [ ] Every template's `CLAUDE.md` "Spec first" section names the new commands.
-- [ ] A `spec-check` CI job runs `cplat spec check`; it warns in this major.
+- [ ] A `spec-check` CI job (`specs` workflow, `devbox run spec-check`) runs `cplat spec ci` at the repo's platform version: every spec valid, every criterion of a building or done spec named by a test; it warns in this major (`SPEC_CHECK_STRICT=1` fails).
 - [ ] `shapes.py check` and the template tests enforce all three.
 
 #### STORY-042: The plugin is quick to use and dogfooded

@@ -120,8 +120,18 @@ def check_contract(shapes: list[dict]) -> list[str]:
             errs.append(f"{sid}: template has no CLAUDE.md")
         elif "### Spec first" not in claude.read_text():
             errs.append(f"{sid}: CLAUDE.md has no '### Spec first' section (ADR-024)")
+        elif ("/app:spec" if sid == "gitops-app" else "/svc:spec") not in claude.read_text():
+            errs.append(f"{sid}: CLAUDE.md 'Spec first' does not name {'/app:spec' if sid == 'gitops-app' else '/svc:spec'} (ADR-026)")
         if not (tdir / "docs" / "plan").is_dir():
             errs.append(f"{sid}: template has no docs/plan/ (ADR-024)")
+        # ADR-026: specs live in docs/specs/ (project-owned) and are checked by the warn-only `specs` workflow
+        for need in ("docs/specs/README.md", "scripts/spec-check.sh", ".github/workflows/specs.yml"):
+            if not (tdir / need).is_file():
+                errs.append(f"{sid}: template has no {need} (ADR-026)")
+        if devbox is not None and '"spec-check"' not in devbox.read_text():
+            errs.append(f"{sid}: devbox.json has no spec-check recipe (ADR-026)")
+        if "docs/specs/**" not in (tdir / "copier.yml").read_text():
+            errs.append(f"{sid}: copier.yml must list docs/specs/** in _skip_if_exists (project-owned, ADR-026)")
         for form in ("bug_report.yml", "feature_request.yml", "config.yml"):
             if not (tdir / ".github" / "ISSUE_TEMPLATE" / form).is_file():
                 errs.append(f"{sid}: template has no .github/ISSUE_TEMPLATE/{form} (ADR-025)")

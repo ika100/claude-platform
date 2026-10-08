@@ -22,6 +22,7 @@ _skip_if_exists:
   - applications/**/app.yaml
   - bootstrap/**
   - docs/plan/**
+  - docs/specs/**
 
 _exclude:
   - "copier.yml"

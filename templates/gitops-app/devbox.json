@@ -29,6 +29,7 @@
       "quality": "devbox run validate",
       "test": "devbox run validate",
       "test-fast": "uv run scripts/render.py --check && uv run scripts/plan.py validate",
+      "spec-check": "bash scripts/spec-check.sh",
       "secrets-scan": "git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline.json",
       "security": "devbox run secrets-scan",
       "deploy-check": "devbox run validate"

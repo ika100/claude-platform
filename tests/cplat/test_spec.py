@@ -435,3 +435,30 @@ def test_product_specs_point_to_the_app_commands(product):
     assert spec.next_step(s) == "/app:build 012"
     (product / "docs" / "plan" / "012-billing.md").unlink()
     assert spec.next_step(s) == "/app:plan 012"
+
+
+# ---------------- ci (STORY-041) ----------------
+
+def test_ci_without_specs_is_quiet(tmp_path, capsys):
+    assert spec.main(["--repo", str(tmp_path), "ci", "--strict"]) == 0
+    assert "nothing to check" in capsys.readouterr().out
+
+
+def test_ci_warns_by_default_and_fails_when_strict(tmp_path, capsys):
+    make(tmp_path, status="building")  # nothing traces its criteria yet
+    assert spec.main(["--repo", str(tmp_path), "ci"]) == 0
+    out = capsys.readouterr().out
+    assert "::warning file=docs/specs/007-price-alerts/spec.md,title=spec 007-price-alerts::AC-007.1 is not named by any test" in out
+    assert spec.main(["--repo", str(tmp_path), "ci", "--strict"]) == 1
+    assert "::error file=" in capsys.readouterr().out
+
+
+def test_ci_traces_only_specs_that_are_built(tmp_path):
+    make(tmp_path, status="approved")
+    assert spec.ci_problems(tmp_path) == []
+
+
+def test_ci_does_not_trace_product_specs(tmp_path, product):
+    s = spec.read(product / "docs" / "specs" / "012-billing")
+    spec.set_status(s, "building", None)
+    assert spec.ci_problems(product) == []
