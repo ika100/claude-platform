@@ -106,7 +106,7 @@ After the fan-out, run `cplat spec test-diff $RED` once more (the quality agent 
 
 ## Phase 5 — Container image
 
-Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` is false. Otherwise **deployment** (`agents.deployment`) with `<project-map>` + `<touched-files>`: verify or update the image only — Dockerfile (numeric `USER`, read-only-filesystem friendly), the CI docker job, needed `devbox run` recipes; **never Kubernetes manifests** (the product's gitops-app repo owns them, ADR-017). Run `devbox run image-build` and smoke-start the image. If the port, probe paths or user changed, say that the gitops `services.yaml` entry must change.
+Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` is false. Otherwise **deployment** (`agents.deployment`) with `<project-map>` + `<touched-files>`: verify or update the image only — Dockerfile (numeric `USER`, read-only-filesystem friendly), the CI docker job, needed `devbox run` recipes; **never Kubernetes manifests** (the product's gitops-app repo owns them, ADR-017). Run `devbox run image-build` and smoke-start the image. If the port, probe paths or user changed, say that the gitops `services.yaml` entry must change. Ask for gitops changes **only for** wiring the spec's *Provided by the product* list (in the Product context of a repo spec sliced from a product plan) does not already contain: env variables, addons and exposure listed there exist (spec 052).
 
 ## Phase 6 — Close the spec
 
@@ -151,6 +151,8 @@ Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` i
    - [x] `devbox run security` passes (no CRITICAL findings)
    - [x] No secrets, credentials, or API keys committed
    ```
+
+**When `gh pr create` is not allowed** (headless run, untrusted workspace, or the user declines; spec 051): this is not an error. The branch is pushed; write the PR body to `.git/PR_BODY.md` and end the report with the exact command as its last line: `gh pr create --base main --head <branch> --title "<title>" --body-file .git/PR_BODY.md`.
 
 4. Print the PR URL. If the branch has `wip(` commits (an interrupted build, spec 047), the PR body ends with: "Contains WIP commits from an interrupted build: squash-merge."
 

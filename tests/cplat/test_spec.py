@@ -550,3 +550,39 @@ def test_test_diff_cli_compares_against_a_commit(tmp_path, capsys):
     f.write_text(PY_BEFORE.replace("200.01", "1"))
     assert spec.main(["--repo", str(tmp_path), "test-diff", "HEAD"]) == 1
     assert "tests/test_x.py: changed" in capsys.readouterr().out
+
+
+# ---------------- spec 052: repo specs know the gitops wiring ----------------
+
+def _with_gitops_entry(product):
+    plan = product / "docs" / "plan" / "012-billing.md"
+    plan.write_text(plan.read_text().replace("gitops_pin: []", """  - id: shop-gitops
+    shape: gitops-app
+    summary: wiring
+    acs: [AC-012.1]
+    gitops:
+      - {addon: postgres}
+      - {uses: postgres, service: shop-api}
+      - {expose: shop-web, host: shop}
+      - {env: {API_URL: 'http://shop-api'}, service: shop-web}
+    depends_on: []
+    done: false
+gitops_pin: []""", 1).replace("repos:\n", "repos:\n", 1))
+    return plan
+
+
+def test_the_slice_lists_what_the_product_provides(tmp_path, product):
+    """AC-052.1: env and addon env from the gitops operations, per repo."""
+    plan = _with_gitops_entry(product)
+    api = spec.slice_from_plan(plan, "shop-api")["context"]
+    web = spec.slice_from_plan(plan, "shop-web")["context"]
+    provided_api = api.split("### Provided by the product", 1)[1]
+    assert "postgres" in provided_api and "DATABASE_URL" in provided_api and "PGPASSWORD" in provided_api
+    assert "API_URL" not in provided_api
+    provided_web = web.split("### Provided by the product", 1)[1]
+    assert "API_URL=http://shop-api" in provided_web and "shop" in provided_web and "DATABASE_URL" not in provided_web
+
+
+def test_no_gitops_operations_means_no_provided_section(tmp_path, product):
+    """AC-052.1"""
+    assert "Provided by the product" not in spec.slice_from_plan(product / "docs" / "plan" / "012-billing.md", "shop-api")["context"]

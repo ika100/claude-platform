@@ -1,7 +1,7 @@
 ---
 spec_id: 051-pipelines-end-at-a-ready-pull-request
 title: Pipelines end at a ready pull request
-status: approved
+status: done
 priority: P1
 ---
 
@@ -36,3 +36,5 @@ None.
 
 - 2026-10-08 created from issue 9 of the todo end-to-end run
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

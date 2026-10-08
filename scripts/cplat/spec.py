@@ -436,6 +436,36 @@ def new(root: Path, title: str, *, shape: str | None, priority: str, tracks: lis
     return read(sdir)
 
 
+def addon_env(app_root: Path, addon: str) -> list[str]:
+    """Env variables an addon gives a service that uses it: render.py's ADDONS table (the contract, ADR-020)."""
+    for render in (app_root / "scripts" / "render.py", core.PLATFORM_ROOT / "templates" / "gitops-app" / "scripts" / "render.py"):
+        if render.is_file():
+            block = render.read_text().split("ADDONS = {", 1)[-1]
+            m = re.search(rf'^    "{re.escape(addon)}": \{{.*?"env": \{{([^}}]*)\}}', block, re.M | re.S)
+            if m:
+                return re.findall(r'"([A-Z0-9_]+)":', m.group(1))
+    return []
+
+
+def provided_by_product(app_root: Path, repos: list[dict], repo_id: str) -> list[str]:
+    """Spec 052: what the plan's gitops entry wires for this repo (env, addons with their env, exposure)."""
+    lines = []
+    for entry in repos:
+        if entry.get("shape") != "gitops-app":
+            continue
+        for op in entry.get("gitops") or []:
+            if not isinstance(op, dict):
+                continue
+            if op.get("uses") and op.get("service") == repo_id:
+                names = addon_env(app_root, op["uses"])
+                lines.append(f"- addon `{op['uses']}`" + (f": env {', '.join(f'`{n}`' for n in names)}" if names else ""))
+            elif isinstance(op.get("env"), dict) and op.get("service") == repo_id:
+                lines += [f"- env `{k}={v}`" for k, v in op["env"].items()]
+            elif op.get("expose") == repo_id:
+                lines.append(f"- exposed through the Gateway at host `{op.get('host') or repo_id}`")
+    return lines
+
+
 def slice_from_plan(plan_path: Path, repo_id: str) -> dict:
     """This repo's part of a product plan (ADR-026): title, priority, parent and the Product context section.
 
@@ -469,6 +499,10 @@ def slice_from_plan(plan_path: Path, repo_id: str) -> dict:
     contract = contract or sections(body).get("contract", "").strip()
     if contract:
         parts.append("### Contract\n\n" + contract)
+    provided = provided_by_product(app_root, meta.get("repos") or [], repo_id)
+    if provided:
+        parts.append("### Provided by the product\n\nThe gitops part of this plan wires these for this repo; rely on them, "
+                     "do not ask for them again:\n\n" + "\n".join(provided))
     if repo.get("arguments"):
         parts.append("### Notes for this repo\n\n" + str(repo["arguments"]).strip())
     parent = f"{meta.get('gitops_app')}:{meta.get('spec') or meta.get('plan_id')}"

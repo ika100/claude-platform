@@ -9,12 +9,14 @@ tasks:
   covers: [AC-052.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Build reports only missing wiring
   files: [plugins/svc/commands/build.md, tests/cplat/test_spec_agents.py]
   covers: [AC-052.2]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 ---
 
 ## t1 — slice_from_plan lists the wiring for the repo
