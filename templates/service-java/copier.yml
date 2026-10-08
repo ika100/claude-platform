@@ -23,6 +23,7 @@ _skip_if_exists:
   - docs/adr/**
   - docs/backlog.md
   - docs/plan/**
+  - docs/specs/**
   - docs/env-vars.md
 
 _exclude:

@@ -15,6 +15,7 @@
       "dev":          "go run ./cmd/{{ project_name }}",
       "test":         "go test -race -cover ./...",
       "test-fast":    "go test ./...",
+      "spec-check":   "bash scripts/spec-check.sh",
       "lint":         "golangci-lint run",
       "lint-fix":     "gofmt -w . && goimports -w . && golangci-lint run --fix",
       "typecheck":    "go build ./...",

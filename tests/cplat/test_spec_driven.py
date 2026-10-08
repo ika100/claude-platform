@@ -92,3 +92,73 @@ def test_plans_cover_the_criteria_of_their_spec():
     plan = (PLUGIN / "skills" / "spec-format" / "references" / "plan.md").read_text()
     assert "covers:" in plan and "spec_hash:" in plan
     assert "AC-<NNN>.<n>" in (PLUGIN / "agents" / "product-manager.md").read_text()
+
+
+# ---------------- spec contract in every template (STORY-041) ----------------
+
+SPEC_FILES = ["docs/specs/README.md", "scripts/spec-check.sh", ".github/workflows/specs.yml"]
+
+
+@pytest.mark.parametrize("rel", SPEC_FILES)
+def test_every_template_ships_the_same_spec_files(rel):
+    copies = {(template(s) / rel).read_text() for s in IDS}
+    assert len(copies) == 1, f"{rel} differs between templates"
+    text = copies.pop()
+    assert "{{" not in text and "{%" not in text and "{#" not in text  # rendered verbatim by templates without a suffix
+
+
+def test_the_spec_workflow_warns_and_uses_pinned_actions():
+    wf = yaml.safe_load((template("service-python") / ".github" / "workflows" / "specs.yml").read_text())
+    steps = wf["jobs"]["spec-check"]["steps"]
+    assert all(re.search(r"@[0-9a-f]{40}$", s["uses"]) for s in steps if "uses" in s)
+    assert steps[-1]["run"] == "bash scripts/spec-check.sh" and wf["permissions"] == {"contents": "read"}
+
+
+def test_spec_check_script_uses_the_repos_platform_version_and_warns_by_default():
+    sh = (template("service-go") / "scripts" / "spec-check.sh").read_text()
+    assert "sed -n 's/^ref: *//p' .platform-version" in sh and "spec ci" in sh and "SPEC_CHECK_STRICT" in sh
+    assert "|| true; } | head -1" in sh  # a repo without .platform-version must not end the script under pipefail
+
+
+@pytest.mark.parametrize("shape", IDS)
+def test_specs_are_project_owned_and_checkable_locally(shape):
+    t = template(shape)
+    assert "docs/specs/**" in yaml.safe_load((t / "copier.yml").read_text())["_skip_if_exists"]
+    devbox = next(p for p in (t / "devbox.json", t / "devbox.json.jinja") if p.is_file()).read_text()
+    assert '"spec-check":' in devbox and "bash scripts/spec-check.sh" in devbox
+
+
+SPEC_MD = """---
+spec_id: 001-ping
+title: Ping
+status: building
+priority: P1
+---
+
+## Acceptance criteria
+
+- **AC-001.1** Given the service, when GET /ping, then 200.
+- **AC-001.2** Given the service, when POST /ping, then 405.
+"""
+
+
+@pytest.mark.skipif(not __import__("shutil").which("uv"), reason="needs uv")
+def test_spec_check_script_warns_then_fails_strict_then_passes(tmp_path):
+    import subprocess
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts" / "spec-check.sh").write_text((template("service-python") / "scripts" / "spec-check.sh").read_text())
+    (tmp_path / "docs" / "specs" / "001-ping").mkdir(parents=True)
+    (tmp_path / "docs" / "specs" / "001-ping" / "spec.md").write_text(SPEC_MD)
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_ping.py").write_text("def test_get():  # AC-001.1\n    pass\n")
+
+    def check(strict=False):
+        env = {**__import__("os").environ, "SPEC_CHECK_PLATFORM": str(ROOT), "SPEC_CHECK_STRICT": "1" if strict else ""}
+        return subprocess.run(["bash", "scripts/spec-check.sh"], cwd=tmp_path, env=env, capture_output=True, text=True)
+
+    warn = check()  # no .platform-version: the script must still run (pipefail regression)
+    assert warn.returncode == 0 and "::warning" in warn.stdout and "AC-001.2 is not named by any test" in warn.stdout
+    assert check(strict=True).returncode == 1
+    (tmp_path / "tests" / "test_ping.py").write_text("def test_get():  # AC-001.1\n    pass\ndef test_post():  # AC-001.2\n    pass\n")
+    ok = check(strict=True)
+    assert ok.returncode == 0 and "0 problem(s)" in ok.stdout

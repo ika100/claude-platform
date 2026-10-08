@@ -16,6 +16,7 @@ _skip_if_exists:
   - docs/adr/**
   - docs/backlog.md
   - docs/plan/**
+  - docs/specs/**
 
 _tasks:
   - "git init -q -b main"

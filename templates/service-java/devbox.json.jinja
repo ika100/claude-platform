@@ -16,6 +16,7 @@
 {%- endif %}
       "test":         "mvn -B verify",
       "test-fast":    "mvn -B test",
+      "spec-check":   "bash scripts/spec-check.sh",
       "lint":         "mvn -B spotless:check checkstyle:check",
       "lint-fix":     "mvn -B spotless:apply",
       "typecheck":    "mvn -B -DskipTests compile test-compile",

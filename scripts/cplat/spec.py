@@ -617,6 +617,37 @@ def migrate(root: Path, shape: str | None, write: bool) -> list[str]:
     return lines
 
 
+# ---------------- CI ----------------
+
+def ci_problems(root: Path) -> list[tuple[Spec, str]]:
+    """Everything `check` reports, plus untraced criteria of specs that are being built or done.
+
+    Product specs (gitops-app) are not traced here: their criteria are implemented and tested in the component repos.
+    """
+    shape = repo_shape(root)
+    out: list[tuple[Spec, str]] = []
+    for s in all_specs(root):
+        out += [(s, e) for e in check(s, shape=shape)]
+        own_shape = s.meta.get("shape") or shape
+        if s.status in {"building", "done"} and own_shape != "gitops-app":
+            out += [(s, f"{ac} is not named by any test") for ac, files in trace(root, s, test_globs(own_shape)).items() if not files]
+    return out
+
+
+def ci(root: Path, strict: bool) -> int:
+    """GitHub annotations for the spec-check job: warnings by default, errors (and exit 1) with --strict."""
+    if not specs_dir(root).is_dir():
+        print("spec-check: no docs/specs/ yet, nothing to check")
+        return 0
+    problems = ci_problems(root)
+    level = "error" if strict else "warning"
+    for s, msg in problems:
+        print(f"::{level} file={(s.dir / 'spec.md').relative_to(root)},title=spec {s.id}::{msg}")
+    n = len(all_specs(root))
+    print(f"spec-check: {n} spec(s), {len(problems)} problem(s)" + ("" if strict or not problems else " (warnings only; fix them before this check becomes required)"))
+    return 1 if strict and problems else 0
+
+
 # ---------------- CLI ----------------
 
 def _print_errors(results: dict[str, list[str]]) -> int:
@@ -662,6 +693,8 @@ def main(argv: list[str]) -> int:
     p = sub.add_parser("list")
     p.add_argument("--all", action="store_true", help="include done and superseded")
     p.add_argument("--json", action="store_true")
+    p = sub.add_parser("ci", help="check every spec and trace built ones; GitHub annotations (warnings unless --strict)")
+    p.add_argument("--strict", action="store_true")
     p = sub.add_parser("migrate", help="convert STORY-NNN stories in docs/backlog.md into spec folders")
     p.add_argument("--write", action="store_true", help="without it, only show what would happen")
     ns = ap.parse_args(argv)
@@ -725,6 +758,8 @@ def main(argv: list[str]) -> int:
                 oq = f", {r['open_questions']} open q" if r["open_questions"] else ""
                 print(f"{r['id']:40} {r['priority']:3} {r['status']:10} {r['acs']:>2} AC{oq:12} {tasks:12} next: {r['next']}")
         return 0
+    if ns.cmd == "ci":
+        return ci(root, ns.strict)
     if ns.cmd == "migrate":
         for line in migrate(root, repo_shape(root), ns.write):
             print(line)

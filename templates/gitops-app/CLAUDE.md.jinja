@@ -76,7 +76,7 @@ Plugins enabled in `.claude/settings.json`: `gitops` (compose, promote), `app` (
 
 ### Spec first
 
-A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/app:spec <description>` writes the product spec in `docs/specs/<NNN>-<slug>/spec.md` (it asks you its open questions and your approval); `/app:plan <NNN>` assigns every criterion to a component repo with the contract between them (`docs/plan/<spec_id>.md`, checked by `devbox run plan-check`); `/app:build <NNN>` builds every ready repo in parallel, each from its own slice of the spec (`/svc:spec --from-plan` → `/svc:plan` → `/svc:build`), and stops at open PRs. Each repo's PR lists the criteria it meets.
+A feature starts with a spec, not code ([ADR-026](https://github.com/ika100/sdlc-foundry/blob/main/docs/adr/026-feature-specs.md)): `/app:spec <description>` writes the product spec in `docs/specs/<NNN>-<slug>/spec.md` (it asks you its open questions and your approval); `/app:plan <NNN>` assigns every criterion to a component repo with the contract between them (`docs/plan/<spec_id>.md`, checked by `devbox run plan-check`); `/app:build <NNN>` builds every ready repo in parallel, each from its own slice of the spec (`/svc:spec --from-plan` → `/svc:plan` → `/svc:build`), and stops at open PRs. Each repo's PR lists the criteria it meets. `devbox run spec-check` validates the specs here (also the warn-only `specs` CI workflow).
 
 ## Conventions
 
