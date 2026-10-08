@@ -136,6 +136,8 @@ After the tester passes:
    ```
    The `--title` must match Conventional Commits format to pass the `pr-title` CI check. Replace `<CLOSES>` with the actual closing keywords determined in step 2.
 
+**When `gh pr create` is not allowed** (headless run, untrusted workspace, or the user declines; spec 051): this is not an error. The branch is pushed; write the PR body to `.git/PR_BODY.md` and end the report with the exact command as its last line: `gh pr create --base main --head <branch> --title "<title>" --body-file .git/PR_BODY.md`.
+
 5. Print the PR URL.
 
 **If Phase 0 found we were already on `main` and did not create a branch:** warn "Skipping PR creation — working directly on main." and skip Phase 3.

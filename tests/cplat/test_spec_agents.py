@@ -258,3 +258,26 @@ def test_app_build_checks_the_plan_is_on_main():
     """AC-050.2"""
     pre = (APP / "commands" / "build.md").read_text().split("## Pre-flight", 1)[1].split("## Loop", 1)[0]
     assert "origin/main" in pre and "git fetch" in pre and "local file" in pre
+
+
+# ---------------- waves 4-5 (specs 051, 052) ----------------
+
+PR_COMMANDS = [COMMANDS / "build.md", COMMANDS / "quick-task.md", COMMANDS / "fix-bug.md", APP / "commands" / "build.md"]
+
+
+@pytest.mark.parametrize("path", PR_COMMANDS, ids=lambda p: f"{p.parent.parent.name}:{p.stem}")
+def test_pipelines_end_with_a_ready_pr_command(path):
+    """AC-051.1 AC-051.2: no error when gh pr create is denied; the exact command is the last line."""
+    text = path.read_text()
+    assert "gh pr create" in text and "PR_BODY.md" in text and "last line" in text and "not an error" in text
+
+
+def test_app_build_lists_one_pr_command_per_repo():
+    """AC-051.2"""
+    assert "one `gh pr create` command per repo" in (APP / "commands" / "build.md").read_text()
+
+
+def test_build_asks_only_for_missing_gitops_wiring():
+    """AC-052.2"""
+    text = (COMMANDS / "build.md").read_text()
+    assert "Provided by the product" in text and "only for" in text

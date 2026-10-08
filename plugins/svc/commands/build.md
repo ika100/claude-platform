@@ -152,6 +152,8 @@ Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` i
    - [x] No secrets, credentials, or API keys committed
    ```
 
+**When `gh pr create` is not allowed** (headless run, untrusted workspace, or the user declines; spec 051): this is not an error. The branch is pushed; write the PR body to `.git/PR_BODY.md` and end the report with the exact command as its last line: `gh pr create --base main --head <branch> --title "<title>" --body-file .git/PR_BODY.md`.
+
 4. Print the PR URL. If the branch has `wip(` commits (an interrupted build, spec 047), the PR body ends with: "Contains WIP commits from an interrupted build: squash-merge."
 
 ## Final Report
