@@ -19,6 +19,7 @@ and run it for real. Everything that can be code is code (and has tests in tests
   cplat.py feedback --title T [--what …] [--details-file F] [--submit]   draft (and file) a platform issue, secrets removed
   cplat.py triage list|show|setup-labels|apply ...   issue intake for /shared:triage (labels and comments only after you confirm; never closes)
   cplat.py status [--context KUBE_CONTEXT]   one table: pins per env, service CI, Argo sync/health
+  cplat.py spec new|check|approve|set-status|task-done|hash|trace|index|list|migrate ...   feature specs in docs/specs/ (ADR-026)
 """
 from __future__ import annotations
 
@@ -43,6 +44,7 @@ COMMANDS = {
     "addon": "addon",
     "feedback": "feedback",
     "triage": "triage",
+    "spec": "spec",
 }
 
 

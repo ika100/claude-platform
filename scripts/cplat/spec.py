@@ -1,0 +1,671 @@
+"""`spec`: feature specs in docs/specs/<NNN>-<slug>/ (ADR-026) — create, check, approve, trace, index, list, migrate.
+
+A spec folder holds spec.md (what: stories, acceptance criteria AC-<NNN>.<n>, non-goals, open questions), optional
+design.md (how, contract) and plan.md (tasks with `covers: [AC-…]`). The slash commands do the judgement; every
+check and every state change of a spec goes through this module so it is deterministic and tested.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import hashlib
+import json
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import yaml
+
+import core
+from core import PlatformError
+
+SPECS_DIR = Path("docs") / "specs"
+BACKLOG = Path("docs") / "backlog.md"
+STATUSES = ["draft", "approved", "building", "done", "superseded"]
+RANK = {s: i for i, s in enumerate(STATUSES[:4])}
+# Allowed by `set-status`; draft -> approved only through `approve` (it checks the spec first).
+TRANSITIONS = {"draft": {"superseded"}, "approved": {"building", "draft", "superseded"},
+               "building": {"done", "draft", "superseded"}, "done": {"draft", "superseded"}, "superseded": set()}
+PRIORITIES = {"P0", "P1", "P2"}
+DEFAULT_TEST_GLOBS = ["tests/**/*"]
+FRONT = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.S)
+SPEC_ID = re.compile(r"^(\d{3,})-[a-z0-9][a-z0-9-]*$")
+AC_LINE = re.compile(r"^\s*[-*]\s+(~~)?\*\*(AC-(\d{3,})\.(\d+))\*\*")
+SECTION = re.compile(r"^## +(.+?)\s*$", re.M)
+START, END = "<!-- spec-index:start -->", "<!-- spec-index:end -->"
+
+
+def _literal(dumper: yaml.Dumper, data: str):
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|" if "\n" in data else None)
+
+
+class _Dumper(yaml.SafeDumper):
+    pass
+
+
+def _seq(dumper: yaml.Dumper, data: list):  # `covers: [AC-007.1]` stays on one line; lists of tasks stay block
+    flat = all(not isinstance(x, (dict, list)) for x in data)
+    return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=flat)
+
+
+_Dumper.add_representer(str, _literal)
+_Dumper.add_representer(list, _seq)
+
+
+def load(path: Path) -> tuple[dict, str]:
+    m = FRONT.match(path.read_text())
+    if not m:
+        raise PlatformError(f"{path}: missing YAML front matter (--- ... ---)")
+    meta = yaml.safe_load(m.group(1))
+    if not isinstance(meta, dict):
+        raise PlatformError(f"{path}: front matter is not a mapping")
+    return meta, m.group(2)
+
+
+def save(path: Path, meta: dict, body: str) -> None:
+    front = yaml.dump(meta, Dumper=_Dumper, sort_keys=False, default_flow_style=False, width=120).rstrip("\n")
+    path.write_text(f"---\n{front}\n---\n{body}")
+
+
+def sections(body: str) -> dict[str, str]:
+    """`## Heading` -> text up to the next `## ` heading (lower-cased headings). HTML comments are guidance, not content."""
+    body = re.sub(r"<!--.*?-->", "", body, flags=re.S)
+    marks = list(SECTION.finditer(body))
+    return {m.group(1).strip().lower(): body[m.end():marks[i + 1].start() if i + 1 < len(marks) else len(body)]
+            for i, m in enumerate(marks)}
+
+
+@dataclass
+class AC:
+    id: str
+    spec_no: str
+    withdrawn: bool
+
+
+@dataclass
+class Spec:
+    dir: Path
+    meta: dict
+    body: str
+    plan: tuple[dict, str] | None = None
+    errors: list[str] = field(default_factory=list)
+
+    @property
+    def id(self) -> str:
+        return self.dir.name
+
+    @property
+    def number(self) -> str:
+        return self.id.split("-", 1)[0]
+
+    @property
+    def status(self) -> str:
+        return str(self.meta.get("status", ""))
+
+    def acs(self) -> list[AC]:
+        text = sections(self.body).get("acceptance criteria", "")
+        return [AC(m.group(2), m.group(3), bool(m.group(1))) for m in map(AC_LINE.match, text.splitlines()) if m]
+
+    def active_acs(self) -> list[str]:
+        return [a.id for a in self.acs() if not a.withdrawn]
+
+    def open_questions(self) -> list[str]:
+        text = sections(self.body).get("open questions", "")
+        items = [ln.strip()[2:].strip() for ln in text.splitlines() if re.match(r"^\s*[-*]\s+\S", ln)]
+        return [i for i in items if not i.startswith("~~") and i.rstrip(".").lower() not in {"none", "n/a"}]
+
+    def ac_hash(self) -> str:
+        text = sections(self.body).get("acceptance criteria", "")
+        return hashlib.sha256(" ".join(text.split()).encode()).hexdigest()[:12]
+
+
+# ---------------- discovery ----------------
+
+def specs_dir(root: Path) -> Path:
+    return root / SPECS_DIR
+
+
+def all_specs(root: Path) -> list[Spec]:
+    d = specs_dir(root)
+    return [read(p) for p in sorted(d.iterdir()) if (p / "spec.md").is_file()] if d.is_dir() else []
+
+
+def read(sdir: Path) -> Spec:
+    meta, body = load(sdir / "spec.md")
+    plan = load(sdir / "plan.md") if (sdir / "plan.md").is_file() else None
+    return Spec(sdir, meta, body, plan)
+
+
+def find(root: Path, ref: str) -> Spec:
+    """A spec by full id (`007-price-alerts`), number (`007`, `7`) or slug."""
+    specs = all_specs(root)
+    num = ref.zfill(3) if ref.isdigit() else None
+    hits = [s for s in specs if s.id == ref or s.number == num or s.id.split("-", 1)[1] == ref]
+    if len(hits) != 1:
+        known = ", ".join(s.id for s in specs) or "none"
+        raise PlatformError(f"no single spec matches '{ref}' (specs: {known})", hint="run `cplat spec list`")
+    return hits[0]
+
+
+def next_number(root: Path) -> int:
+    nums = [int(s.number) for s in all_specs(root)]
+    backlog = root / BACKLOG
+    if backlog.is_file():  # continue after legacy STORY-NNN ids so old references stay unique
+        nums += [int(n) for n in re.findall(r"STORY-(\d+)", backlog.read_text())]
+    return max(nums, default=0) + 1
+
+
+def slugify(text: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    if len(slug) > 40:  # cut at a word boundary
+        slug = slug[:41].rsplit("-", 1)[0] if "-" in slug[:41] else slug[:40]
+    return slug.rstrip("-") or "spec"
+
+
+def repo_shape(root: Path) -> str | None:
+    import shapecmd
+    try:
+        return shapecmd.route(root)["shape"]
+    except PlatformError:
+        return None  # shape-less repo (the platform itself): specs work, shape matching is skipped
+
+
+def test_globs(shape: str | None) -> list[str]:
+    entry = next((s for s in core.registry.load() if s["id"] == shape), None) if shape else None
+    return (entry or {}).get("test_globs") or DEFAULT_TEST_GLOBS
+
+
+# ---------------- check ----------------
+
+def check(spec: Spec, *, require: str | None = None, shape: str | None = None) -> list[str]:
+    errs: list[str] = []
+    meta = spec.meta
+    for k in ("spec_id", "title", "status", "priority"):
+        if k not in meta:
+            errs.append(f"spec.md: missing key '{k}'")
+    if not SPEC_ID.match(spec.id):
+        errs.append(f"folder '{spec.id}' must be <NNN>-<slug> (lowercase, hyphens)")
+    if meta.get("spec_id") != spec.id:
+        errs.append(f"spec.md: spec_id '{meta.get('spec_id')}' must equal the folder name '{spec.id}'")
+    if spec.status not in STATUSES:
+        errs.append(f"spec.md: status must be one of {STATUSES}")
+    if meta.get("priority") not in PRIORITIES:
+        errs.append(f"spec.md: priority must be one of {sorted(PRIORITIES)}")
+    known = {s["id"] for s in core.registry.load()}
+    if meta.get("shape") and meta["shape"] not in known:
+        errs.append(f"spec.md: unknown shape '{meta['shape']}' (valid: {', '.join(sorted(known))})")
+    if shape and meta.get("shape") and meta["shape"] != shape:
+        errs.append(f"spec.md: shape '{meta['shape']}' but this repo is '{shape}'")
+    acs = spec.acs()
+    ids = [a.id for a in acs]
+    for dup in sorted({i for i in ids if ids.count(i) > 1}):
+        errs.append(f"duplicate acceptance criterion {dup}")
+    for a in acs:
+        if a.spec_no != spec.number:
+            errs.append(f"{a.id} belongs to spec {a.spec_no}, not {spec.number} (ids are AC-{spec.number}.<n>)")
+    rank = RANK.get(spec.status, -1)  # superseded has no rank: it never satisfies --require
+    if require and rank < RANK[require]:
+        errs.append(f"status is '{spec.status}', needs '{require}' or later"
+                    + (f" — approve it with `/svc:spec approve {spec.number}`" if require == "approved" else ""))
+    if spec.status == "superseded":
+        return errs
+    if rank >= RANK["approved"]:
+        if not spec.active_acs():
+            errs.append("an approved spec needs at least one acceptance criterion (AC-<NNN>.<n>)")
+        if spec.open_questions():
+            errs.append(f"{len(spec.open_questions())} open question(s) left; answer them before approving")
+    if spec.plan:
+        errs += [f"plan.md: {e}" for e in check_plan(spec, *spec.plan)]
+    return errs
+
+
+def check_plan(spec: Spec, meta: dict, _body: str) -> list[str]:
+    errs: list[str] = []
+    for k in ("spec_id", "spec_hash", "tasks"):
+        if k not in meta:
+            errs.append(f"missing key '{k}'")
+    if errs:
+        return errs
+    if meta["spec_id"] != spec.id:
+        errs.append(f"spec_id '{meta['spec_id']}' must be '{spec.id}'")
+    if spec.meta.get("shape") and meta.get("shape") != spec.meta["shape"]:
+        errs.append(f"shape '{meta.get('shape')}' must equal the spec's shape '{spec.meta['shape']}'")
+    if meta["spec_hash"] != spec.ac_hash():
+        errs.append("the acceptance criteria changed after this plan was written; re-plan with `/svc:plan "
+                    f"{spec.number}` (or set spec_hash: {spec.ac_hash()} if the change does not affect the tasks)")
+    tasks = meta["tasks"]
+    if not isinstance(tasks, list) or not tasks:
+        return errs + ["tasks must be a non-empty list"]
+    tids = [t.get("id") for t in tasks]
+    if len(tids) != len(set(tids)):
+        errs.append("duplicate task ids")
+    active, all_ids = set(spec.active_acs()), {a.id for a in spec.acs()}
+    covered: set[str] = set()
+    for t in tasks:
+        tid = t.get("id", "<no id>")
+        for k in ("id", "title", "files", "covers", "parallel_safe", "depends_on"):
+            if k not in t:
+                errs.append(f"task {tid}: missing '{k}'")
+        for d in t.get("depends_on") or []:
+            if d not in tids:
+                errs.append(f"task {tid}: depends_on unknown task '{d}'")
+        for c in t.get("covers") or []:
+            if c not in all_ids:
+                errs.append(f"task {tid}: covers unknown criterion '{c}'")
+            elif c not in active:
+                errs.append(f"task {tid}: covers withdrawn criterion '{c}'")
+        covered |= set(t.get("covers") or [])
+        if "done" in t and not isinstance(t["done"], bool):
+            errs.append(f"task {tid}: done must be true/false")
+    for a in sorted(active - covered):
+        errs.append(f"{a} is not covered by any task")
+    if errs:
+        return errs
+    try:
+        levels = topo_levels(tasks)
+    except PlatformError as e:
+        return [str(e)]
+    by_id = {t["id"]: t for t in tasks}
+    for level in levels:
+        par = [by_id[i] for i in level if by_id[i].get("parallel_safe")]
+        for i, a in enumerate(par):
+            for b in par[i + 1:]:
+                both = sorted(set(a["files"]) & set(b["files"]))
+                if both:
+                    errs.append(f"tasks {a['id']} and {b['id']} are parallel_safe at the same level but share {', '.join(both)}")
+    return errs
+
+
+def topo_levels(tasks: list[dict]) -> list[list[str]]:
+    deps = {t["id"]: set(t.get("depends_on") or []) for t in tasks}
+    levels: list[list[str]] = []
+    done: set[str] = set()
+    while len(done) < len(deps):
+        ready = sorted(i for i, d in deps.items() if i not in done and d <= done)
+        if not ready:
+            raise PlatformError("dependency cycle among tasks: " + ", ".join(sorted(set(deps) - done)))
+        levels.append(ready)
+        done |= set(ready)
+    return levels
+
+
+# ---------------- trace ----------------
+
+def trace(root: Path, spec: Spec, globs: list[str]) -> dict[str, list[str]]:
+    """AC id -> test files that mention it (by name or comment). `AC-007.1` never matches `AC-007.10`."""
+    files = sorted({p for g in globs for p in root.glob(g) if p.is_file() and not _ignored(p.relative_to(root))})
+    texts = {p: p.read_text(errors="ignore") for p in files}
+    out: dict[str, list[str]] = {}
+    for ac in spec.active_acs():
+        pat = re.compile(re.escape(ac) + r"(?!\d)")
+        out[ac] = [str(p.relative_to(root)) for p, t in texts.items() if pat.search(t)]
+    return out
+
+
+def _ignored(rel: Path) -> bool:
+    return any(part in {"node_modules", ".venv", ".devbox", ".git", "target", "dist", ".next"} for part in rel.parts)
+
+
+# ---------------- writing ----------------
+
+def today() -> str:
+    return dt.date.today().isoformat()
+
+
+def add_changelog(body: str, line: str) -> str:
+    entry = f"- {today()} {line}\n"
+    m = re.search(r"^## +Changelog\s*$", body, re.M)
+    if not m:
+        return body.rstrip("\n") + f"\n\n## Changelog\n\n{entry}"
+    nxt = SECTION.search(body, m.end())
+    end = nxt.start() if nxt else len(body)
+    head = body[:end].rstrip("\n")
+    return f"{head}\n{entry}" + ("\n" + body[end:] if nxt else "")
+
+
+def skeleton(number: str, title: str) -> str:
+    return f"""
+# {number} — {title}
+
+## Problem
+
+<!-- Who has the problem, what it costs them today, why now. -->
+
+## Stories
+
+<!-- As a <persona>, I want <goal>, so that <benefit>. -->
+
+## Acceptance criteria
+
+<!-- One line each, ids never reused or renumbered; withdraw with ~~**AC-{number}.n**~~ and a reason.
+- **AC-{number}.1** Given <context>, when <action>, then <observable outcome>. -->
+
+## Non-goals
+
+## Open questions
+
+<!-- One bullet per question the user must answer; approval is refused while any is open. Strike answered ones (~~…~~) and fold the answer into the criteria. -->
+
+## Changelog
+
+- {today()} created
+"""
+
+
+def new(root: Path, title: str, *, shape: str | None, priority: str, tracks: list[int], parent: str | None) -> Spec:
+    number = f"{next_number(root):03d}"
+    sdir = specs_dir(root) / f"{number}-{slugify(title)}"
+    if sdir.exists():
+        raise PlatformError(f"{sdir} already exists")
+    sdir.mkdir(parents=True)
+    meta = {"spec_id": sdir.name, "title": title, "status": "draft", "priority": priority}
+    if shape:
+        meta["shape"] = shape
+    if tracks:
+        meta["tracks"] = tracks
+    if parent:
+        meta["parent"] = parent
+    save(sdir / "spec.md", meta, skeleton(number, title))
+    return read(sdir)
+
+
+def approve(spec: Spec, shape: str | None) -> None:
+    if spec.status != "draft":
+        raise PlatformError(f"{spec.id} is '{spec.status}', only a draft can be approved")
+    trial = Spec(spec.dir, {**spec.meta, "status": "approved"}, spec.body, spec.plan)
+    errs = check(trial, shape=shape)
+    if errs:
+        raise PlatformError(f"{spec.id} cannot be approved: " + "; ".join(errs),
+                            hint=f"fix the spec (`/svc:spec --amend {spec.number}`), then approve again")
+    spec.meta["status"] = "approved"
+    save(spec.dir / "spec.md", spec.meta, add_changelog(spec.body, "approved"))
+
+
+def set_status(spec: Spec, status: str, reason: str | None) -> None:
+    if status not in TRANSITIONS.get(spec.status, set()):
+        allowed = ", ".join(sorted(TRANSITIONS.get(spec.status, set()))) or "none"
+        raise PlatformError(f"{spec.id}: '{spec.status}' -> '{status}' is not allowed (allowed: {allowed})",
+                            hint="draft -> approved goes through `cplat spec approve`")
+    spec.meta["status"] = status
+    save(spec.dir / "spec.md", spec.meta, add_changelog(spec.body, status + (f": {reason}" if reason else "")))
+
+
+def task_done(spec: Spec, task_id: str) -> None:
+    if not spec.plan:
+        raise PlatformError(f"{spec.id} has no plan.md")
+    meta, body = spec.plan
+    task = next((t for t in meta.get("tasks") or [] if t.get("id") == task_id), None)
+    if task is None:
+        raise PlatformError(f"{spec.id}: unknown task '{task_id}'")
+    task["done"] = True
+    save(spec.dir / "plan.md", meta, body)
+
+
+# ---------------- list / index ----------------
+
+def next_step(spec: Spec, prefix: str = "/svc") -> str:
+    n = spec.number
+    if spec.status == "draft":
+        return f"{prefix}:spec --amend {n}" if spec.open_questions() or not spec.active_acs() else f"{prefix}:spec approve {n}"
+    if spec.status == "approved" and not spec.plan:
+        return f"{prefix}:plan {n}"
+    if spec.status in {"approved", "building"}:
+        return f"{prefix}:build {n}"
+    return "—"
+
+
+def summary(root: Path, spec: Spec) -> dict:
+    tasks = (spec.plan[0].get("tasks") or []) if spec.plan else []
+    return {"id": spec.id, "title": spec.meta.get("title", ""), "status": spec.status,
+            "priority": spec.meta.get("priority", ""), "acs": len(spec.active_acs()),
+            "open_questions": len(spec.open_questions()), "tasks": len(tasks),
+            "tasks_done": sum(1 for t in tasks if t.get("done")), "tracks": spec.meta.get("tracks") or [],
+            "next": next_step(spec), "path": str(spec.dir.relative_to(root))}
+
+
+def index_table(root: Path) -> str:
+    rows = sorted((summary(root, s) for s in all_specs(root)),
+                  key=lambda r: (r["status"] in {"done", "superseded"}, r["priority"], r["id"]))
+    lines = ["| Spec | Priority | Status | Criteria | Tracks |", "|---|---|---|---|---|"]
+    for r in rows:
+        tracks = ", ".join(f"#{t}" for t in r["tracks"]) or ""
+        lines.append(f"| [{r['id']}]({Path('specs') / r['id'] / 'spec.md'}) — {r['title']} | {r['priority']} | "
+                     f"{r['status']} | {r['acs']} | {tracks} |")
+    if not rows:
+        lines.append("| (no specs yet: `/svc:spec <description>`) | | | | |")
+    return "\n".join(lines)
+
+
+def write_index(root: Path) -> Path:
+    """Regenerate the block between the spec-index markers in docs/backlog.md; the rest of the file is kept."""
+    path = root / BACKLOG
+    block = f"{START}\n<!-- generated by `cplat spec index`; edit docs/specs/<id>/spec.md, not this table -->\n{index_table(root)}\n{END}"
+    text = path.read_text() if path.is_file() else "# Backlog\n\nOne line per feature spec; the specs live in `docs/specs/`.\n\n"
+    if START in text and END in text:
+        text = text[:text.index(START)] + block + text[text.index(END) + len(END):]
+    elif re.search(r"^#{2,4} +STORY-\d+", text, re.M):
+        raise PlatformError("docs/backlog.md still holds STORY-NNN stories", hint="convert them first: `cplat spec migrate --write`")
+    else:
+        text = text.rstrip("\n") + "\n\n" + block + "\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return path
+
+
+# ---------------- migrate (legacy backlog.md stories -> spec folders) ----------------
+
+STORY_HEAD = re.compile(r"^#### +STORY-(\d+)\s*(?:—|-|:)\s*(.+?)\s*$", re.M)
+STATUS_MAP = {"done": "done", "in progress": "building", "in_progress": "building"}
+
+
+def parse_stories(text: str) -> list[dict]:
+    heads = list(STORY_HEAD.finditer(text))
+    out = []
+    for i, m in enumerate(heads):
+        end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
+        nxt = re.compile(r"^#{1,4} ", re.M).search(text, m.end())
+        end = min(end, nxt.start() if nxt else end)
+        block = text[m.end():end]
+        meta_line = next((ln for ln in block.strip().splitlines() if ln.startswith("**Status:**")), "")
+        fields = dict(re.findall(r"\*\*([A-Za-z ]+):\*\*\s*([^·]+?)\s*(?=·|$)", meta_line))
+        crit_raw = block.split("**Acceptance criteria:**", 1)[1] if "**Acceptance criteria:**" in block else ""
+        crits = [re.sub(r"^\s*[-*]\s+(\[[ xX]\]\s+)?", "", ln).strip() for ln in crit_raw.splitlines() if re.match(r"^\s*[-*]\s+", ln)]
+        story = block.split("**Acceptance criteria:**", 1)[0].replace(meta_line, "").strip()
+        out.append({"number": f"{int(m.group(1)):03d}", "title": m.group(2), "start": m.start(), "end": end,
+                    "status": fields.get("Status", "open").strip().lower(), "priority": fields.get("Priority", "P1").strip(),
+                    "tracks": [int(t) for t in re.findall(r"#(\d+)", fields.get("Tracks", ""))],
+                    "meta_line": meta_line.strip(), "story": story, "criteria": crits})
+    return out
+
+
+def migrate_plan(root: Path, shape: str | None) -> tuple[list[tuple[Path, dict, str]], str]:
+    """(spec files to write, new backlog.md text). Pure: writes nothing."""
+    path = root / BACKLOG
+    text = path.read_text() if path.is_file() else ""
+    stories = parse_stories(text)
+    legacy_plans: dict[str, str] = {}
+    plan_dir = root / "docs" / "plan"
+    for p in sorted(plan_dir.glob("*.md")) if plan_dir.is_dir() else []:
+        try:
+            meta, _ = load(p)
+        except PlatformError:
+            continue
+        for sid in meta.get("stories") or []:
+            legacy_plans.setdefault(str(sid).replace("STORY-", "").zfill(3), str(p.relative_to(root)))
+    files = []
+    for s in stories:
+        sid = f"{s['number']}-{slugify(s['title'])}"
+        meta = {"spec_id": sid, "title": s["title"], "status": STATUS_MAP.get(s["status"], "draft"),
+                "priority": s["priority"] if s["priority"] in PRIORITIES else "P1"}
+        if shape:
+            meta["shape"] = shape
+        if s["tracks"]:
+            meta["tracks"] = s["tracks"]
+        acs = "\n".join(f"- **AC-{s['number']}.{i}** {c}" for i, c in enumerate(s["criteria"], 1)) or \
+            f"<!-- none in the legacy story; add AC-{s['number']}.1 … before approving -->"
+        refs = [f"- Legacy metadata: {s['meta_line']}"] if s["meta_line"] else []
+        if s["number"] in legacy_plans:
+            refs.append(f"- Legacy plan: `{legacy_plans[s['number']]}`")
+        body = (f"\n# {s['number']} — {s['title']}\n\n## Stories\n\n{s['story'] or '<!-- none -->'}\n\n"
+                f"## Acceptance criteria\n\n{acs}\n\n## Non-goals\n\n## Open questions\n\n"
+                + ("## References\n\n" + "\n".join(refs) + "\n\n" if refs else "")
+                + f"## Changelog\n\n- {today()} migrated from STORY-{s['number']} in docs/backlog.md\n")
+        files.append((specs_dir(root) / sid / "spec.md", meta, body))
+    rest = text
+    for i, s in reversed(list(enumerate(stories))):  # the index takes the place of the first story
+        rest = rest[:s["start"]] + (f"{START}\n{END}\n\n" if i == 0 else "") + rest[s["end"]:]
+    return files, _drop_empty_headings(rest)
+
+
+def _drop_empty_headings(text: str) -> str:
+    """Remove `##`/`###` headings whose section is left empty after the stories moved out.
+
+    Empty means: only blank lines or `---` rules before the next heading of the same or a higher level, the index
+    marker, or the end of the file. A heading whose content is a sub-heading is kept.
+    """
+    lines = text.split("\n")
+    changed = True
+    while changed:
+        changed = False
+        for i, ln in enumerate(lines):
+            m = re.match(r"^(#{2,3}) ", ln)
+            if not m:
+                continue
+            j = i + 1
+            while j < len(lines) and lines[j].strip() in {"", "---"}:
+                j += 1
+            nxt = re.match(r"^(#{1,6}) ", lines[j]) if j < len(lines) else None
+            if j == len(lines) or lines[j] == START or (nxt and len(nxt.group(1)) <= len(m.group(1))):
+                del lines[i:j]
+                changed = True
+                break
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+
+
+def migrate(root: Path, shape: str | None, write: bool) -> list[str]:
+    files, rest = migrate_plan(root, shape)
+    if not files:
+        raise PlatformError("docs/backlog.md has no STORY-NNN stories to migrate")
+    clash = [str(p.parent.relative_to(root)) for p, _, _ in files if p.exists()]
+    if clash:
+        raise PlatformError("spec folders already exist: " + ", ".join(clash))
+    lines = [f"{'create' if write else 'would create'} {p.relative_to(root)}  [{m['status']}, {body.count('**AC-')} criteria]"
+             for p, m, body in files]
+    if write:
+        for p, meta, body in files:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            save(p, meta, body)
+        (root / BACKLOG).write_text(rest)
+        write_index(root)
+        lines.append(f"rewrote {BACKLOG} as the spec index (non-story sections kept)")
+    else:
+        lines.append(f"would rewrite {BACKLOG} as the spec index; run again with --write")
+    return lines
+
+
+# ---------------- CLI ----------------
+
+def _print_errors(results: dict[str, list[str]]) -> int:
+    bad = 0
+    for sid, errs in results.items():
+        for e in errs:
+            print(f"ERROR: {sid}: {e}")
+            bad += 1
+    print(f"OK: {len(results)} spec(s) valid" if not bad else f"{bad} error(s)")
+    return 1 if bad else 0
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="cplat spec", description=__doc__)
+    ap.add_argument("--repo", default=".")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("new", help="create docs/specs/<NNN>-<slug>/spec.md (draft)")
+    p.add_argument("title", nargs="+")
+    p.add_argument("--priority", default="P1", choices=sorted(PRIORITIES))
+    p.add_argument("--tracks", type=int, nargs="*", default=[])
+    p.add_argument("--parent")
+    p.add_argument("--no-shape", action="store_true", help="do not record the repo's shape")
+    p = sub.add_parser("check", help="validate specs and plans (all if none given)")
+    p.add_argument("ids", nargs="*")
+    p.add_argument("--require", choices=list(RANK))
+    p = sub.add_parser("approve", help="check a draft and set it approved")
+    p.add_argument("id")
+    p = sub.add_parser("set-status")
+    p.add_argument("id")
+    p.add_argument("status", choices=STATUSES)
+    p.add_argument("--reason")
+    p = sub.add_parser("task-done")
+    p.add_argument("id")
+    p.add_argument("task")
+    p = sub.add_parser("hash", help="print the acceptance-criteria hash a plan records as spec_hash")
+    p.add_argument("id")
+    p = sub.add_parser("trace", help="every active criterion must be named by at least one test")
+    p.add_argument("id")
+    p.add_argument("--json", action="store_true")
+    sub.add_parser("index", help="regenerate the spec table in docs/backlog.md")
+    p = sub.add_parser("list")
+    p.add_argument("--all", action="store_true", help="include done and superseded")
+    p.add_argument("--json", action="store_true")
+    p = sub.add_parser("migrate", help="convert STORY-NNN stories in docs/backlog.md into spec folders")
+    p.add_argument("--write", action="store_true", help="without it, only show what would happen")
+    ns = ap.parse_args(argv)
+    root = Path(ns.repo).resolve()
+
+    if ns.cmd == "new":
+        spec = new(root, " ".join(ns.title), shape=None if ns.no_shape else repo_shape(root),
+                   priority=ns.priority, tracks=ns.tracks, parent=ns.parent)
+        print(spec.dir.relative_to(root) / "spec.md")
+        return 0
+    if ns.cmd == "check":
+        specs = [find(root, i) for i in ns.ids] if ns.ids else all_specs(root)
+        shape = repo_shape(root)
+        return _print_errors({s.id: check(s, require=ns.require, shape=shape) for s in specs})
+    if ns.cmd == "approve":
+        spec = find(root, ns.id)
+        approve(spec, repo_shape(root))
+        print(f"{spec.id}: approved")
+        return 0
+    if ns.cmd == "set-status":
+        spec = find(root, ns.id)
+        set_status(spec, ns.status, ns.reason)
+        print(f"{spec.id}: {ns.status}")
+        return 0
+    if ns.cmd == "task-done":
+        spec = find(root, ns.id)
+        task_done(spec, ns.task)
+        print(f"{spec.id}: {ns.task} done")
+        return 0
+    if ns.cmd == "hash":
+        print(find(root, ns.id).ac_hash())
+        return 0
+    if ns.cmd == "trace":
+        spec = find(root, ns.id)
+        result = trace(root, spec, test_globs(spec.meta.get("shape") or repo_shape(root)))
+        missing = [a for a, f in result.items() if not f]
+        if ns.json:
+            print(json.dumps({"spec": spec.id, "criteria": result, "missing": missing}, indent=2))
+        else:
+            for ac, found in result.items():
+                print(f"{'ok  ' if found else 'MISS'} {ac}  {', '.join(found) or '(no test names it)'}")
+            print(f"{len(result) - len(missing)}/{len(result)} criteria traced to tests")
+        return 1 if missing else 0
+    if ns.cmd == "index":
+        print(write_index(root).relative_to(root))
+        return 0
+    if ns.cmd == "list":
+        rows = [summary(root, s) for s in all_specs(root) if ns.all or s.status not in {"done", "superseded"}]
+        if ns.json:
+            print(json.dumps(rows, indent=2))
+        elif not rows:
+            print("(no open specs — start one with `/svc:spec <description>`)")
+        else:
+            for r in rows:
+                tasks = f"{r['tasks_done']}/{r['tasks']} tasks" if r["tasks"] else "no plan"
+                oq = f", {r['open_questions']} open q" if r["open_questions"] else ""
+                print(f"{r['id']:40} {r['priority']:3} {r['status']:10} {r['acs']:>2} AC{oq:12} {tasks:12} next: {r['next']}")
+        return 0
+    if ns.cmd == "migrate":
+        for line in migrate(root, repo_shape(root), ns.write):
+            print(line)
+        return 0
+    return 2

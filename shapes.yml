@@ -8,6 +8,7 @@ shapes:
     plugin: svc
     template: service-python
     deployable: true
+    test_globs: ["tests/**/*.py"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: false
     detection:
       copier_src: templates/service-python
@@ -32,6 +33,7 @@ shapes:
     plugin: svc
     template: library-python
     deployable: false
+    test_globs: ["tests/**/*.py"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: true
     detection:
       copier_src: templates/library-python
@@ -47,6 +49,7 @@ shapes:
     plugin: web
     template: web-nextjs
     deployable: true
+    test_globs: ["tests/**/*.ts", "tests/**/*.tsx", "e2e/**/*.ts"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: false
     detection:
       copier_src: templates/web-nextjs
@@ -72,6 +75,7 @@ shapes:
     plugin: gitops
     template: gitops-app
     deployable: false
+    test_globs: ["tests/**/*"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: false
     detection:
       copier_src: templates/gitops-app
@@ -86,6 +90,7 @@ shapes:
     plugin: svc-java
     template: service-java
     deployable: true
+    test_globs: ["src/test/**/*.java"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: false
     detection:
       copier_src: templates/service-java
@@ -112,6 +117,7 @@ shapes:
     plugin: svc-go
     template: service-go
     deployable: true
+    test_globs: ["**/*_test.go"]   # where `cplat spec trace` looks for AC ids (ADR-026)
     library: false
     detection:
       copier_src: templates/service-go

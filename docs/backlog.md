@@ -442,6 +442,78 @@ As a founder, I want a plan to be explicitly approved before `build-feature` con
 - [ ] `/svc:build-feature --plan <path>` refuses a plan that is not `approved` and says how to approve it; without `--plan` the command is unchanged.
 - [ ] The multi-repo plan lifecycle of ADR-011 (`draft` → `in_progress` → `completed`) is unchanged; this status belongs to single-repo plans only, and the docs say how the two differ.
 
+## Epic H. Spec-driven development ([ADR-026](adr/026-feature-specs.md))
+
+#### STORY-037: Specs are checked by code, not by prose
+**Status:** done · **Priority:** P0 · **Source:** user request 2026-10-08 · **ADR:** [026](adr/026-feature-specs.md) · **Code:** `scripts/cplat/spec.py`
+
+As a founder, I want every check and state change of a feature spec to be a tested `cplat spec` subcommand, so that commands and agents cannot skip or misread the rules.
+
+**Acceptance criteria:**
+- [ ] `cplat spec new <title>` creates `docs/specs/<NNN>-<slug>/spec.md` as `draft`; the number continues the highest spec or legacy `STORY-NNN` id; the repo's shape is recorded when it has one.
+- [ ] `cplat spec check [--require STATUS]` validates spec front matter, criterion ids (`AC-<NNN>.<n>`, unique, of this spec), the repo's shape, and, when `plan.md` exists: every active criterion covered by a task, no withdrawn or unknown criterion covered, no dependency cycle, no shared file between parallel-safe tasks of one level, and `spec_hash` equal to the current criteria.
+- [ ] `cplat spec approve` refuses a spec with open questions or without criteria; other transitions go through `set-status` and are restricted (`approved → building → done`, back to `draft` to amend, `superseded` from anywhere).
+- [ ] `cplat spec trace` lists, per active criterion, the test files that name it (`AC-007.1` never matches `AC-007.10`), using `test_globs` from `shapes.yml`, and exits 1 when one is missing.
+- [ ] `cplat spec index` regenerates the table between the spec-index markers in `docs/backlog.md` and keeps the rest; `cplat spec list` shows status, criteria, open questions, task progress and the next command.
+- [ ] `cplat spec migrate` converts legacy `STORY-NNN` stories (both heading styles) into spec folders with numbered criteria, keeps legacy metadata and plan links, removes headings left empty and keeps every other section; without `--write` it writes nothing.
+- [ ] Every shape in `shapes.yml` declares `test_globs`; `shapes.py check` fails without it.
+
+#### STORY-038: Agents share one spec format and stop guessing
+**Status:** planned · **Priority:** P0 · **Depends on:** STORY-037
+
+As a founder, I want the product-manager, architect, testers and a new reviewer to work from one format reference and to hand open questions back to me, so that specs are complete before they are approved.
+
+**Acceptance criteria:**
+- [ ] One format reference (a `spec-format` skill in the shared plugin) describes `spec.md`, `design.md`, `plan.md` and the per-shape test tagging; agents link to it instead of restating formats.
+- [ ] The product-manager is shape-agnostic, writes `spec.md`, and returns unanswered questions in `## Open questions` instead of assuming.
+- [ ] The architect writes `design.md` (with the contract) and `plan.md` with `covers` and `spec_hash`, and fixes every `cplat spec check` error before returning.
+- [ ] Every tester (svc, web, svc-java, svc-go) has an acceptance mode that writes failing tests tagged with criterion ids before the code exists.
+- [ ] A read-only `reviewer` agent compares the diff with the criteria, non-goals and plan and writes `verification.md`; `cplat shape` routes it.
+
+#### STORY-039: svc commands follow spec, plan, build, verify
+**Status:** planned · **Priority:** P0 · **Depends on:** STORY-038
+
+As a contributor, I want `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify` and `/svc:specs`, so that each step of a feature has one obvious command and the build is driven by approved criteria.
+
+**Acceptance criteria:**
+- [ ] `/svc:spec` asks me the open questions in the session before it ends; `/svc:spec approve <id>` approves and commits.
+- [ ] `/svc:plan <id>` refuses a spec that is not approved.
+- [ ] `/svc:build <id>` commits failing acceptance tests first, then implements until they pass, marks tasks done as it goes (a re-run resumes), verifies, and opens a PR that lists the spec and its criteria.
+- [ ] `/svc:quick-task` and `/svc:fix-bug` update the spec whose criteria their change alters.
+- [ ] `/svc:build-feature` and `/svc:plan-feature` are removed (svc 3.0.0) and the CHANGELOG maps old to new.
+
+#### STORY-040: Product specs are split into per-repo specs
+**Status:** planned · **Priority:** P1 · **Depends on:** STORY-039
+
+As a founder, I want `/app:spec`, `/app:plan`, `/app:build` and `/app:specs` to give each component repo its own slice of the product spec, so that every repo builds from criteria instead of a free-text prompt.
+
+**Acceptance criteria:**
+- [ ] The product plan lists per repo the criteria it implements and the contract; `plan-check` validates them.
+- [ ] `cplat spec new --from <product-spec> <repo-id>` writes the repo's `spec.md` with `parent:` set.
+- [ ] `app` 1.0.0 replaces `build-feature`, `run-plan` and `plans`; ADR-011 is amended.
+
+#### STORY-041: Templates ship the spec contract
+**Status:** planned · **Priority:** P1 · **Depends on:** STORY-039
+
+As a founder, I want every new repo to start with `docs/specs/`, the rule in `CLAUDE.md` and a `spec-check` CI job, so that the workflow is the default everywhere.
+
+**Acceptance criteria:**
+- [ ] Every template seeds `docs/specs/README.md`, a backlog with the index markers, and `docs/specs/**` in `_skip_if_exists`.
+- [ ] Every template's `CLAUDE.md` "Spec first" section names the new commands.
+- [ ] A `spec-check` CI job runs `cplat spec check`; it warns in this major.
+- [ ] `shapes.py check` and the template tests enforce all three.
+
+#### STORY-042: The plugin is quick to use and dogfooded
+**Status:** planned · **Priority:** P1 · **Depends on:** STORY-039
+
+As a contributor, I want commands to run the `cplat` version that matches my plugins without a network fetch, to tell me the next step, and the platform to use its own spec workflow, so that the plugin is fast, predictable and proven.
+
+**Acceptance criteria:**
+- [ ] Commands resolve `cplat` from the installed marketplace checkout first and otherwise from a cache pinned to a platform tag, never `main`.
+- [ ] `/svc:specs` and every stop of `/svc:build` print the next command.
+- [ ] This repo's backlog is migrated with `cplat spec migrate`, and platform changes start with `/svc:spec`.
+- [ ] `docs/AGENTS.md`, `docs/USER-JOURNEY.md`, `docs/HOW-IT-WORKS.md` and the plugin READMEs describe the new flow; the drift found in the review is fixed (product-manager model, non-existent gitops agents, heading styles).
+
 ## Not built (specified in the PRD, absent from the code)
 
 | Item | PRD ref | State | Evidence |
