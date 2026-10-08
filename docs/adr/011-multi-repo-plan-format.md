@@ -97,3 +97,11 @@ A final section describes the gitops-app PR that pins the resulting image tags.
 - `/app:build-feature` and `/app:plans` ship in their own marketplace plugin, **`app`** (a plugin's name is the slash-command namespace), enabled by the `gitops-app` template next to `gitops`, `svc` and `shared`.
 - Validation and lifecycle edits are implemented by `scripts/plan.py` **in the `gitops-app` template** (not the platform repo), so every application repo has it: `devbox run plan-check` (also part of `devbox run validate`, hence CI), and `plan.py list|show|start|done|abandon`. The platform repo tests it in `scripts/test-plan.sh` against `tests/fixtures/plans/`.
 - `/svc:build-feature --from-plan` runs in a *component* repo, so it never edits the plan file. The user (or `/app:plans`) records progress in the gitops-app repo with `/app:plans start <slug>` and `/app:plans done <slug> <repo-id>`.
+
+## Amendment (ADR-026, app 1.0.0)
+
+- A plan is made from an approved **product spec** (`docs/specs/<spec_id>/spec.md` in the gitops-app repo): `plan_id` is the spec id, the file is `docs/plan/<spec_id>.md`, and the new key `spec: <spec_id>` links them.
+- Each repo lists the product criteria it implements, `acs: [AC-<NNN>.<n>, …]`; `plan-check` fails when an active criterion is assigned to no repo, or a withdrawn or unknown one is assigned. `arguments` becomes optional notes for that repo. The contract between repos is the plan body's `## Contract` section (or the spec's `design.md`).
+- A component repo consumes its entry with `/svc:spec --from-plan <plan> <repo-id>`: `cplat spec new --from-plan` writes the repo's own spec (product problem, the assigned criteria verbatim, the contract, `parent:`), which is approved, planned and built like any other spec. `/svc:build-feature --from-plan` no longer exists.
+- Commands: `/app:spec` (product spec), `/app:plan` (this plan), `/app:build` (parallel waves, ADR-023) and `/app:specs` replace `/app:build-feature`, `/app:run-plan` and `/app:plans`.
+- Plans without `spec:` (written before ADR-026) stay valid with a required `arguments` prompt per repo, and are tracked the same way.

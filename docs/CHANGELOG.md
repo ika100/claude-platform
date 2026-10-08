@@ -6,13 +6,13 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
-- **BREAKING — svc 3.0.0: spec → plan → build → verify** ([ADR-026](adr/026-feature-specs.md), [STORY-038](backlog.md), [STORY-039](backlog.md); app 0.3.0, shared 0.10.0, web/svc-java/svc-go 0.2.4). A feature is a folder `docs/specs/<NNN>-<slug>/` and is built only from an approved spec:
+- **BREAKING — svc 3.0.0 and app 1.0.0: spec → plan → build → verify** ([ADR-026](adr/026-feature-specs.md), [STORY-038](backlog.md), [STORY-039](backlog.md), [STORY-040](backlog.md); app 1.0.0, shared 0.10.0, web/svc-java/svc-go 0.2.4). A feature is a folder `docs/specs/<NNN>-<slug>/` and is built only from an approved spec:
   - `/svc:spec <desc>` — the product-manager writes `spec.md` (acceptance criteria `AC-<NNN>.<n>`, non-goals, open questions); the command asks **you** each open question, folds the answers in and asks for approval. `/svc:spec approve <id>`, `/svc:spec --amend <id> <change>`, `/svc:spec --from-plan <plan> <repo-id>` (multi-repo).
   - `/svc:plan <id>` — the architect writes `design.md` (contract) and `plan.md` (tasks that `cover` criteria); refused for unapproved specs; `cplat spec check` validates coverage, cycles, parallel file overlap and spec drift.
   - `/svc:build <id>` — the tester writes failing, criterion-tagged acceptance tests first; coders (parallel worktrees) work until they pass and never weaken them; quality ‖ tester ‖ security; the new read-only **reviewer** checks every criterion and writes `verification.md`; image; PR listing every criterion. Tasks are marked done as they merge, so a re-run resumes.
   - `/svc:verify [<id>]` (reviewer only, no code changes) and `/svc:specs [--all|index|migrate]` (status with the next command, backlog table, legacy migration).
   - New `svc:spec-format` skill holds every format; product-manager (opus, shape-agnostic) returns open questions instead of guessing; architect, testers (acceptance mode) and coders updated in all four code plugins. `/svc:quick-task` and `/svc:fix-bug` stop when a change would contradict a criterion.
-  - `/app:build-feature` writes an approved product spec before planning; per-repo hand-off and `/app:run-plan` use `/svc:spec --from-plan`. `/shared:triage` folds features into specs (`Tracked as spec <id>`). Bootstrap next steps, templates' `CLAUDE.md` and the seeded `docs/backlog.md` (now a generated spec index) follow.
+  - **app 1.0.0**: `/app:spec` writes the product spec in the gitops-app repo; `/app:plan` has the planner assign every product criterion to a repo (`acs:` per repo, `spec:` in the plan, ADR-011 amended; `plan-check` refuses an unassigned criterion) with the contract between them; `/app:build` builds every ready repo in parallel, each through its own spec slice; `/app:specs` tracks progress. `cplat spec new --from-plan <plan> <repo>` writes that slice deterministically (product problem, assigned criteria verbatim, contract, `parent:`). `/shared:triage` folds features into specs (`Tracked as spec <id>`). Bootstrap next steps, templates' `CLAUDE.md` and the seeded `docs/backlog.md` (now a generated spec index) follow.
   - `docs/AGENTS.md` fixed (product-manager model, gitops commands that have no agent) and tested against the agent files.
 
   **Migration**
@@ -24,6 +24,10 @@ Format: each section lists changes for a tagged release. Plugin and template ver
   | `/svc:build-feature <desc>` (one step) | `/svc:spec` → `/svc:plan` → `/svc:build` (no one-step path: a build needs an approved spec) |
   | `/svc:build-feature --no-pm <precise request>` | `/svc:spec <precise request>` (few or no questions), approve, plan, build |
   | `/svc:build-feature --from-plan <plan> <repo>` | `/svc:spec --from-plan <plan> <repo>` → `/svc:plan` → `/svc:build` |
+  | `/app:build-feature <desc>` | `/app:spec <desc>` → answer, approve → `/app:plan <id>` |
+  | `/app:run-plan <slug>` | `/app:build <id>` |
+  | `/app:plans list\|show\|start\|done\|abandon` | `/app:specs [--all\|show\|done\|abandon]` (`start` happens in `/app:build`) |
+  | multi-repo plan with free-text `arguments` per repo | `spec:` + `acs:` per repo (old plans stay valid) |
   | `STORY-NNN` in `docs/backlog.md`, plans in `docs/plan/` | `docs/specs/<NNN>-<slug>/`; `/svc:specs migrate` converts existing stories (numbers kept) |
 
   Update the plugins (`/plugin marketplace update`), then in each repo run `/shared:update-service` for the new `CLAUDE.md` rule. Repos with stories in `docs/backlog.md` run `/svc:specs migrate`; the project-owned backlog is never overwritten by the update.

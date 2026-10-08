@@ -207,7 +207,7 @@ def execute(req: dict) -> Report:
         r.next_steps.append(f"review and merge the pull request in {req['org']}/{req['app']}; then `cd {req['app']} && devbox run cluster-up`")
     elif names:
         r.next_steps.append(f"after the repos are on GitHub: {compose_cmd}")
-    r.next_steps.append(f'spec first: cd {req["app"]} and run /app:build-feature "<first feature of the product>", answer its questions and approve the product spec, review docs/plan/<slug>.md, then /app:run-plan <slug>')
+    r.next_steps.append(f'spec first: cd {req["app"]} and run /app:spec "<first feature of the product>" (answer, approve), then /app:plan <NNN> (review the plan) and /app:build <NNN>')
     r.next_steps.append("env wiring and exposure per service: /gitops:compose (see its --env and --expose)")
     r.data = {"app": req["app"], "repos": created, "composed": names if req["github"] else []}
     return r

@@ -27,6 +27,6 @@ The commands detect the repository's shape (Python, Java, Go, Next.js) and route
 
 ## Across repositories
 
-`/app:build-feature` run in the GitOps repository plans a feature that spans several services (a product spec, a validated and topologically sorted plan, per-repository hand-off commands) and `/app:plans` tracks it. Each repository turns its part into its own spec with `/svc:spec --from-plan`, or `/app:run-plan` does that for every ready repository; nothing merges without you ([ADR-007](/sdlc-foundry/reference/adr/007/), [ADR-023](/sdlc-foundry/reference/adr/023/)).
+In the GitOps repository, `/app:spec` writes a product spec, `/app:plan` assigns each of its criteria to a service (a validated, topologically sorted plan with the contract between services) and `/app:specs` tracks it. `/app:build` builds every ready repository in parallel, each through its own slice of the spec (`/svc:spec --from-plan` → `/svc:plan` → `/svc:build`); nothing merges without you ([ADR-007](/sdlc-foundry/reference/adr/007/), [ADR-023](/sdlc-foundry/reference/adr/023/)).
 
 See the [agent model](/sdlc-foundry/guides/agents/) for how the phases fit together.

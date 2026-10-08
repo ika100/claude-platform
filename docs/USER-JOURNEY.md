@@ -182,18 +182,14 @@ Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exact
 "Add billing" touches the API, the web app, maybe a shared models library. In `taskboard`:
 
 ```
-/app:build-feature "add billing with Stripe checkout"
+/app:spec "add billing with Stripe checkout"   # product spec: criteria across the product; answer, approve
+/app:plan 003                                  # which repo implements which criterion, in which order, the contract
+/app:build 003                                 # every ready repo in parallel, each ending at an open PR
 ```
 
-`/app:build-feature` plans (and `/app:run-plan` executes in parallel): it reads every registered service, has the product-manager write a product spec in `docs/specs/` (asking you its open questions and your approval), and the planner writes `docs/plan/add-billing….md` — repos in dependency order (library → API → web) with a paste-ready prompt for each and when to pin versions. It validates the plan and prints the hand-off:
+`/app:spec` writes one **product spec** in `docs/specs/` with criteria users of the product observe, asking you its open questions and for approval. `/app:plan` has the planner assign **every criterion to a repo** (`plan-check` refuses a plan that leaves one out), order the repos by real dependencies (library → API; an API and the web app that calls it run in parallel when the plan's `## Contract` section fixes the interface) and plan the version pins.
 
-```
-Level 1:  cd ../taskboard-api && /svc:spec --from-plan <plan> taskboard-api   then /svc:plan and /svc:build
-Level 2:  cd ../taskboard-web && /svc:spec --from-plan <plan> taskboard-web   then /svc:plan and /svc:build
-Then:     /gitops:promote taskboard-api taskboard-web dev staging
-```
-
-Track it with `/app:plans` (`list`, `show <slug>`, `start`, `done <slug> <repo>`, `abandon`). Each repo still goes through the normal PR flow of Chapter 3. To let the agents do the per-repo work, `/app:run-plan <slug>` builds every repo whose dependencies are done **in parallel** (one agent per repo, each ending at an open PR); you merge, it moves on to the next level. Repos that agree on an API contract up front (the plan's `## Contract` section) start together instead of one after the other.
+`/app:build` then starts one agent per ready repo **in parallel**. Each runs `/svc:spec --from-plan` in its repo: the platform writes the repo's own spec with the product criteria it owns and the contract, the product-manager turns them into the repo's criteria, and the normal Chapter 3 pipeline (`/svc:plan`, `/svc:build`) runs to an open PR. Questions a repo spec raises come back to you. You merge; it moves on to the next level and finally prints the `/gitops:promote` commands. By hand, the same per repo: `cd ../taskboard-api && /svc:spec --from-plan <plan> taskboard-api`, then `/svc:plan` and `/svc:build`. `/app:specs` shows the progress.
 
 ---
 
@@ -240,14 +236,14 @@ Everything here is a declaration in the GitOps repo; `render.py` turns it into m
                     /gitops:promote taskboard-api taskboard-web dev staging
 (in each service)   /svc:release                              → vX.Y.Z → semver image
 (in taskboard)      /gitops:promote taskboard-api taskboard-web staging prod
-(any time)          /app:build-feature "add billing"          → product spec + plan → /app:run-plan <slug>
+(any time)          /app:spec "add billing" → /app:plan → /app:build   (product spec → per-repo specs → PRs)
                     /shared:check-quality     /shared:update-service     /svc:fix-bug "…"
 ```
 
 ## Honest limits to mention when presenting
 
 - The deterministic work (`new-service`, `update-service`, `compose`, `promote`, `addon`, `secret`, `doctor`, `status`) is a tested script (`cplat`) with a preview; the slash commands that call it, and the agent pipelines (`/svc:*`), are Claude prompts: they follow the documented flow and ask before pushing or opening PRs, but their wording is not deterministic.
-- Cross-repo work is planned in one place and built per repo: `/app:build-feature` produces a validated plan; `/svc:spec --from-plan` (by you, or by `/app:run-plan`) turns each repo's part into its own spec, and nothing merges without you.
+- Cross-repo work is specified and planned in one place and built per repo: `/app:plan` produces a validated plan; `/svc:spec --from-plan` (by you, or by `/app:build`) turns each repo's part into its own spec, and nothing merges without you.
 - The cluster itself, ArgoCD installation and its repo/registry credentials are outside the platform; the only manual cluster step is `devbox run bootstrap` once (Chapter 1).
 - Skeleton updates overwrite customised skeleton files by design; the review branch is where you keep or restore your changes.
 - Operators (External Secrets, CloudNativePG, Kyverno) are installed by `cluster-up` on the local cluster only; real clusters need them installed by their owner. The Postgres addon has no backups, point-in-time recovery or pooling.

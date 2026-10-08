@@ -62,7 +62,7 @@ def test_done_repos_are_not_offered_again(repo):
 
 def test_json_carries_the_paste_ready_prompt(repo):
     out = json.loads(plan(repo, "ready", "billing", "--json").stdout)
-    assert {"id": "shop-api", "shape": "service-java", "summary": "billing API", "arguments": "build the API"} in out
+    assert {"id": "shop-api", "shape": "service-java", "summary": "billing API", "acs": [], "arguments": "build the API"} in out
 
 
 def test_text_output_names_the_wave(repo):
@@ -73,3 +73,75 @@ def test_text_output_names_the_wave(repo):
 def test_ready_rejects_abandoned_plans(repo):
     plan(repo, "abandon", "billing")
     assert plan(repo, "ready", "billing").returncode == 1
+
+
+# ---------------- plans made from a product spec (ADR-026) ----------------
+
+SPEC = """---
+spec_id: 012-billing
+title: Billing
+status: approved
+priority: P0
+shape: gitops-app
+---
+
+## Acceptance criteria
+
+- **AC-012.1** checkout returns a URL
+- **AC-012.2** webhook marks paid
+- ~~**AC-012.3**~~ withdrawn
+<!-- - **AC-012.9** an example in a comment is not a criterion -->
+
+## Changelog
+"""
+
+SPEC_PLAN = """---
+plan_id: 012-billing
+spec: 012-billing
+feature: billing
+gitops_app: acme/shop-gitops
+status: draft
+repos:
+  - {id: shop-api, shape: service-python, summary: API, acs: [AC-012.1], depends_on: [], done: false}
+  - {id: shop-web, shape: web-nextjs, summary: UI, acs: [AC-012.2], depends_on: [], done: false}
+---
+"""
+
+
+@pytest.fixture()
+def spec_repo(repo):
+    (repo / "docs" / "plan" / "billing.md").unlink()
+    (repo / "docs" / "specs" / "012-billing").mkdir(parents=True)
+    (repo / "docs" / "specs" / "012-billing" / "spec.md").write_text(SPEC)
+    return repo
+
+
+def check(repo, text):
+    (repo / "docs" / "plan" / "012-billing.md").write_text(text)
+    return plan(repo, "validate")
+
+
+def test_a_spec_plan_needs_criteria_not_prompts(spec_repo):
+    out = check(spec_repo, SPEC_PLAN)
+    assert out.returncode == 0, out.stderr
+
+
+def test_every_active_criterion_is_assigned_to_a_repo(spec_repo):
+    out = check(spec_repo, SPEC_PLAN.replace("acs: [AC-012.2]", "acs: []"))
+    assert out.returncode == 1 and "AC-012.2 is not assigned to any repo" in out.stderr
+
+
+def test_withdrawn_unknown_and_commented_criteria_are_rejected(spec_repo):
+    out = check(spec_repo, SPEC_PLAN.replace("acs: [AC-012.1]", "acs: [AC-012.1, AC-012.3, AC-012.9]"))
+    assert "criterion 'AC-012.3' is withdrawn" in out.stderr and "unknown criterion 'AC-012.9'" in out.stderr
+
+
+def test_the_spec_must_exist(spec_repo):
+    out = check(spec_repo, SPEC_PLAN.replace("spec: 012-billing", "spec: 013-nope"))
+    assert "docs/specs/013-nope/spec.md not found" in out.stderr
+
+
+def test_ready_hands_out_the_criteria(spec_repo):
+    check(spec_repo, SPEC_PLAN)
+    wave = json.loads(plan(spec_repo, "ready", "012-billing", "--json").stdout)
+    assert {"id": "shop-api", "shape": "service-python", "summary": "API", "acs": ["AC-012.1"], "arguments": ""} in wave

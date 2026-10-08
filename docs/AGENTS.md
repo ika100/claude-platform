@@ -46,7 +46,7 @@ Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a 
 
 ## Shapes and agent dispatch
 
-Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:spec`, `/svc:plan` or `/svc:build`; they use `/gitops:compose`, `/gitops:promote` and `/app:build-feature` (`cplat shape` prints the routing). The multi-repo flow: `/app:build-feature` writes a product spec and a plan → `/svc:spec --from-plan <plan> <repo-id>`, `/svc:plan`, `/svc:build` in each repo (or `/app:run-plan`) → `/app:plans done` → `/gitops:promote`.
+Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:spec`, `/svc:plan` or `/svc:build`; they use `/gitops:compose`, `/gitops:promote` and `/app:spec|plan|build|specs` (`cplat shape` prints the routing). The multi-repo flow: `/app:spec` (product spec, approved) → `/app:plan` (criteria per repo, contract) → `/app:build` runs `/svc:spec --from-plan <plan> <repo-id>`, `/svc:plan`, `/svc:build` in each ready repo in parallel → you merge → `/gitops:promote`.
 
 ---
 
@@ -130,7 +130,8 @@ The `/svc:release` pipeline adds a second safety net: **Phase 7** scans all comm
 
 /gitops:promote <svc...> <from> <to>   ──►  cplat promote  ──►  PR (Argo reconciles on merge)
 /gitops:compose add|remove <svc...>    ──►  cplat compose  ──►  PR (services.yaml + generated ApplicationSets)
-/app:build-feature <desc>              ──►  product-manager ──► planner ──►  docs/specs/ + docs/plan/<slug>.md  (then /svc:spec --from-plan per repo)
+/app:spec <desc> → /app:plan <id>      ──►  product-manager ──► planner ──►  docs/specs/<id>/ + docs/plan/<id>.md
+/app:build <id>                        ──►  one agent per ready repo: /svc:spec --from-plan → /svc:plan → /svc:build  ──►  PRs
 ```
 
 ---

@@ -28,7 +28,7 @@ def test_template_seeds_plan_dir_and_the_spec_first_rule(shape):
     assert (t / "docs" / "plan").is_dir()
     text = claude_md(shape)
     assert "### Spec first" in text
-    assert ("/app:build-feature" if shape == "gitops-app" else "/svc:spec <description>") in text
+    assert ("/app:spec <description>" if shape == "gitops-app" else "/svc:spec <description>") in text
     assert "plan-feature" not in text and "build-feature --" not in text
 
 
@@ -62,7 +62,7 @@ def test_bootstrap_leads_with_the_plan_not_a_bare_build(shape):
 
 def test_gitops_bootstrap_points_to_the_product_plan():
     steps = newsvc._next_steps({"name": "shop", "shape": "gitops-app", "description": "Shop"})
-    assert any(s.startswith('/app:build-feature "') for s in steps)
+    assert any(s.startswith('/app:spec "') for s in steps)
 
 
 def test_new_app_ends_with_the_product_plan(tmp_path, monkeypatch, capsys):
@@ -71,7 +71,7 @@ def test_new_app_ends_with_the_product_plan(tmp_path, monkeypatch, capsys):
     manifest.write_text(yaml.safe_dump({"app": "shop", "components": [{"name": "shop-api", "description": "API", "shape": "service-python"}]}))
     assert newapp.main([str(manifest), "--no-github", "--org", "acme", "--dir", str(tmp_path / "out")]) == 0
     out = capsys.readouterr().out
-    assert 'cd shop and run /app:build-feature "<first feature of the product>"' in out and "/app:run-plan" in out
+    assert 'cd shop and run /app:spec "<first feature of the product>"' in out and "/app:build <NNN>" in out
 
 
 PLUGIN = ROOT / "plugins" / "svc"
@@ -80,9 +80,10 @@ PLUGIN = ROOT / "plugins" / "svc"
 def test_the_old_commands_are_gone_and_nothing_points_to_them():
     """svc 3.0 (ADR-026) replaced plan-feature and build-feature; no command, agent, template or script may still name them."""
     assert not (PLUGIN / "commands" / "build-feature.md").exists() and not (PLUGIN / "commands" / "plan-feature.md").exists()
+    assert sorted(p.stem for p in (ROOT / "plugins" / "app" / "commands").glob("*.md")) == ["build", "plan", "spec", "specs"]
     stale = [str(p.relative_to(ROOT)) for d in ("plugins", "templates", "scripts") for p in (ROOT / d).rglob("*")
              if p.is_file() and p.suffix in {".md", ".jinja", ".py", ".json"} and "__pycache__" not in p.parts
-             and re.search(r"/svc:(plan-feature|build-feature)", p.read_text(errors="ignore"))]
+             and re.search(r"/svc:(plan-feature|build-feature)|/app:(build-feature|run-plan|plans)\b", p.read_text(errors="ignore"))]
     assert stale == []
 
 

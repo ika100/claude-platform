@@ -2,9 +2,12 @@
 # /// script
 # dependencies = ["pyyaml"]
 # ///
-"""Validate and manage multi-repo plans in docs/plan/ (ADR-011).
+"""Validate and manage multi-repo plans in docs/plan/ (ADR-011, amended by ADR-026).
 
-A plan is a Markdown file: a YAML front-matter block followed by a prose body.
+A plan is a Markdown file: a YAML front-matter block followed by a prose body. A plan made from a product spec
+names it (`spec: <spec_id>`, the file is docs/specs/<spec_id>/spec.md) and lists per repo the product criteria
+(`acs: [AC-<NNN>.<n>]`) that repo implements; every active criterion of the spec must be assigned to a repo.
+Plans without `spec:` (written before ADR-026) stay valid and carry a free-text `arguments` prompt per repo.
 
 Usage:
   plan.py validate [<slug>...]     schema + dependency checks (all plans if none given)
@@ -25,6 +28,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 PLAN_DIR = ROOT / "docs" / "plan"
+SPEC_DIR = ROOT / "docs" / "specs"
 STATUSES = {"draft", "in_progress", "completed", "abandoned"}
 ACTIVE = {"draft", "in_progress"}
 # Mirrors shapes.yml of the platform repo (ADR-015). Extend via PLAN_SHAPES=a,b when a new shape lands
@@ -32,6 +36,22 @@ ACTIVE = {"draft", "in_progress"}
 SHAPES = {"service-python", "library-python", "web-nextjs", "gitops-app", "service-java", "service-go"}
 ENVS = {"dev", "staging", "prod"}
 FRONT = re.compile(r"\A---\n(.*?)\n---\n?(.*)\Z", re.S)
+AC_LINE = re.compile(r"^\s*[-*]\s+(~~)?\*\*(AC-\d{3,}\.\d+)\*\*")
+
+
+def spec_criteria(spec_id: str) -> tuple[set[str], set[str]] | None:
+    """(active, withdrawn) criterion ids of docs/specs/<spec_id>/spec.md, or None when the spec is missing."""
+    path = SPEC_DIR / spec_id / "spec.md"
+    if not path.is_file():
+        return None
+    body = re.sub(r"<!--.*?-->", "", path.read_text(), flags=re.S)
+    m = re.search(r"^## +Acceptance criteria\s*$(.*?)(?=^## |\Z)", body, re.M | re.S)
+    active, withdrawn = set(), set()
+    for ln in (m.group(1) if m else "").splitlines():
+        hit = AC_LINE.match(ln)
+        if hit:
+            (withdrawn if hit.group(1) else active).add(hit.group(2))
+    return active, withdrawn
 
 
 def _literal(dumper: yaml.Dumper, data: str):
@@ -94,7 +114,7 @@ def check(path: Path) -> list[str]:
         errs.append("duplicate repo ids")
     for r in repos:
         rid = r.get("id", "<no id>")
-        for k in ("id", "shape", "summary", "arguments", "depends_on", "done"):
+        for k in ("id", "shape", "summary", "depends_on", "done") + (("acs",) if "spec" in meta else ("arguments",)):
             if k not in r:
                 errs.append(f"repo {rid}: missing '{k}'")
         if r.get("shape") not in shapes:
@@ -112,6 +132,22 @@ def check(path: Path) -> list[str]:
         after = p.get("apply_after")
         if after != "merge_of_all" and after not in ids:
             errs.append(f"gitops_pin: apply_after '{after}' must be a repo id or 'merge_of_all'")
+    if "spec" in meta:
+        crit = spec_criteria(str(meta["spec"]))
+        if crit is None:
+            errs.append(f"spec '{meta['spec']}': docs/specs/{meta['spec']}/spec.md not found")
+        else:
+            active, withdrawn = crit
+            assigned: set[str] = set()
+            for r in repos:
+                for a in r.get("acs") or []:
+                    if a in withdrawn:
+                        errs.append(f"repo {r.get('id')}: criterion '{a}' is withdrawn")
+                    elif a not in active:
+                        errs.append(f"repo {r.get('id')}: unknown criterion '{a}'")
+                assigned |= set(r.get("acs") or [])
+            for a in sorted(active - assigned):
+                errs.append(f"{a} is not assigned to any repo")
     if not errs:
         try:
             topo_levels(repos)
@@ -186,7 +222,8 @@ def main(argv: list[str]) -> int:
         wave.sort(key=lambda r: r["id"])
         if "--json" in rest:
             import json
-            print(json.dumps([{"id": r["id"], "shape": r["shape"], "summary": r["summary"], "arguments": r["arguments"]} for r in wave]))
+            print(json.dumps([{"id": r["id"], "shape": r["shape"], "summary": r["summary"], "acs": r.get("acs") or [],
+                               "arguments": r.get("arguments", "")} for r in wave]))
         else:
             print(f"{len(wave)} repo(s) can start now (in parallel):" if wave else "nothing can start now")
             for r in wave:

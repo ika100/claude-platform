@@ -41,7 +41,7 @@ A product = one `gitops-app` repo + its services/frontend (+ libraries):
 # in the my-saas repo:
 /gitops:compose add my-saas-api my-saas-web                               # declare services (one PR)
 /gitops:promote my-saas-api my-saas-web dev staging                       # pin staging (one PR), Argo reconciles
-/app:build-feature "add billing"                                          # product spec + cross-repo plan → /app:run-plan or /svc:spec --from-plan per repo
+/app:spec "add billing" → /app:plan 003 → /app:build 003                 # product spec → criteria per repo → repos built in parallel
 ```
 
 `--app` takes the full `<org>/<repo>` of the GitOps repo, which is named after the project you passed with `--gitops` (here `my-saas`, so `ika100/my-saas`).
@@ -169,7 +169,7 @@ What disappears: `SERVICE_REPOS_TOKEN` (CI no longer reads other repos), Argo cr
 
 ## What you get after adoption
 
-- Slash commands: `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify`, `/svc:specs`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:build-feature`, `/app:plans`.
+- Slash commands: `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify`, `/svc:specs`, `/svc:quick-task`, `/svc:fix-bug`, `/svc:release`, `/shared:check-quality`, `/shared:new-service`, `/shared:update-service`; in gitops-app repos also `/gitops:compose`, `/gitops:promote`, `/app:spec`, `/app:plan`, `/app:build`, `/app:specs`.
 - Shape-specific agents (`coder`, `tester`, `deployment`, `observability`, `release`) from the plugin that owns your shape, plus the shape-agnostic `product-manager`, `architect`, `quality`, `security`.
 - For Python repos, a SessionStart hook runs `devbox run -- uv sync --all-extras` (only when `pyproject.toml` exists); the web, Java and Go plugins run their own dependency check on session start.
 - One source of truth: agent updates flow via `/plugin marketplace update`, skeleton updates flow via `/shared:update-service`. The two channels are independent.

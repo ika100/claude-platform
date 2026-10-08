@@ -343,3 +343,95 @@ def test_migrate_converts_stories_and_keeps_other_sections(tmp_path):
     assert backlog.index(spec.START) < backlog.index("## Epic B") and "004-price-alerts" in backlog
     with pytest.raises(core.PlatformError, match="no STORY-NNN"):
         spec.migrate(tmp_path, None, write=True)
+
+
+# ---------------- product specs and per-repo slices (STORY-040) ----------------
+
+PRODUCT = """---
+spec_id: 012-billing
+title: Billing
+status: approved
+priority: P0
+shape: gitops-app
+---
+
+# 012 — Billing
+
+## Problem
+
+Customers cannot pay.
+
+## Acceptance criteria
+
+- **AC-012.1** Given a cart, when the customer checks out, then a Stripe session URL is returned.
+- **AC-012.2** Given a paid session, when the webhook arrives, then the order is marked paid.
+- **AC-012.3** Given the checkout page, when the customer clicks Pay, then they are redirected to Stripe.
+- ~~**AC-012.4**~~ withdrawn: invoices later.
+
+## Open questions
+
+## Changelog
+
+- 2026-10-08 created
+"""
+
+PRODUCT_PLAN = """---
+plan_id: 012-billing
+spec: 012-billing
+feature: billing
+gitops_app: acme/shop-gitops
+status: draft
+repos:
+  - {id: shop-api, shape: service-python, summary: Checkout and webhook API, acs: [AC-012.1, AC-012.2], arguments: "Use the existing orders table.", depends_on: [], done: false}
+  - {id: shop-web, shape: web-nextjs, summary: Pay button, acs: [AC-012.3], depends_on: [], done: false}
+gitops_pin: []
+---
+
+## Contract
+
+POST /billing/checkout -> 201 {"url": str}
+"""
+
+
+@pytest.fixture()
+def product(tmp_path):
+    app = tmp_path / "shop-gitops"
+    (app / "docs" / "specs" / "012-billing").mkdir(parents=True)
+    (app / "docs" / "specs" / "012-billing" / "spec.md").write_text(PRODUCT)
+    (app / "docs" / "plan").mkdir()
+    (app / "docs" / "plan" / "012-billing.md").write_text(PRODUCT_PLAN)
+    return app
+
+
+def test_a_repo_spec_is_sliced_from_the_product_plan(tmp_path, product):
+    repo = tmp_path / "shop-api"
+    repo.mkdir()
+    s = spec.new_from_plan(repo, product / "docs" / "plan" / "012-billing.md", "shop-api", shape="service-python")
+    assert s.meta == {"spec_id": "001-checkout-and-webhook-api", "title": "Checkout and webhook API", "status": "draft",
+                      "priority": "P0", "shape": "service-python", "parent": "acme/shop-gitops:012-billing"}
+    ctx = spec.sections(s.body)["product context"]
+    assert "**AC-012.1**" in ctx and "**AC-012.2**" in ctx and "AC-012.3" not in ctx
+    assert "POST /billing/checkout" in ctx and "existing orders table" in ctx
+    assert spec.sections(s.body)["problem"].strip() == "Customers cannot pay."
+    assert s.acs() == []  # product criteria are context; the product-manager writes this repo's own
+    assert spec.check(s) == []
+
+
+def test_slice_of_an_unknown_repo(tmp_path, product):
+    with pytest.raises(core.PlatformError, match="no repo 'shop-x'"):
+        spec.slice_from_plan(product / "docs" / "plan" / "012-billing.md", "shop-x")
+
+
+def test_slice_of_a_legacy_plan_uses_its_prompt(tmp_path, product):
+    legacy = product / "docs" / "plan" / "old.md"
+    legacy.write_text(PRODUCT_PLAN.replace("spec: 012-billing\n", "").replace("plan_id: 012-billing", "plan_id: old"))
+    sl = spec.slice_from_plan(legacy, "shop-api")
+    assert sl["parent"] == "acme/shop-gitops:old" and "existing orders table" in sl["context"]
+    assert "Product criteria" not in sl["context"]
+
+
+def test_product_specs_point_to_the_app_commands(product):
+    s = spec.read(product / "docs" / "specs" / "012-billing")
+    assert spec.next_step(s) == "/app:build 012"
+    (product / "docs" / "plan" / "012-billing.md").unlink()
+    assert spec.next_step(s) == "/app:plan 012"

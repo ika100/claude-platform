@@ -21,7 +21,7 @@ Every later call in this command is `CPLAT <args>`, meaning: `uv run "${XDG_CACH
 1. **Mode** from `$ARGUMENTS`: `approve <id>` → section A. `--amend <id> <change>` → section C. `--from-plan <plan> [<repo-id>]` → section D. Empty → print usage and stop. Otherwise → new spec (section B).
 2. **Route small work away** (new spec only): a typo, rename or one-file tweak → recommend `/svc:quick-task`; an error message or "X is broken" → recommend `/svc:fix-bug`. Stop unless the user insists on a spec.
 3. `git status --porcelain` must be empty; otherwise stop: commit or stash first.
-4. **Shape:** the prefix call above prints the routing JSON. If it reports `unsupported` (a gitops-app repo), stop and point to `/app:build-feature`. If it fails with "cannot determine the repo's shape", continue without a shape (`--no-shape` on `spec new`): specs work in any repo, only `/svc:build` needs a shape.
+4. **Shape:** the prefix call above prints the routing JSON. If it reports `unsupported` (a gitops-app repo), stop and point to `/app:spec`. If it fails with "cannot determine the repo's shape", continue without a shape (`--no-shape` on `spec new`): specs work in any repo, only `/svc:build` needs a shape.
 5. **Branch:** all steps of one spec happen on `feature/<spec_id>`, so its single PR carries spec, plan, tests, code and verification. Create or switch to it as the sections say. On a branch other than `main` and not `feature/<spec_id>`, ask before switching.
 
 ## A. approve <id>
@@ -46,14 +46,14 @@ Every later call in this command is `CPLAT <args>`, meaning: `uv run "${XDG_CACH
 3. **product-manager**: `MODE: amend`, `SPEC_DIR`, the change verbatim, plus any answers the user gave.
 4. `CPLAT spec check <id>`, then the questions loop (Q), then commit `docs(spec): amend <spec_id> — <one line>` and section F.
 
-## D. --from-plan <plan> [<repo-id>] (one repo of a multi-repo plan)
+## D. --from-plan <plan> [<repo-id>] (this repo's slice of a product plan)
 
-The plan lives in the gitops-app repo (ADR-011); never edit it from here.
+The plan lives in the gitops-app repo (`docs/plan/<spec_id>.md`, ADR-011/026); never edit it from here.
 
-1. Read the plan file; pick the `repos[]` entry whose `id` is `<repo-id>` (default: this repo's name, or `repo` in `.platform-app.yml`). Its `arguments` block is the request; its `summary` is the title.
-2. Section B with that request and `--parent <gitops_app>:<plan_id>` on `spec new`. Include the plan's `## Contract` section in the product-manager prompt: the criteria must match it.
-3. **When run unattended by `/app:run-plan`** (its prompt says so): skip the questions loop. If `OPEN QUESTIONS` is `none`, run `CPLAT spec approve <id>` (the user approved the product plan) and continue with `/svc:plan` and `/svc:build` as instructed; otherwise stop and report the questions verbatim. Never answer them yourself.
-4. Remind the user to run `/app:plans start <slug>` before and `/app:plans done <slug> <repo-id>` (in the gitops-app repo) after the PR merges.
+1. `<repo-id>` defaults to this repo's name (or `repo` in `.platform-app.yml`). Run `CPLAT spec new --from-plan <abs plan path> <repo-id>` (add `--no-shape` only in a repo without a shape): it writes this repo's spec with the product's problem, a **Product context** section (the product criteria assigned to this repo, the contract, notes) and `parent:` set. Then `git checkout -b feature/<spec_id>`.
+2. **product-manager**: `MODE: new`, `SPEC_DIR`, and "the Product context section is binding: write this repo's criteria so that together they implement each listed product criterion and follow the contract; every criterion names the product criterion it serves, `(product AC-<NNN>.<n>)`". Then `CPLAT spec check`, and section B from step 5 on (questions loop, commit, finish).
+3. **When run unattended by `/app:build`** (its prompt says so): skip the questions loop. If `OPEN QUESTIONS` is `none`, run `CPLAT spec approve <id>` (the user approved the product plan) and continue with `/svc:plan` and `/svc:build` as instructed; otherwise stop and report the questions verbatim. Never answer them yourself.
+4. When run by hand, remind the user that `/app:build` (or `/app:specs done <id> <repo-id>`, in the gitops-app repo) records the repo as done after its PR merges.
 
 ## Q. Questions loop
 

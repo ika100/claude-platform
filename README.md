@@ -27,7 +27,7 @@ You describe what you want in Claude Code; the platform scaffolds the repos (Pyt
 │   ├── svc-java/                      Spring Boot agents
 │   ├── svc-go/                        Go agents
 │   ├── gitops/                        Platform GitOps + gitops-app agents (deployment, promote, compose)
-│   ├── app/                           Multi-repo planner (/app:build-feature, /app:plans)
+│   ├── app/                           Product specs across repos (/app:spec, plan, build, specs)
 │   └── shared/                        Quality, security, /new-service
 ├── shapes.yml                         Shape registry (single source of truth)
 ├── templates/
@@ -107,8 +107,8 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/gitops:compose add\|remove <svc...>` | gitops | gitops-app repos: declare which services make up the application |
 | `/gitops:addon add\|remove\|list <postgres\|observability>` | gitops | Backing services and observability for the application (CloudNativePG, OpenTelemetry collector, optional Grafana dev stack) |
 | `/gitops:secret set\|list …` | gitops | Values of store-backed secrets in the local cluster (generated secrets need nothing) |
-| `/app:build-feature <desc>` | app | gitops-app repos: plan a feature across repos (plan-only), topo-sorted |
-| `/app:plans [list\|show\|start\|done\|abandon]` | app | Multi-repo plan lifecycle |
+| `/app:spec <desc>` · `/app:plan <id>` | app | gitops-app repos: product spec, then every criterion assigned to a repo with the contract (topo-sorted, validated) |
+| `/app:build <id>` · `/app:specs` | app | Build ready repos in parallel, each through its own spec slice, ending at PRs · progress |
 | `/shared:doctor` | shared | Preflight: tools, `gh` scopes, Docker, kube context, plugin versions, repo platform version, with a fix per problem |
 | `/shared:status` | shared | One table for a gitops-app: image pins per environment, service CI, Argo sync/health, addons |
 | `/shared:report-issue [what]` | shared | Draft a platform issue with diagnostics (secrets removed) and file it after your OK |
