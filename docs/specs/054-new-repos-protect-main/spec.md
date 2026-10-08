@@ -1,7 +1,7 @@
 ---
 spec_id: 054-new-repos-protect-main
 title: New repos protect main
-status: draft
+status: approved
 priority: P2
 ---
 
@@ -17,7 +17,7 @@ As a founder, I want `main` of every new repo protected by its required checks, 
 
 ## Acceptance criteria
 
-- **AC-054.1** Given `/shared:new-service` or `/shared:new-app` with GitHub available, when it creates a repo, then `main` requires the shape's CI checks before merging, and the preview lists this as an outward step.
+- **AC-054.1** Given `/shared:new-service` or `/shared:new-app` with GitHub available, when it creates a repo, then `main` requires the shape's CI checks before merging (no review requirement), and the preview lists this as an outward step.
 - **AC-054.2** Given an account or plan where protection cannot be set, when the repo is created, then the command warns, prints the manual step, and still succeeds.
 
 ## Non-goals
@@ -26,7 +26,7 @@ As a founder, I want `main` of every new repo protected by its required checks, 
 
 ## Open questions
 
-- Require pull request reviews too, or only status checks? (suggested: status checks only; solo founders cannot approve their own PRs; affects AC-054.1)
+- ~~Require pull request reviews too, or only status checks? (suggested: status checks only; solo founders cannot approve their own PRs; affects AC-054.1)~~ Answered: status checks only; no review requirement (solo founders cannot approve their own PRs).
 
 ## References
 
@@ -35,3 +35,5 @@ As a founder, I want `main` of every new repo protected by its required checks, 
 ## Changelog
 
 - 2026-10-08 created from issue 12 of the todo end-to-end run
+- 2026-10-08 open question answered: status checks only; no review requirement (solo founders cannot approve their own PRs).
+- 2026-10-08 approved

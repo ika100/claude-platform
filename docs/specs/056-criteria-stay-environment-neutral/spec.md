@@ -1,7 +1,7 @@
 ---
 spec_id: 056-criteria-stay-environment-neutral
 title: Criteria stay environment-neutral
-status: draft
+status: approved
 priority: P2
 ---
 
@@ -18,7 +18,7 @@ As a founder, I want criteria that hold in every environment, so that a spec sta
 ## Acceptance criteria
 
 - **AC-056.1** Given the spec format reference, when the product-manager writes criteria, then it is told not to name host ports, local hostnames or machine paths, and to describe the observable behaviour instead.
-- **AC-056.2** Given `devbox run cluster-up` with port 8088 taken, when it runs, then it chooses the next free port, prints the URL it chose and continues.
+- **AC-056.2** Given `devbox run cluster-up` with port 8088 taken, when it runs, then it chooses the next free port, prints the URL it chose and continues; an explicit `LOCAL_HTTP_PORT` still wins.
 
 ## Non-goals
 
@@ -26,7 +26,7 @@ As a founder, I want criteria that hold in every environment, so that a spec sta
 
 ## Open questions
 
-- Pick a free port automatically by default, or keep stopping with the fix as today? (suggested: automatic, the URL is printed anyway; affects AC-056.2)
+- ~~Pick a free port automatically by default, or keep stopping with the fix as today? (suggested: automatic, the URL is printed anyway; affects AC-056.2)~~ Answered: automatic; an explicit LOCAL_HTTP_PORT still wins.
 
 ## References
 
@@ -35,3 +35,5 @@ As a founder, I want criteria that hold in every environment, so that a spec sta
 ## Changelog
 
 - 2026-10-08 created from issue 14 of the todo end-to-end run
+- 2026-10-08 open question answered: automatic; an explicit LOCAL_HTTP_PORT still wins.
+- 2026-10-08 approved

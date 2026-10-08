@@ -1,7 +1,7 @@
 ---
 spec_id: 049-spec-documents-do-not-break-the-python
 title: Spec documents do not break the Python lint
-status: draft
+status: approved
 priority: P1
 ---
 
@@ -35,3 +35,4 @@ None.
 ## Changelog
 
 - 2026-10-08 created from issue 7 of the todo end-to-end run
+- 2026-10-08 approved

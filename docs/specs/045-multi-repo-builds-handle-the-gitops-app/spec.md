@@ -1,7 +1,7 @@
 ---
 spec_id: 045-multi-repo-builds-handle-the-gitops-app
 title: Multi-repo builds handle the gitops-app entry
-status: draft
+status: approved
 priority: P0
 ---
 
@@ -18,7 +18,7 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 ## Acceptance criteria
 
 - **AC-045.1** Given a product plan with a repo entry of shape `gitops-app`, when `/app:build` runs its wave, then that entry is built in the gitops-app repo with `/gitops:addon` and `/gitops:compose` (never `/svc:*`) and ends like the other repos at a pushed branch with a pull request or its exact `gh pr create` command.
-- **AC-045.2** Given that entry, when the planner writes it, then it lists the operations as data (for example addon `postgres` for todo-api, expose `todo-web` at a host, env `TODO_API_URL` on todo-web) and `plan-check` rejects an unknown operation or service.
+- **AC-045.2** Given that entry, when the planner writes it, then it lists the operations as data under `gitops:` (for example `{addon: postgres, for: todo-api}`, `{expose: todo-web, host: todo-web}`, `{env: {service: todo-web, TODO_API_URL: http://todo-api}}`), `plan-check` rejects an unknown operation or service, and `/app:build` executes them through `cplat addon` and `cplat compose`.
 - **AC-045.3** Given service repos that depend on the gitops operations (a database), when `/app:build` reports the wave, then it says to merge the gitops pull request first.
 - **AC-045.4** Given the gitops entry was built in a separate worktree or clone, when its pull request is merged or the build stops, then the worktree is removed (`git worktree remove`) and the run leaves no extra folder next to the repos.
 
@@ -28,7 +28,7 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 
 ## Open questions
 
-- Structured operations in the plan (`gitops: [{addon: postgres, for: todo-api}, …]`) or prose instructions for the agent? (suggested: structured, so `plan-check` can validate them and spec 052 can copy them; affects AC-045.2)
+- ~~Structured operations in the plan (`gitops: [{addon: postgres, for: todo-api}, …]`) or prose instructions for the agent? (suggested: structured, so `plan-check` can validate them and spec 052 can copy them; affects AC-045.2)~~ Answered: structured operations in the plan; /app:build runs them through cplat addon and cplat compose.
 
 ## References
 
@@ -38,3 +38,5 @@ As a founder, I want the gitops part of a product plan to be built like the othe
 
 - 2026-10-08 created from issue 3 of the todo end-to-end run
 - 2026-10-08 AC-045.4 added: the run left the worktree `todo-build-001` behind
+- 2026-10-08 open question answered: structured operations in the plan; /app:build runs them through cplat addon and cplat compose.
+- 2026-10-08 approved

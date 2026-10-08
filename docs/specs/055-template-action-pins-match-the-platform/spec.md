@@ -1,7 +1,7 @@
 ---
 spec_id: 055-template-action-pins-match-the-platform
 title: Template action pins match the platform
-status: draft
+status: approved
 priority: P2
 ---
 
@@ -35,3 +35,4 @@ None.
 ## Changelog
 
 - 2026-10-08 created from issue 13 of the todo end-to-end run
+- 2026-10-08 approved

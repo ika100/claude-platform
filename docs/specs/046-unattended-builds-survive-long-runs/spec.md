@@ -1,7 +1,7 @@
 ---
 spec_id: 046-unattended-builds-survive-long-runs
 title: Unattended builds survive long runs
-status: draft
+status: approved
 priority: P1
 ---
 
@@ -17,7 +17,7 @@ As a founder, I want `/app:build` to finish when nobody watches it, so that sche
 
 ## Acceptance criteria
 
-- **AC-046.1** Given a headless `/app:build` whose repo builds take longer than 10 minutes, when it runs without extra environment variables, then no repo agent is terminated before it reports.
+- **AC-046.1** Given a headless `/app:build` whose repo builds take longer than 10 minutes, when it runs without extra environment variables, then no repo agent is terminated before it reports (the repo agents run as parallel foreground calls in one message and the orchestrator waits for all of them).
 - **AC-046.2** Given the documentation for unattended runs (`/loop`, `/schedule`, CI), when a user reads it, then it names `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` and when it is needed.
 
 ## Non-goals
@@ -26,7 +26,7 @@ As a founder, I want `/app:build` to finish when nobody watches it, so that sche
 
 ## Open questions
 
-- Run the repo agents as parallel foreground Agent calls in one message (waits for all, still parallel) instead of background agents? (suggested: yes; affects AC-046.1)
+- ~~Run the repo agents as parallel foreground Agent calls in one message (waits for all, still parallel) instead of background agents? (suggested: yes; affects AC-046.1)~~ Answered: yes: parallel foreground Agent calls in one message; the env var is documented for other unattended uses.
 
 ## References
 
@@ -35,3 +35,5 @@ As a founder, I want `/app:build` to finish when nobody watches it, so that sche
 ## Changelog
 
 - 2026-10-08 created from issue 4 of the todo end-to-end run
+- 2026-10-08 open question answered: yes: parallel foreground Agent calls in one message; the env var is documented for other unattended uses.
+- 2026-10-08 approved

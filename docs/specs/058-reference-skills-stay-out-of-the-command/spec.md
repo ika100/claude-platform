@@ -1,7 +1,7 @@
 ---
 spec_id: 058-reference-skills-stay-out-of-the-command
 title: Reference skills stay out of the command list
-status: draft
+status: approved
 priority: P2
 ---
 
@@ -17,7 +17,7 @@ As a contributor, I want the command list to contain only commands, so that I fi
 
 ## Acceptance criteria
 
-- **AC-058.1** Given a session with the svc plugin, when the user lists slash commands, then `/svc:spec-format` is not among them.
+- **AC-058.1** Given a session with the svc plugin, when the user lists slash commands, then `/svc:spec-format` is not among them (its SKILL.md sets `user-invocable: false`).
 - **AC-058.2** Given the product-manager, architect and reviewer, when they run, then they still read the spec-format references.
 
 ## Non-goals
@@ -26,7 +26,7 @@ As a contributor, I want the command list to contain only commands, so that I fi
 
 ## Open questions
 
-- Does skill frontmatter support hiding a skill from the user while keeping its files readable (for example `user-invocable: false`)? (suggested: check the docs; otherwise move the references out of `skills/`; affects AC-058.1)
+- ~~Does skill frontmatter support hiding a skill from the user while keeping its files readable (for example `user-invocable: false`)? (suggested: check the docs; otherwise move the references out of `skills/`; affects AC-058.1)~~ Answered: yes: `user-invocable: false` in SKILL.md frontmatter (Claude Code skills docs); Claude can still use the skill.
 
 ## References
 
@@ -35,3 +35,5 @@ As a contributor, I want the command list to contain only commands, so that I fi
 ## Changelog
 
 - 2026-10-08 created from issue 16 of the todo end-to-end run
+- 2026-10-08 open question answered: yes: `user-invocable: false` in SKILL.md frontmatter (Claude Code skills docs); Claude can still use the skill.
+- 2026-10-08 approved

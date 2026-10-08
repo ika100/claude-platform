@@ -1,7 +1,7 @@
 ---
 spec_id: 050-product-spec-and-plan-reach-main
 title: Product spec and plan reach main
-status: draft
+status: approved
 priority: P1
 ---
 
@@ -35,3 +35,4 @@ None.
 ## Changelog
 
 - 2026-10-08 created from issue 8 of the todo end-to-end run
+- 2026-10-08 approved
