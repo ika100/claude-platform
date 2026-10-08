@@ -474,3 +474,9 @@ def test_set_dry_run_changes_nothing(gitops_repo, gh):
     before = (gitops_repo / "applications/todo/services.yaml").read_text()
     run_compose(gitops_repo, "set", "todo-api", "--env", "A=b", "--dry-run")
     assert (gitops_repo / "applications/todo/services.yaml").read_text() == before
+
+
+def test_the_compose_command_offers_set():
+    """AC-045.1: `set` is reachable through /gitops:compose, not only from /app:build."""
+    text = (core.PLATFORM_ROOT / "plugins" / "gitops" / "commands" / "compose.md").read_text()
+    assert "add|set|remove" in text.split("\n", 2)[1] and "`set <service>`" in text

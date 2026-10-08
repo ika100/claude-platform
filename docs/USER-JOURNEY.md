@@ -152,9 +152,10 @@ Wiring and exposure are decided here, in the product repo — not in the service
 ```
 /gitops:compose add taskboard-api
 /gitops:compose add taskboard-web --expose --env API_URL=http://taskboard-api
+/gitops:compose set taskboard-web --env FEATURE_X=on     # later: change a service that is already composed
 ```
 
-`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
+`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port, or the next free one that `cluster-up` prints; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
 
 ---
 
@@ -188,6 +189,8 @@ Prod pins the release image `1.2.0` (the `v1.2.0` git tag without the `v`, exact
 ```
 
 `/app:spec` writes one **product spec** in `docs/specs/` with criteria users of the product observe, asking you its open questions and for approval. `/app:plan` has the planner assign **every criterion to a repo** (`plan-check` refuses a plan that leaves one out), order the repos by real dependencies (library → API; an API and the web app that calls it run in parallel when the plan's `## Contract` section fixes the interface) and plan the version pins.
+
+When the feature needs wiring in this repo (an addon, exposure, an env variable), the plan lists it as `gitops:` operations on the `taskboard` entry; `/app:build` applies them here with `cplat addon add` and `cplat compose set` and opens that PR first, marked **merge first**.
 
 `/app:build` then starts one agent per ready repo **in parallel**. Each runs `/svc:spec --from-plan` in its repo: the platform writes the repo's own spec with the product criteria it owns and the contract, the product-manager turns them into the repo's criteria, and the normal Chapter 3 pipeline (`/svc:plan`, `/svc:build`) runs to an open PR. Questions a repo spec raises come back to you. You merge; it moves on to the next level and finally prints the `/gitops:promote` commands. By hand, the same per repo: `cd ../taskboard-api && /svc:spec --from-plan <plan> taskboard-api`, then `/svc:plan` and `/svc:build`. `/app:specs` shows the progress.
 

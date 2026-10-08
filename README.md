@@ -104,7 +104,7 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/svc:fix-bug <desc>` | svc | Diagnose → fix → regression test → PR |
 | `/svc:release` | svc | Quality gate → test gate → security gate → version bump → tag → close issues |
 | `/gitops:promote <svc...> <from> <to> [version]` | gitops | Pin service versions in an environment overlay (platform or gitops-app repo), open one PR |
-| `/gitops:compose add\|remove <svc...>` | gitops | gitops-app repos: declare which services make up the application |
+| `/gitops:compose add\|set\|remove <svc...>` | gitops | gitops-app repos: declare the application's services; `set` changes env, exposure, addons or replicas of one already composed |
 | `/gitops:addon add\|remove\|list <postgres\|observability>` | gitops | Backing services and observability for the application (CloudNativePG, OpenTelemetry collector, optional Grafana dev stack) |
 | `/gitops:secret set\|list …` | gitops | Values of store-backed secrets in the local cluster (generated secrets need nothing) |
 | `/app:spec <desc>` · `/app:plan <id>` | app | gitops-app repos: product spec, then every criterion assigned to a repo with the contract (topo-sorted, validated) |
@@ -114,7 +114,9 @@ See `docs/ADOPTING.md` for the full migration guide.
 | `/shared:report-issue [what]` | shared | Draft a platform issue with diagnostics (secrets removed) and file it after your OK |
 | `/shared:check-quality` | shared | Read-only quality + security audit |
 | `/shared:update-service [--ref <tag>]` | shared | Pull the latest skeleton (CI, devbox, Dockerfile, CLAUDE.md…) into an existing repo on a review branch |
-| `/shared:new-service <name>` | shared | Bootstrap a new repo of any registered shape (`shapes.yml`; default `service-python`, `--type <shape>` to choose) |
+| `/shared:new-service <name>` | shared | Bootstrap a new repo of any registered shape (`shapes.yml`; default `service-python`, `--type <shape>` to choose), with `main` protected by its CI checks |
+
+Every generated repo also checks its specs in CI (warn-only `specs` workflow, `devbox run spec-check`): all specs valid, and every criterion of a spec being built named by a test. Unattended runs (`claude -p`, `/loop`, `/schedule`): see [ADOPTING.md → Unattended runs](docs/ADOPTING.md#unattended-runs).
 
 ## Updates
 

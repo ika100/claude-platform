@@ -43,14 +43,15 @@ sequenceDiagram
   S->>S: render templates/<shape> with copier, bootstrap commit
   S->>S: stamp .platform-version, stable _src_path
   S->>G: create PRIVATE repo, push, topic deployable-service
+  S->>G: protect main: the shape's CI checks must pass
   S-->>U: what happened / next / how to undo
 ```
 
-The shape (`service-python`, `web-nextjs`, `gitops-app`, …) is looked up in `shapes.yml`; it decides the template, the plugin whose agents work on the repo, and whether the repo is deployable.
+The shape (`service-python`, `web-nextjs`, `gitops-app`, …) is looked up in `shapes.yml`; it decides the template, the plugin whose agents work on the repo, whether the repo is deployable, and which CI checks (`ci_checks`) must pass before anything merges into `main` — the repo is created with that branch protection (no review requirement; where your GitHub plan cannot protect private repos, the command warns and prints the manual step).
 
 ## 2. Build a feature — `/svc:spec`, `/svc:plan`, `/svc:build`
 
-`cplat shape` detects the shape (from `.copier-answers.yml`) and prints which agent to use for each role. A feature is a folder `docs/specs/<NNN>-<slug>/` ([ADR-026](adr/026-feature-specs.md)): `/svc:spec` has the product-manager write `spec.md` (acceptance criteria `AC-<NNN>.<n>`, open questions that you answer, then your approval); `/svc:plan` has the architect write `design.md` and `plan.md` (tasks that `cover` criteria). `/svc:build` then writes failing acceptance tests named after the criteria, runs coders in parallel git worktrees until they pass, runs quality ‖ tester ‖ security, has a reviewer check every criterion (`verification.md`), checks the container image and opens a PR. Every check on a spec — ids, coverage, drift between spec and plan, test trace, status — is `cplat spec`, not prose. CI re-runs the same `devbox run` recipes and, on merge to `main`, builds the image natively for amd64 and arm64 and publishes `latest` and `sha-<7>`.
+`cplat shape` detects the shape (from `.copier-answers.yml`) and prints which agent to use for each role. A feature is a folder `docs/specs/<NNN>-<slug>/` ([ADR-026](adr/026-feature-specs.md)): `/svc:spec` has the product-manager write `spec.md` (acceptance criteria `AC-<NNN>.<n>`, open questions that you answer, then your approval); `/svc:plan` has the architect write `design.md` and `plan.md` (tasks that `cover` criteria). `/svc:build` then writes failing acceptance tests named after the criteria, runs coders in parallel git worktrees until they pass, runs quality ‖ tester ‖ security, has a reviewer check every criterion (`verification.md`), checks the container image and opens a PR. Every check on a spec — ids, coverage, drift between spec and plan, test trace, status — is `cplat spec`, not prose. Every generated repo also runs it in CI: the warn-only `specs` workflow (`devbox run spec-check` locally) validates all specs and fails, once strict, when a criterion of a spec being built has no test. Acceptance tests may be reformatted by `lint-fix` but never weakened: the build compares them with the red commit (`cplat spec test-diff`) and stops on anything but formatting. An interrupted build resumes where it stopped (`/svc:build <id>` again). CI re-runs the same `devbox run` recipes and, on merge to `main`, builds the image natively for amd64 and arm64 and publishes `latest` and `sha-<7>`.
 
 ## 3. Declare how it runs — `/gitops:compose`
 
@@ -58,14 +59,16 @@ Services ship only an image. The **gitops-app repo owns every Kubernetes manifes
 
 ```mermaid
 flowchart TD
-  CMD["/gitops:compose add api web --expose"] --> E["services.yaml entry per service<br/>port · probes · user · volumes · env · replicas · resources · expose · environments"]
+  CMD["/gitops:compose add api web --expose<br/>/gitops:compose set web --env API_URL=…"] --> E["services.yaml entry per service<br/>port · probes · user · volumes · env · replicas · resources · expose · environments"]
   E --> R["scripts/render.py"]
   R --> M["overlays/&lt;env&gt;/&lt;service&gt;/<br/>deployment · service · httproute · kustomization (image tag)"]
   R --> AS["applicationset.yaml + bootstrap root app"]
   M --> V["devbox run validate<br/>(offline: labels, kustomize build, kubeconform)"]
 ```
 
-Defaults come from `shapes.yml → runtime` and are written *into* the entry, so what you review in the PR is exactly what runs. Wiring between services (`env: {API_URL: http://api}`), replicas and resources are product configuration and live here. New services start in `dev` only.
+Defaults come from `shapes.yml → runtime` and are written *into* the entry, so what you review in the PR is exactly what runs. Wiring between services (`env: {API_URL: http://api}`), addons (`uses: [postgres]`), exposure, replicas and resources are product configuration and live here; `compose set <service>` changes them on a service that is already composed. New services start in `dev` only.
+
+A feature built across the product with `/app:build` carries this wiring as data: the product plan's gitops-app entry lists `gitops:` operations (`{addon: postgres}`, `{uses: postgres, service: api}`, `{expose: web}`, `{env: {API_URL: http://api}, service: web}`), which `/app:build` runs with `cplat addon add` and `cplat compose set` in this repo. Its PR is marked **merge first**, because the services rely on it.
 
 ## 4. Promote — `/gitops:promote`
 
@@ -75,7 +78,7 @@ Defaults come from `shapes.yml → runtime` and are written *into* the entry, so
 
 ```mermaid
 flowchart LR
-  B["Browser<br/>todo-web.todo-dev.localhost:8088"] --> LB["k3d load balancer :8088"]
+  B["Browser<br/>todo-web.todo-dev.localhost:8088"] --> LB["k3d load balancer :8088<br/>(or the next free port)"]
   LB --> GW["Traefik Gateway (Gateway API)"]
   GW -- "HTTPRoute (from services.yaml expose)" --> W["web Service :80"]
   W --> WP["web pods"]
@@ -83,7 +86,7 @@ flowchart LR
   AR["ArgoCD (root app → ApplicationSets)"] -. "syncs manifests from the gitops repo" .-> W & AP
 ```
 
-`devbox run cluster-up` builds this locally: k3d, ArgoCD, Traefik's Gateway provider, your `gh` token as repo credential and GHCR pull secret, the root Application. `*.localhost` hostnames resolve to 127.0.0.1 with no DNS setup. On a real cluster a human runs `KUBE_CONTEXT=<ctx> devbox run bootstrap` once; from then on every change arrives through merged PRs and agents never run `kubectl apply`.
+`devbox run cluster-up` builds this locally (on port 8088, or the next free port when 8088 is taken — it prints the URL): k3d, ArgoCD, Traefik's Gateway provider, your `gh` token as repo credential and GHCR pull secret, the root Application. `*.localhost` hostnames resolve to 127.0.0.1 with no DNS setup. On a real cluster a human runs `KUBE_CONTEXT=<ctx> devbox run bootstrap` once; from then on every change arrives through merged PRs and agents never run `kubectl apply`.
 
 ### Secrets
 
