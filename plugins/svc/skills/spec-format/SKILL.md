@@ -1,5 +1,6 @@
 ---
 name: spec-format
+user-invocable: false
 description: "Reference for feature specs in docs/specs/<NNN>-<slug>/ (spec.md, design.md, plan.md, verification.md): acceptance criteria ids AC-<NNN>.<n>, lifecycle, plan task metadata, test tagging. Use when writing, reviewing or explaining a spec, design, plan or verification report."
 ---
 

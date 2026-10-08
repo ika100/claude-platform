@@ -1,7 +1,7 @@
 ---
 spec_id: 056-criteria-stay-environment-neutral
 title: Criteria stay environment-neutral
-status: approved
+status: done
 priority: P2
 ---
 
@@ -37,3 +37,5 @@ As a founder, I want criteria that hold in every environment, so that a spec sta
 - 2026-10-08 created from issue 14 of the todo end-to-end run
 - 2026-10-08 open question answered: automatic; an explicit LOCAL_HTTP_PORT still wins.
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

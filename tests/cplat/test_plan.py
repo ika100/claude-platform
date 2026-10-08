@@ -145,3 +145,46 @@ def test_ready_hands_out_the_criteria(spec_repo):
     check(spec_repo, SPEC_PLAN)
     wave = json.loads(plan(spec_repo, "ready", "012-billing", "--json").stdout)
     assert {"id": "shop-api", "shape": "service-python", "summary": "API", "acs": ["AC-012.1"], "arguments": ""} in wave
+
+
+# ---------------- spec 045: the gitops-app entry carries structured operations ----------------
+
+GITOPS_ENTRY = """  - id: shop-gitops
+    shape: gitops-app
+    summary: wiring
+    acs: [AC-012.1]
+    gitops:
+{ops}    depends_on: []
+    done: false
+"""
+VALID_OPS = ["{addon: postgres}", "{uses: postgres, service: shop-api}", "{expose: shop-web, host: shop}",
+             "{env: {API_URL: 'http://shop-api'}, service: shop-web}"]
+
+
+def _with_gitops(ops):
+    entry = GITOPS_ENTRY.format(ops="".join(f"      - {o}\n" for o in ops))
+    return SPEC_PLAN.replace("\n---\n", "\n" + entry + "---\n", 1)
+
+
+def test_a_gitops_entry_with_valid_operations_passes(spec_repo):
+    """AC-045.2"""
+    out = check(spec_repo, _with_gitops(VALID_OPS))
+    assert out.returncode == 0, out.stderr
+
+
+@pytest.mark.parametrize("ops, msg", [
+    (["{scale: shop-api}"], "unknown gitops operation"),
+    (["{env: {A: b}, service: shop-x}"], "unknown service 'shop-x'"),
+    (["{uses: postgres}"], "needs a service"),
+    (["{addon: redis}"], "unknown addon 'redis'"),
+])
+def test_invalid_gitops_operations_are_rejected(spec_repo, ops, msg):
+    """AC-045.2"""
+    out = check(spec_repo, _with_gitops(ops))
+    assert out.returncode == 1 and msg in out.stderr, out.stderr
+
+
+def test_a_gitops_entry_needs_operations(spec_repo):
+    """AC-045.2"""
+    out = check(spec_repo, _with_gitops([]).replace("    gitops:\n", ""))
+    assert out.returncode == 1 and "needs a `gitops:` list" in out.stderr

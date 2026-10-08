@@ -2,8 +2,9 @@
 """Pin every GitHub Action in workflows to a full commit SHA (supply chain, ADR-019).
 
   pin-actions.py [PATH...]          rewrite `uses: owner/repo@v4` to `uses: owner/repo@<sha> # v4` (needs `gh`)
-  pin-actions.py --check [PATH...]  exit 1 if any action is not pinned to a 40-character SHA, or a workflow has no
-                                    top-level `permissions:` (offline; CI guard)
+  pin-actions.py --check [PATH...]  exit 1 if any action is not pinned to a 40-character SHA, an action is pinned to
+                                    different commits in different workflows (spec 055: the templates use the platform's
+                                    pins), or a workflow has no top-level `permissions:` (offline; CI guard)
 
 Default PATHs: .github templates. Dependabot's github-actions ecosystem keeps SHA pins up to date and understands the
 `# vX` comment. Local (`./`) and `docker://` references are ignored.
@@ -38,6 +39,7 @@ def main(argv: list[str]) -> int:
     paths = [a for a in argv if not a.startswith("--")] or [".github", "templates"]
     cache: dict[tuple[str, str], str] = {}
     unpinned = 0
+    pins: dict[str, set[str]] = {}
     for f in workflow_files(paths):
         lines = f.read_text().splitlines(keepends=True)
         if check and not any(ln.startswith("permissions:") for ln in lines):
@@ -46,6 +48,8 @@ def main(argv: list[str]) -> int:
         changed = False
         for i, line in enumerate(lines):
             m = USES.match(line.rstrip("\n"))
+            if m and SHA.match(m["ref"]):
+                pins.setdefault(m["action"], set()).add(m["ref"])
             if not m or m["action"].startswith(("./", "docker://")) or SHA.match(m["ref"]):
                 continue
             unpinned += 1
@@ -57,6 +61,10 @@ def main(argv: list[str]) -> int:
         if changed:
             f.write_text("".join(lines))
     if check:
+        for action, shas in sorted(pins.items()):
+            if len(shas) > 1:
+                print(f"{action} is pinned to {len(shas)} different commits ({', '.join(sorted(s[:7] for s in shas))}): use one pin everywhere", file=sys.stderr)
+                unpinned += 1
         if unpinned:
             print(f"ERROR: {unpinned} finding(s): run `uv run scripts/pin-actions.py`", file=sys.stderr)
             return 1

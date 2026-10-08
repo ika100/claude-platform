@@ -9,12 +9,14 @@ tasks:
   covers: [AC-043.1, AC-043.4]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Lint, type-check and test the rendered Python templates in platform CI
   files: [.github/workflows/ci.yml, tests/cplat/test_ci_templates.py]
   covers: [AC-043.2, AC-043.3]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — Fix the service-python template's lint errors

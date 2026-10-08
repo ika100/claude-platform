@@ -105,3 +105,8 @@ A final section describes the gitops-app PR that pins the resulting image tags.
 - A component repo consumes its entry with `/svc:spec --from-plan <plan> <repo-id>`: `cplat spec new --from-plan` writes the repo's own spec (product problem, the assigned criteria verbatim, the contract, `parent:`), which is approved, planned and built like any other spec. `/svc:build-feature --from-plan` no longer exists.
 - Commands: `/app:spec` (product spec), `/app:plan` (this plan), `/app:build` (parallel waves, ADR-023) and `/app:specs` replace `/app:build-feature`, `/app:run-plan` and `/app:plans`.
 - Plans without `spec:` (written before ADR-026) stay valid with a required `arguments` prompt per repo, and are tracked the same way.
+
+## Amendment (spec 045)
+
+- The gitops-app repo can be an entry of its own plan (`shape: gitops-app`). Instead of a prompt it carries `gitops:`, a list of operations in execution order: `{addon: X}`, `{uses: X, service: S}`, `{expose: S, host: H}`, `{env: {K: V}, service: S}`. `plan-check` rejects unknown operations, services (not in `services.yaml` and not a repo of the plan) and addons (not in `render.py`'s `ADDONS`).
+- `/app:build` builds that entry itself with `cplat addon add` and the new `cplat compose set` (which changes a service that is already composed), opens its PR first and marks it **merge first**, and removes any worktree it created.

@@ -53,6 +53,7 @@ As a trader, I want an alert when a watched symbol crosses my threshold, so that
 - **Concrete:** numbers, limits, field names the user sees, error responses. "Fast" and "user-friendly" are not criteria.
 - **Cover the unhappy paths:** invalid input, missing permission, a dependency down, limits reached. Most defects live there.
 - **Behaviour, not implementation:** "the price is stored" is untestable from outside; say what the user or caller can observe.
+- **Environment-neutral:** no host ports, local hostnames or machine paths (`:8088`, `todo-web.todo-dev.localhost`, `/Users/...`). Say what is observable wherever the product runs: "the todo list page loads at the web app's root URL".
 - **Small features have few criteria.** Three to eight is typical. More than twelve usually means two specs.
 
 ## Open questions

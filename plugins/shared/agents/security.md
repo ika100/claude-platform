@@ -49,7 +49,10 @@ devbox run image-scan
 
 `image-build` builds the local scan image (the tag comes from `devbox.json`, typically `<project>:scan`); `image-scan` runs `trivy image --severity CRITICAL,HIGH …` against that tag.
 
-Report CRITICAL and HIGH CVEs found in the container image layers.
+Report CRITICAL and HIGH CVEs found in the container image layers, in two groups (spec 059):
+
+- **Fixable:** a fixed version exists. List each (package, installed → fixed version, CVE) — these are actionable.
+- **Base image, no fix released:** findings in the base image's OS packages without a fixed version. Do not list them one by one; summarise in one line: `<base image>: <n> HIGH / <m> CRITICAL, no fix released yet — rebuild when the base image updates`. They are tracked, not repeated.
 
 ### 4. Combined scan
 

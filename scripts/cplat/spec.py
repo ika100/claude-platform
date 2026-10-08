@@ -303,7 +303,8 @@ def trace(root: Path, spec: Spec, globs: list[str]) -> dict[str, list[str]]:
 
 
 def _ignored(rel: Path) -> bool:
-    return any(part in {"node_modules", ".venv", ".devbox", ".git", "target", "dist", ".next"} for part in rel.parts)
+    return rel.suffix in {".pyc", ".pyo", ".class"} or any(
+        part in {"node_modules", ".venv", ".devbox", ".git", "target", "dist", ".next", "__pycache__"} for part in rel.parts)
 
 
 # ---------------- writing ----------------

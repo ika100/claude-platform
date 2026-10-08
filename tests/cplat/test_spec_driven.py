@@ -162,3 +162,91 @@ def test_spec_check_script_warns_then_fails_strict_then_passes(tmp_path):
     (tmp_path / "tests" / "test_ping.py").write_text("def test_get():  # AC-001.1\n    pass\ndef test_post():  # AC-001.2\n    pass\n")
     ok = check(strict=True)
     assert ok.returncode == 0 and "0 problem(s)" in ok.stdout
+
+
+# ---------------- spec 044: parallel coders build on the feature branch ----------------
+
+import json as _json
+
+
+def _settings(shape):
+    t = template(shape) / ".claude"
+    raw = next(p for p in (t / "settings.json", t / "settings.json.jinja") if p.is_file()).read_text()
+    return _json.loads(re.sub(r"\{%.*?%\}|\{\{.*?\}\}", "x", raw))
+
+
+@pytest.mark.parametrize("shape", IDS)
+def test_subagent_worktrees_branch_from_head(shape):
+    """AC-044.1 AC-044.2: the orchestrator's HEAD (the feature branch) is the base of every coder worktree."""
+    assert _settings(shape).get("worktree", {}).get("baseRef") == "head"
+
+
+def test_the_shape_contract_requires_the_worktree_base():
+    """AC-044.2: a template without the setting fails `shapes.py check`."""
+    import shapes
+    assert 'worktree.baseRef' in (ROOT / "scripts" / "shapes.py").read_text()
+    assert not [e for e in shapes.check_contract(shapes.load()) if "baseRef" in e]
+
+
+# ---------------- spec 049: spec documents do not break the Python lint ----------------
+
+@pytest.mark.parametrize("shape", ["service-python", "library-python"])
+def test_python_templates_exclude_docs_from_ruff(shape):
+    """AC-049.2"""
+    text = (template(shape) / "pyproject.toml").read_text()
+    ruff = text.split("[tool.ruff]", 1)[1].split("\n[", 1)[0]
+    assert re.search(r'extend-exclude\s*=\s*\[[^\]]*"docs"', ruff)
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not __import__("shutil").which("uv"), reason="needs uv")
+def test_unformatted_python_in_a_design_doc_passes_ruff(tmp_path):
+    """AC-049.1"""
+    import subprocess
+    dest = tmp_path / "svc"
+    subprocess.run(["uv", "tool", "run", "--from", "copier", "copier", "copy", str(template("service-python")), str(dest), "--defaults",
+                    "--trust", "--skip-tasks", "--data", "project_name=svc", "--data", "module_name=svc", "--data", "description=x"],
+                   check=True, capture_output=True)
+    (dest / "docs" / "specs" / "001-x").mkdir(parents=True)
+    (dest / "docs" / "specs" / "001-x" / "design.md").write_text("# D\n\n```python\ndef f( a ):\n  return {'a':a}\n```\n")
+    for cmd in (["uvx", "ruff", "check", "."], ["uvx", "ruff", "format", "--check", "."]):
+        out = subprocess.run(cmd, cwd=dest, capture_output=True, text=True)
+        assert out.returncode == 0, out.stdout + out.stderr
+
+
+# ---------------- spec 057: spec-check says what happened ----------------
+
+def _spec_check_offline(tmp_path, ref):
+    """Run spec-check.sh with a fake git that 'fetches' a platform without spec checks."""
+    import os
+    import subprocess
+    repo = tmp_path / "repo"
+    (repo / "scripts").mkdir(parents=True)
+    (repo / "docs" / "specs").mkdir(parents=True)
+    (repo / "scripts" / "spec-check.sh").write_text((template("service-go") / "scripts" / "spec-check.sh").read_text())
+    if ref:
+        (repo / ".platform-version").write_text(f"platform: 1.0.0\nshape: service-go\nref: {ref}\n")
+    fake = tmp_path / "bin"
+    fake.mkdir()
+    (fake / "git").write_text('#!/bin/sh\n# fake: init/remote/fetch/checkout succeed and leave an empty platform checkout\n'
+                              'if [ "$1" = -C ]; then mkdir -p "$2/scripts/cplat"; touch "$2/scripts/cplat/cplat.py"; mkdir -p "$2/.git"; fi\nexit 0\n')
+    (fake / "git").chmod(0o755)
+    env = {k: v for k, v in os.environ.items() if not k.startswith("SPEC_CHECK")}
+    env |= {"PATH": f"{fake}:{os.environ['PATH']}", "XDG_CACHE_HOME": str(tmp_path / "cache")}
+    return subprocess.run(["bash", "scripts/spec-check.sh"], cwd=repo, env=env, capture_output=True, text=True)
+
+
+def test_spec_check_on_main_without_checks_says_skipped(tmp_path):
+    """AC-057.1"""
+    out = _spec_check_offline(tmp_path, "main")
+    assert out.returncode == 0
+    assert out.stdout.strip().splitlines() == ["spec-check: the platform has no spec checks yet; skipped"]
+
+
+def test_spec_check_on_an_old_tag_says_it_predates_and_uses_main(tmp_path):
+    """AC-057.2"""
+    out = _spec_check_offline(tmp_path, "v1.0.0")
+    lines = out.stdout.strip().splitlines()
+    assert out.returncode == 0
+    assert lines[0] == "spec-check: platform v1.0.0 predates spec checks (ADR-026); using main"
+    assert lines[1] == "spec-check: the platform has no spec checks yet; skipped"

@@ -20,7 +20,7 @@ def gh(args: list[str]) -> str:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="cplat compose", description=__doc__)
-    p.add_argument("action", choices=["add", "remove"])
+    p.add_argument("action", choices=["add", "set", "remove"], help="set: change env, exposure, addon use or replicas of a composed service")
     p.add_argument("services", nargs="+", help="service repo names (org/name, or just name = <github_org>/name)")
     p.add_argument("--app", help="application name when the repo has several")
     p.add_argument("--repo-dir", default=".", help="the gitops-app repo (default: current directory)")
@@ -159,6 +159,10 @@ def main(argv: list[str]) -> int:
     ans = gitops.answers(repo)
     org = ans.get("github_org", "ika100")
     registry_ns = ans.get("docker_registry", f"ghcr.io/{org}")
+    if ns.action == "set" and len(ns.services) != 1:
+        raise PlatformError("compose set changes exactly one service", hint="run it once per service")
+    if ns.action == "set" and not (ns.env or ns.expose or ns.uses or ns.replicas):
+        raise PlatformError("nothing to change", hint="pass --env KEY=VALUE, --expose [HOST], --uses ADDON or --replicas N")
     if (ns.env or ns.generate or ns.secret or ns.uses or ns.secret_ref) and len(ns.services) != 1:
         raise PlatformError("--env, --generate, --secret, --secret-ref and --uses apply to exactly one service")
     if not ns.dry_run:
@@ -202,6 +206,38 @@ def main(argv: list[str]) -> int:
                 if e["name"] in replaced:
                     del services[[x["name"] for x in services].index(e["name"])]
                 services.append(e)
+            gitops.save(app_dir, y, data)
+    elif ns.action == "set":
+        name, _ = resolve_slug(ns.services[0], org)
+        if name not in existing:
+            raise PlatformError(f"{name} is not in services.yaml", hint="current: " + ", ".join(existing) if existing else "services.yaml is empty")
+        entry = existing[name]
+        changes = []
+        for kv in ns.env:
+            k, sep, v = kv.partition("=")
+            if not k or not sep:
+                raise PlatformError(f"--env expects KEY=VALUE, got '{kv}'")
+            changes.append(f"env {k}={v}")
+        if ns.expose:
+            changes.append(f"expose at {name if ns.expose is True else ns.expose}")
+        if ns.uses:
+            changes.append("uses " + ", ".join(ns.uses))
+        if ns.replicas:
+            changes.append(f"replicas {ns.replicas}")
+        names.append(name)
+        r.will_do.append(f"set {name}: " + "; ".join(changes))
+        if not ns.dry_run:  # mutate the round-trip entry in place, so comments and order in services.yaml survive
+            if ns.env:
+                env = entry.setdefault("env", {})
+                for kv in ns.env:
+                    k, _, v = kv.partition("=")
+                    env[k] = v
+            if ns.expose:
+                entry["expose"] = {"host": name if ns.expose is True else ns.expose}
+            if ns.uses:
+                entry["uses"] = list(dict.fromkeys([*(entry.get("uses") or []), *ns.uses]))
+            if ns.replicas:
+                entry["replicas"] = ns.replicas
             gitops.save(app_dir, y, data)
     else:
         for arg in ns.services:

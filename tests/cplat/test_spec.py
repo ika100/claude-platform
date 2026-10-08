@@ -475,3 +475,12 @@ def test_migrated_links_still_resolve():
     text = "[ADR](adr/024-x.md) [web](https://x.io/a) [here](#top) [abs](/docs/a.md) [up](../README.md) [mail](mailto:a@b.c)"
     assert spec.relink(text) == ("[ADR](../../adr/024-x.md) [web](https://x.io/a) [here](#top) [abs](/docs/a.md) "
                                  "[up](../../../README.md) [mail](mailto:a@b.c)")
+
+
+def test_trace_ignores_bytecode_caches(tmp_path):
+    """Found while verifying specs 043-059: the default glob tests/**/* also matched __pycache__/*.pyc."""
+    s = make(tmp_path)
+    (tmp_path / "tests" / "__pycache__").mkdir(parents=True)
+    (tmp_path / "tests" / "__pycache__" / "test_a.cpython-313.pyc").write_bytes(b"\x00AC-007.1\x00")
+    (tmp_path / "tests" / "test_a.py").write_text("# AC-007.1\n")
+    assert spec.trace(tmp_path, s, ["tests/**/*"])["AC-007.1"] == ["tests/test_a.py"]

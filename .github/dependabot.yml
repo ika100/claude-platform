@@ -3,7 +3,9 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: "/"
+    # the platform and every template in one grouped PR, so their pins never diverge (spec 055)
+    directories: ["/", "/templates/service-python", "/templates/library-python", "/templates/web-nextjs",
+                  "/templates/service-java", "/templates/service-go", "/templates/gitops-app"]
     schedule: {interval: monthly}
     groups:
       all:

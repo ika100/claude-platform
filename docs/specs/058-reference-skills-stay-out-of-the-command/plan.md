@@ -9,6 +9,7 @@ tasks:
   covers: [AC-058.1, AC-058.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — user-invocable: false

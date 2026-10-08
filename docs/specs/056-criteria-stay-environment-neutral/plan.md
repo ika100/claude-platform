@@ -9,12 +9,14 @@ tasks:
   covers: [AC-056.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: cluster-up defaults to a free port
   files: [templates/gitops-app/scripts/local-cluster.sh, tests/cplat/test_cluster_ports.py]
   covers: [AC-056.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — Spec format guidance

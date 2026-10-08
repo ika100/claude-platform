@@ -1,7 +1,7 @@
 ---
 spec_id: 059-security-scans-are-quiet-and-the-base
 title: Security scans are quiet and the base image is tracked
-status: approved
+status: done
 priority: P2
 ---
 
@@ -36,3 +36,5 @@ None.
 
 - 2026-10-08 created from issue 17 of the todo end-to-end run
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

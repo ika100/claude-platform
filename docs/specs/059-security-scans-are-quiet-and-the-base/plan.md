@@ -9,12 +9,14 @@ tasks:
   covers: [AC-059.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Security agent summarises unfixable base-image findings
   files: [plugins/shared/agents/security.md, tests/cplat/test_spec_agents.py]
   covers: [AC-059.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — Regenerate the web template's secrets baseline

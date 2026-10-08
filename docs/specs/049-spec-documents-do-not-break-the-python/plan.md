@@ -9,6 +9,7 @@ tasks:
   covers: [AC-049.1, AC-049.2]
   parallel_safe: true
   depends_on: []
+  done: true
 ---
 
 ## t1 — Exclude docs/ in the Python templates' ruff config

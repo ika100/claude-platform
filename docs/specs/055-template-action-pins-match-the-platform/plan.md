@@ -9,6 +9,7 @@ tasks:
   covers: [AC-055.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Align the template pins and update them together
   files: [templates/service-python/.github/workflows/ci.yml, templates/library-python/.github/workflows/ci.yml, templates/web-nextjs/.github/workflows/ci.yml,
@@ -17,12 +18,14 @@ tasks:
   covers: [AC-055.1, AC-055.2]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 - id: t3
   title: Test
   files: [tests/cplat/test_workflows.py]
   covers: [AC-055.1]
   parallel_safe: true
   depends_on: [t1]
+  done: true
 ---
 
 ## t1 — pin-actions --check enforces one SHA per action
