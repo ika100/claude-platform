@@ -8,30 +8,42 @@ A guided walk-through of the whole platform, told through one made-up product, *
 
 ## The mental model (2 minutes)
 
-```
-                          ┌────────────────────────────┐
-                          │  ika100/sdlc-foundry    │   one marketplace repo
-                          │  plugins  +  templates     │
-                          └──────────┬─────────────────┘
-        /plugin install              │ /shared:new-service            /shared:update-service
-        (agents & commands)          ▼ (skeleton, once)               (skeleton, later)
-  ┌───────────────┐   ┌────────────────────────────────────────────────────────────┐
-  │ Claude Code   │   │  Your repos                                                  │
-  │ + devbox      │   │  taskboard           (gitops-app: which services, which     │
-  └───────────────┘   │                       version runs in dev/staging/prod)     │
-                      │  taskboard-api       (service-python)                        │
-                      │  taskboard-web       (web-nextjs)                            │
-                      └────────────────────────────────────────────────────────────┘
-                                                     │  ArgoCD reconciles
-                                                     ▼
-                                                Kubernetes
+```mermaid
+flowchart TB
+  subgraph PLATFORM["ika100/sdlc-foundry — one marketplace repo"]
+    direction LR
+    PL["Plugins<br/>agents · commands · cplat"]
+    TP["Templates<br/>one per shape"]
+  end
+  CC["You: Claude Code + devbox"]
+  subgraph REPOS["Your repos on GitHub"]
+    direction LR
+    GIT["taskboard<br/><i>gitops-app</i>: which services,<br/>which version runs where"]
+    subgraph SVC["Service repos"]
+      direction LR
+      API["taskboard-api<br/><i>service-python</i>"]
+      WEB["taskboard-web<br/><i>web-nextjs</i>"]
+    end
+  end
+  IMG[("Images<br/>GHCR")]
+  K8S["Kubernetes<br/>dev · staging · prod"]
+
+  PL -- "/plugin install" --> CC
+  TP -- "/shared:new-service (once)<br/>/shared:update-service (later)" --> REPOS
+  CC -- "/svc:spec → plan → build<br/>pull requests" --> SVC
+  CC -- "/app:spec → plan → build<br/>/gitops:compose · promote" --> GIT
+  SVC -- "CI on main" --> IMG
+  GIT -- "ArgoCD reconciles" --> K8S
+  IMG -. "pulled" .-> K8S
 ```
 
-Three ideas carry everything:
+
+Four ideas carry everything:
 
 1. **Shapes.** Every repo has a *shape* (`service-python`, `web-nextjs`, `gitops-app`, `service-java`, `service-go`, `library-python`). The shape decides which template creates it and which agents work on it. You never pick agents; commands detect the shape.
 2. **`devbox run <recipe>` is the only way anything runs** (`test`, `quality`, `security`, `image-build`, …). Same recipes in every shape, so humans, CI and agents behave identically.
-3. **Two update channels.** Agents and commands update with `/plugin marketplace update`; the project skeleton (CI, Dockerfile, devbox, CLAUDE.md) updates with `/shared:update-service`. Your own code is never touched by either.
+3. **Specs drive the work.** A feature starts as a spec in `docs/specs/` with numbered acceptance criteria you approve; the build writes failing tests from them first, then the code, and verifies every criterion before the pull request. Small changes and bug fixes skip the spec.
+4. **Two update channels.** Agents and commands update with `/plugin marketplace update`; the project skeleton (CI, Dockerfile, devbox, CLAUDE.md) updates with `/shared:update-service`. Your own code is never touched by either.
 
 ---
 
