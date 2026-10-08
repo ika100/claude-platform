@@ -17,7 +17,7 @@ repos:
       - {addon: postgres}                                   # cplat addon add postgres
       - {uses: postgres, service: todo-api}                 # cplat compose set todo-api --uses postgres
       - {expose: todo-web, host: todo-web}                  # cplat compose set todo-web --expose todo-web
-      - {env: {TODO_API_URL: http://todo-api}, service: todo-web}  # cplat compose set todo-web --env TODO_API_URL=…
+      - {env: {TODO_API_URL: 'http://todo-api'}, service: todo-web}  # cplat compose set todo-web --env TODO_API_URL=…
     depends_on: []
     done: false
 ```

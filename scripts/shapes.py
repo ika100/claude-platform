@@ -142,6 +142,9 @@ def check_contract(shapes: list[dict]) -> list[str]:
             errs.append(f"{sid}: template has no .claude/settings.json")
         else:
             st = settings.read_text()
+            # spec 044: subagent worktrees must branch from the feature branch, not the default branch
+            if not __import__("re").search(r'"worktree"\s*:\s*\{\s*"baseRef"\s*:\s*"head"', st):
+                errs.append(f'{sid}: .claude/settings.json must set worktree.baseRef: "head" (spec 044)')
             for plugin in (s["plugin"], "shared"):
                 if f'"{plugin}@sdlc-foundry": true' not in st:
                     errs.append(f"{sid}: .claude/settings.json does not enable '{plugin}'")

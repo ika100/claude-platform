@@ -24,12 +24,17 @@ It must report `shape: gitops-app`, else stop.
 
 ## Loop (one wave per iteration)
 
-1. `devbox run -- uv run scripts/plan.py ready <spec_id> --json` → the repos that can start now. Empty and not completed → a PR of the previous wave is still open: go to 4.
-2. For each ready repo (at most `--max`): make sure a clone exists next to this repo (`gh repo clone <org>/<repo> ../<repo>` if missing); refuse a clone with uncommitted changes.
-3. **In a single message**, start one subagent per ready repo (Agent tool, general-purpose) so they run concurrently. Each prompt contains the repo path, the absolute plan path, the repo id, and these instructions:
+1. `devbox run -- uv run scripts/plan.py ready <spec_id> --json` → the repos that can start now. Empty and not completed → a PR of the previous wave is still open: go to 5.
+2. **The gitops-app entry** (shape `gitops-app`, this repo itself), when it is ready, is built here by you, never `/svc:*` and never by a repo agent (spec 045):
+   - On a clean checkout, `git checkout -b compose/<spec_id>` from `main`. If this checkout is busy (another branch with work), use `git worktree add ../<repo>-<spec_id> -b compose/<spec_id> main` and run everything there.
+   - Run its `gitops:` operations in order: `{addon: X}` → `cplat addon add X`; `{uses: X, service: S}` → `cplat compose set S --uses X`; `{expose: S, host: H}` → `cplat compose set S --expose H`; `{env: {K: V}, service: S}` → `cplat compose set S --env K=V` (one `--env` per variable).
+   - `devbox run validate`, commit `feat(compose): <spec_id> — <summary>`, push, open the PR (or print its command), and mark it **merge first** in the table: services that use an addon or an env it adds are not ready before it is merged.
+   - Back on the original branch, `git worktree remove ../<repo>-<spec_id>` if you created one; the run leaves no extra folder.
+3. For each other ready repo (at most `--max`): make sure a clone exists next to this repo (`gh repo clone <org>/<repo> ../<repo>` if missing); refuse a clone with uncommitted changes.
+4. **In a single message**, start one subagent per ready component repo (Agent tool, general-purpose) so they run concurrently. Each prompt contains the repo path, the absolute plan path, the repo id, and these instructions:
    *Work only inside that clone. Run the `/svc:spec --from-plan <abs plan path> <repo-id>` steps **unattended**: the user approved the product spec and plan, so if the repo spec has no open questions, approve it; if it has any, stop and report them verbatim, never answer them. Then run the `/svc:plan <n>` and `/svc:build <n>` pipelines. Stop with an open pull request: never merge, never push to `main`. Report the repo spec id, the PR URL, the CI result and the verification result; if blocked, report why instead of guessing.*
-4. Collect the reports. Print one table: repo, repo spec, PR, CI, verification, state. Open questions from a repo go to the user (AskUserQuestion); after answering, re-run `/app:build <NNN>` (state is in the plan file and the repo specs). A failed or blocked repo stops the loop: say which repos are untouched.
-5. Ask the user to review and merge the PRs (or to say "merge" for green ones: only then `gh pr merge --squash` on those). For each `MERGED` PR (`gh pr view --json state`): `devbox run -- uv run scripts/plan.py done <spec_id> <repo-id>`. Then the next wave.
+5. Collect the reports. Print one table: repo, repo spec, PR, CI, verification, state (the gitops entry first, marked **merge first**). Open questions from a repo go to the user (AskUserQuestion); after answering, re-run `/app:build <NNN>` (state is in the plan file and the repo specs). A failed or blocked repo stops the loop: say which repos are untouched.
+6. Ask the user to review and merge the PRs (the gitops PR first) (or to say "merge" for green ones: only then `gh pr merge --squash` on those). For each `MERGED` PR (`gh pr view --json state`): `devbox run -- uv run scripts/plan.py done <spec_id> <repo-id>`. Then the next wave.
 
 ## When the plan is completed
 

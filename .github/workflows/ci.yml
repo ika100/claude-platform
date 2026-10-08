@@ -192,6 +192,16 @@ jobs:
           else
             grep -F -e '--cov=test_lib' /tmp/test-${{ matrix.template }}/devbox.json
           fi
+      # Spec 043: a generated repo must pass its own quality gate. uv only (no devbox on the runner);
+      # `devbox run smoke` stays the full local check of the render-and-bootstrap path.
+      - name: Lint, type-check and test the rendered project
+        working-directory: /tmp/test-${{ matrix.template }}
+        run: |
+          uv sync --all-extras
+          uv run ruff check .
+          uv run ruff format --check .
+          uv run mypy src
+          uv run pytest -q
 
   smoke-test-gitops-app:
     name: smoke-test gitops-app template

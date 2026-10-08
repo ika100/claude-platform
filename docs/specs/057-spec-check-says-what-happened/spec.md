@@ -1,7 +1,7 @@
 ---
 spec_id: 057-spec-check-says-what-happened
 title: spec-check says what happened
-status: approved
+status: building
 priority: P2
 ---
 
@@ -36,3 +36,4 @@ None.
 
 - 2026-10-08 created from issue 15 of the todo end-to-end run
 - 2026-10-08 approved
+- 2026-10-08 building

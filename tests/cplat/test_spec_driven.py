@@ -162,3 +162,27 @@ def test_spec_check_script_warns_then_fails_strict_then_passes(tmp_path):
     (tmp_path / "tests" / "test_ping.py").write_text("def test_get():  # AC-001.1\n    pass\ndef test_post():  # AC-001.2\n    pass\n")
     ok = check(strict=True)
     assert ok.returncode == 0 and "0 problem(s)" in ok.stdout
+
+
+# ---------------- spec 044: parallel coders build on the feature branch ----------------
+
+import json as _json
+
+
+def _settings(shape):
+    t = template(shape) / ".claude"
+    raw = next(p for p in (t / "settings.json", t / "settings.json.jinja") if p.is_file()).read_text()
+    return _json.loads(re.sub(r"\{%.*?%\}|\{\{.*?\}\}", "x", raw))
+
+
+@pytest.mark.parametrize("shape", IDS)
+def test_subagent_worktrees_branch_from_head(shape):
+    """AC-044.1 AC-044.2: the orchestrator's HEAD (the feature branch) is the base of every coder worktree."""
+    assert _settings(shape).get("worktree", {}).get("baseRef") == "head"
+
+
+def test_the_shape_contract_requires_the_worktree_base():
+    """AC-044.2: a template without the setting fails `shapes.py check`."""
+    import shapes
+    assert 'worktree.baseRef' in (ROOT / "scripts" / "shapes.py").read_text()
+    assert not [e for e in shapes.check_contract(shapes.load()) if "baseRef" in e]

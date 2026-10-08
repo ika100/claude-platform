@@ -50,7 +50,11 @@ From `plan.md`: **skip tasks with `done: true`**. Topologically sort the rest by
 
 ### 2.2 Worktree probe
 
-Before the first parallel batch, run a throwaway Agent with `isolation: "worktree"` and a one-line task. If it errors ("Cannot create agent worktree", "not in a git repository"), run every task sequentially on `$FEATURE_BRANCH` and note it in the Final Report (restart the session for parallelism).
+Before the first parallel batch, record `FEATURE_HEAD=$(git rev-parse HEAD)` and run a throwaway Agent with `isolation: "worktree"` whose one task is to report `git rev-parse HEAD` in its worktree.
+
+- It errors ("Cannot create agent worktree", "not in a git repository") → run every task sequentially on `$FEATURE_BRANCH` and note it in the Final Report (restart the session for parallelism).
+- It reports a HEAD other than `$FEATURE_HEAD` → coders would not see the spec, the plan or the acceptance tests. Run every task sequentially and say in the Final Report: `worktree base is <sha>, not the feature head; set worktree.baseRef: "head" in .claude/settings.json (/shared:update-service)`.
+- It reports `$FEATURE_HEAD` → parallel batches are safe: every task branch starts at the feature head, so merging it brings only that task's commits.
 
 ### 2.3 Coder prompt (every task)
 

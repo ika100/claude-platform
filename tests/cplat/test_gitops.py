@@ -424,3 +424,53 @@ def test_secret_ref_rejects_bad_names_and_multiple_services(gitops_repo, gh):
         run_compose(gitops_repo, "add", "todo-api", "--secret-ref", "Bad_Name")
     with pytest.raises(core.PlatformError, match="exactly one service"):
         run_compose(gitops_repo, "add", "todo-api", "todo-web", "--secret-ref", "x")
+
+
+# ---------------- spec 045: `compose set` changes a service that is already composed ----------------
+
+def test_set_adds_env_and_exposure_to_an_existing_service(gitops_repo, gh):
+    """AC-045.1: the gitops entry of a product plan wires services that already run."""
+    run_compose(gitops_repo, "add", "todo-web")
+    commit(gitops_repo)
+    assert run_compose(gitops_repo, "set", "todo-web", "--env", "TODO_API_URL=http://todo-api", "--expose", "todo-web") == 0
+    s = services(gitops_repo)[0]
+    assert s["env"]["TODO_API_URL"] == "http://todo-api" and s["env"]["NODE_ENV"] == "production"   # merged, not replaced
+    assert s["expose"] == {"host": "todo-web"}
+    route = yaml.safe_load((gitops_repo / "applications/todo/overlays/dev/todo-web/httproute.yaml").read_text())
+    assert route["spec"]["hostnames"] == ["todo-web.todo-dev.localhost"]
+    assert render_check(gitops_repo).returncode == 0
+
+
+def test_set_adds_an_addon_to_an_existing_service(gitops_repo, gh):
+    """AC-045.1: `{uses: postgres, service: todo-api}` after `{addon: postgres}`."""
+    import addon
+    run_compose(gitops_repo, "add", "todo-api")
+    commit(gitops_repo)
+    addon.main(["add", "postgres", "--repo-dir", str(gitops_repo)])
+    commit(gitops_repo)
+    run_compose(gitops_repo, "set", "todo-api", "--uses", "postgres")
+    assert services(gitops_repo)[0]["uses"] == ["postgres"]
+    dep = yaml.safe_load((gitops_repo / "applications/todo/overlays/dev/todo-api/deployment.yaml").read_text())
+    assert "DATABASE_URL" in {e["name"] for e in dep["spec"]["template"]["spec"]["containers"][0]["env"]}
+
+
+@pytest.mark.parametrize("argv, msg", [
+    (["set", "todo-x", "--env", "A=b"], "is not in services.yaml"),
+    (["set", "todo-api", "todo-web", "--env", "A=b"], "exactly one service"),
+    (["set", "todo-api"], "nothing to change"),
+])
+def test_set_refuses_unknown_services_and_empty_changes(gitops_repo, gh, argv, msg):
+    """AC-045.1"""
+    run_compose(gitops_repo, "add", "todo-api")
+    commit(gitops_repo)
+    with pytest.raises(core.PlatformError, match=msg):
+        run_compose(gitops_repo, *argv)
+
+
+def test_set_dry_run_changes_nothing(gitops_repo, gh):
+    """AC-045.1"""
+    run_compose(gitops_repo, "add", "todo-api")
+    commit(gitops_repo)
+    before = (gitops_repo / "applications/todo/services.yaml").read_text()
+    run_compose(gitops_repo, "set", "todo-api", "--env", "A=b", "--dry-run")
+    assert (gitops_repo / "applications/todo/services.yaml").read_text() == before

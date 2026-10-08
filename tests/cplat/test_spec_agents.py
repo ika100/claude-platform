@@ -154,3 +154,24 @@ def test_repo_specs_come_from_the_deterministic_slice():
     text = (PLUGINS / "svc" / "commands" / "spec.md").read_text()
     assert "cplat spec new --from-plan <abs plan path> <repo-id>" in text
     assert "Product context" in (PLUGINS / "svc" / "agents" / "product-manager.md").read_text()
+
+
+def test_build_checks_the_worktree_base_before_fanning_out():
+    """AC-044.3 AC-044.4: a probe worktree off the feature head means sequential, with the reason."""
+    text = (COMMANDS / "build.md").read_text()
+    probe = text.split("### 2.2 Worktree probe", 1)[1].split("### 2.3", 1)[0]
+    assert "git rev-parse HEAD" in probe and "FEATURE_HEAD" in probe and 'worktree.baseRef: "head"' in probe
+    assert "only that task's commits" in text
+
+
+def test_app_build_runs_the_gitops_entry_itself():
+    """AC-045.1 AC-045.3 AC-045.4: cplat operations in the gitops repo, merge first, no leftover worktree."""
+    text = (APP / "commands" / "build.md").read_text()
+    assert "cplat compose set" in text and "cplat addon add" in text and "merge first" in text and "git worktree remove" in text
+    assert "never `/svc:*`" in text
+
+
+def test_planner_writes_gitops_operations():
+    """AC-045.2"""
+    text = (APP / "agents" / "planner.md").read_text()
+    assert "gitops:" in text and "{uses: postgres, service:" in text
