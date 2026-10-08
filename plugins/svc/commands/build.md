@@ -22,7 +22,10 @@ It prints JSON: `shape`, `plugin`, `deployable`, `library`, `agents` (the subage
 
 ## Phase 0 — Pre-flight
 
-1. `git status --porcelain` must be empty.
+1. `git status --porcelain`. A dirty tree on a spec whose status is not `building` stops the build: commit or stash first (the clean-tree rule). On a `building` spec it is an **interrupted build** (spec 047):
+   - Staged entries that differ from both `HEAD` and the working tree are stale (left by the interrupted coder): `git restore --staged <files>` and name them.
+   - The first task in `plan.md` that is not `done` is the interrupted one. Ask, then commit the remaining changes as `wip(<task-id>): interrupted` (in an unattended run, commit without asking and say so).
+   - That task runs again in Phase 2 with `git show HEAD` (the WIP diff) in its coder prompt, so the coder finishes or redoes it.
 2. `cplat spec check <id> --require approved` must pass, and `docs/specs/<spec_id>/plan.md` must exist. Otherwise stop with the fix: `/svc:spec approve <NNN>`, `/svc:plan <NNN>`, or for `spec_hash` drift `/svc:plan <NNN>` again.
 3. Switch to `feature/<spec_id>` (create it from `main` if missing). `$FEATURE_BRANCH` = it.
 4. `BASE_REF=$(git merge-base main HEAD)` — the build's diff baseline, stable across re-runs.
@@ -146,7 +149,7 @@ Skip with `## Phase 5 skipped — <shape> is not deployable` when `deployable` i
    - [x] No secrets, credentials, or API keys committed
    ```
 
-4. Print the PR URL.
+4. Print the PR URL. If the branch has `wip(` commits (an interrupted build, spec 047), the PR body ends with: "Contains WIP commits from an interrupted build: squash-merge."
 
 ## Final Report
 

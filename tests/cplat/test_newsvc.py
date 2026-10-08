@@ -139,3 +139,54 @@ def test_next_steps_tell_the_agent_to_start_a_feature_without_waiting_for_ci():
     steps = newsvc._next_steps({"name": "svc-a", "shape": "service-python", "description": "Task API"})
     joined = "\n".join(steps)
     assert "/svc:build <NNN>" in joined and "do not wait" in joined
+
+
+# ---------------- spec 054: new repos protect main with their CI checks ----------------
+
+def _gh_recorder(monkeypatch, fail_protection=False):
+    import subprocess
+    calls, real_run = [], newsvc.run
+
+    def fake_run(cmd, **kw):
+        if cmd[0] == "gh":
+            calls.append(cmd)
+            rc = 1 if fail_protection and "protection" in " ".join(cmd) else 0
+            if rc and kw.get("check", True):
+                raise core.PlatformError("HTTP 403")
+            return subprocess.CompletedProcess(cmd, rc, "", "HTTP 403: Upgrade to GitHub Pro" if rc else "")
+        return real_run(cmd, **kw)
+
+    monkeypatch.setattr(newsvc, "run", fake_run)
+    monkeypatch.setattr(newsvc.core, "has_gh", lambda: True)
+    return calls
+
+
+def test_new_repo_requires_its_ci_checks_on_main(tmp_path, monkeypatch, capsys):
+    """AC-054.1: status checks only, listed as an outward step."""
+    calls = _gh_recorder(monkeypatch)
+    assert newsvc.main(["prot-svc", "d", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme", "--dry-run"]) == 0
+    assert "[outward] protect main: require the CI checks" in capsys.readouterr().out
+    assert newsvc.main(["prot-svc", "d", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    prot = next(c for c in calls if "repos/acme/prot-svc/branches/main/protection" in c)
+    checks = {c.split("=", 1)[1] for c in prot if c.startswith("required_status_checks[contexts][]=")}
+    entry = next(s for s in core.registry.load() if s["id"] == "service-python")
+    assert checks == set(entry["ci_checks"]) and "required_pull_request_reviews=null" in prot
+
+
+def test_protection_failure_warns_and_still_succeeds(tmp_path, monkeypatch, capsys):
+    """AC-054.2"""
+    _gh_recorder(monkeypatch, fail_protection=True)
+    assert newsvc.main(["prot-svc2", "d", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    out = capsys.readouterr().out
+    assert "could not protect main" in out and "gh api -X PUT repos/acme/prot-svc2/branches/main/protection" in out
+
+
+def test_every_shape_lists_ci_checks_that_exist_in_its_workflow():
+    """AC-054.1: required checks must match real job names, or PRs could never merge."""
+    for s in core.registry.load():
+        if s["status"] == "planned":
+            continue
+        ci = (core.PLATFORM_ROOT / "templates" / s["template"] / ".github" / "workflows" / "ci.yml").read_text()
+        assert s.get("ci_checks"), s["id"]
+        for name in s["ci_checks"]:
+            assert f"name: {name}\n" in ci, f"{s['id']}: no job named '{name}'"

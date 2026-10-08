@@ -135,10 +135,27 @@ def check_gitops(rid: str, ops, services: set[str]) -> list[str]:
     return errs
 
 
+def section(text: str, heading: str) -> str | None:
+    m = re.search(rf"^## +{re.escape(heading)}\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+    return m.group(1) if m else None
+
+
+def check_contract(meta: dict, body: str) -> list[str]:
+    """Spec 053: with two or more repos the contract states the error format and the timeouts."""
+    if "spec" not in meta or len(meta.get("repos") or []) < 2:
+        return []
+    design = SPEC_DIR / str(meta["spec"]) / "design.md"
+    contract = section(body, "Contract") or (section(design.read_text(), "Contract") if design.is_file() else None)
+    if contract is None:
+        return ["a plan with two or more repos needs a `## Contract` section (in the plan or the spec's design.md) with `### Errors` and `### Timeouts`"]
+    return [f"the contract has no `### {h}` section (spec 053: say it once here instead of in every repo)"
+            for h in ("Errors", "Timeouts") if not re.search(rf"^### +{h}\b", contract, re.M)]
+
+
 def check(path: Path) -> list[str]:
     errs: list[str] = []
     try:
-        meta, _ = load(path)
+        meta, body = load(path)
     except Exception as e:  # noqa: BLE001
         return [str(e)]
     shapes = SHAPES | set(filter(None, __import__("os").environ.get("PLAN_SHAPES", "").split(",")))
@@ -200,6 +217,7 @@ def check(path: Path) -> list[str]:
             topo_levels(repos)
         except ValueError as e:
             errs.append(str(e))
+    errs += check_contract(meta, body)
     if meta["status"] == "completed" and not all(r.get("done") for r in repos):
         errs.append("status is completed but not every repo is done")
     return errs

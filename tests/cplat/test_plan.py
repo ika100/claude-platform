@@ -95,7 +95,7 @@ shape: gitops-app
 ## Changelog
 """
 
-SPEC_PLAN = """---
+SPEC_PLAN_BARE = """---
 plan_id: 012-billing
 spec: 012-billing
 feature: billing
@@ -106,6 +106,8 @@ repos:
   - {id: shop-web, shape: web-nextjs, summary: UI, acs: [AC-012.2], depends_on: [], done: false}
 ---
 """
+CONTRACT = "\n## Contract\n\nPOST /x -> 201\n\n### Errors\n\nproblem+json\n\n### Timeouts\n\n3 s; 503 when down\n"
+SPEC_PLAN = SPEC_PLAN_BARE + CONTRACT   # spec 053: two repos need errors and timeouts in the contract
 
 
 @pytest.fixture()
@@ -163,7 +165,7 @@ VALID_OPS = ["{addon: postgres}", "{uses: postgres, service: shop-api}", "{expos
 
 def _with_gitops(ops):
     entry = GITOPS_ENTRY.format(ops="".join(f"      - {o}\n" for o in ops))
-    return SPEC_PLAN.replace("\n---\n", "\n" + entry + "---\n", 1)
+    return SPEC_PLAN.replace("\n---\n", "\n" + entry + "---\n", 1)   # keeps the contract body
 
 
 def test_a_gitops_entry_with_valid_operations_passes(spec_repo):
@@ -188,3 +190,22 @@ def test_a_gitops_entry_needs_operations(spec_repo):
     """AC-045.2"""
     out = check(spec_repo, _with_gitops([]).replace("    gitops:\n", ""))
     assert out.returncode == 1 and "needs a `gitops:` list" in out.stderr
+
+
+# ---------------- spec 053: multi-repo contracts state errors and timeouts ----------------
+
+
+def test_a_multi_repo_contract_needs_errors_and_timeouts(spec_repo):
+    """AC-053.1"""
+    out = check(spec_repo, SPEC_PLAN_BARE)                 # two repos, no contract at all
+    assert out.returncode == 1 and "## Contract" in out.stderr
+    out = check(spec_repo, SPEC_PLAN_BARE + CONTRACT.replace("### Timeouts", "### Other"))
+    assert out.returncode == 1 and "### Timeouts" in out.stderr and "### Errors" not in out.stderr
+    assert check(spec_repo, SPEC_PLAN).returncode == 0
+
+
+def test_a_single_repo_plan_needs_no_contract(spec_repo):
+    """AC-053.1"""
+    one = SPEC_PLAN_BARE.replace("  - {id: shop-web, shape: web-nextjs, summary: UI, acs: [AC-012.2], depends_on: [], done: false}\n", "")
+    out = check(spec_repo, one.replace("acs: [AC-012.1]", "acs: [AC-012.1, AC-012.2]"))
+    assert out.returncode == 0, out.stderr

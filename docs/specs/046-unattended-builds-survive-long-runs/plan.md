@@ -9,12 +9,14 @@ tasks:
   covers: [AC-046.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Document unattended runs
   files: [docs/ADOPTING.md, tests/cplat/test_spec_agents.py]
   covers: [AC-046.2, AC-046.1]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 ---
 
 ## t1 — Foreground repo agents in /app:build

@@ -65,6 +65,9 @@ def validate(shapes: list[dict]) -> list[str]:
         globs = s.get("test_globs")
         if s.get("status") != "planned" and (not isinstance(globs, list) or not globs or not all(isinstance(g, str) and g for g in globs)):
             errs.append(f"{sid}: test_globs must list where tests live (ADR-026: `cplat spec trace` searches them for AC ids)")
+        checks = s.get("ci_checks")
+        if s.get("status") != "planned" and (not isinstance(checks, list) or not checks):
+            errs.append(f"{sid}: ci_checks must list the CI job names new repos require on main (spec 054)")
         if s.get("library") and s.get("deployable"):
             errs.append(f"{sid}: a library cannot be deployable")
     return errs
@@ -183,6 +186,11 @@ def check_contract(shapes: list[dict]) -> list[str]:
             on_push = ci.read_text().split("pull_request", 1)[0]
             if not __import__("re").search(r"(^|\s|\[|,)main(\s|,|\]|$)", on_push.split("push:", 1)[-1]):
                 errs.append(f"{sid}: ci.yml does not trigger on push to main")
+        # 2a1. required checks (spec 054) must be real job names, or no pull request could ever merge
+        if ci is not None:
+            for name in s.get("ci_checks") or []:
+                if f"name: {name}\n" not in ci.read_text():
+                    errs.append(f"{sid}: ci_checks entry '{name}' is not a job name in ci.yml")
         # 2b. pinned toolchains must agree (a mismatch broke bootstrap: devbox's pnpm cannot switch to a newer pinned one)
         if s["id"] == "web-nextjs":
             import re as _re

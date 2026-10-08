@@ -9,12 +9,14 @@ tasks:
   covers: [AC-047.1, AC-047.2, AC-047.3, AC-047.4]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Contract tests for resume
   files: [tests/cplat/test_spec_agents.py]
   covers: [AC-047.1, AC-047.2, AC-047.3, AC-047.4]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 ---
 
 ## t1 — Resume pre-flight in /svc:build

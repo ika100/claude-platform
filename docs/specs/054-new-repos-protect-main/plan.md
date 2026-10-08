@@ -9,12 +9,14 @@ tasks:
   covers: [AC-054.1, AC-054.2]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: Tests with a faked gh
   files: [tests/cplat/test_newsvc.py]
   covers: [AC-054.1, AC-054.2]
   parallel_safe: false
   depends_on: [t1]
+  done: true
 ---
 
 ## t1 — Branch protection in new-service (and so new-app)

@@ -1,7 +1,7 @@
 ---
 spec_id: 046-unattended-builds-survive-long-runs
 title: Unattended builds survive long runs
-status: approved
+status: done
 priority: P1
 ---
 
@@ -37,3 +37,5 @@ As a founder, I want `/app:build` to finish when nobody watches it, so that sche
 - 2026-10-08 created from issue 4 of the todo end-to-end run
 - 2026-10-08 open question answered: yes: parallel foreground Agent calls in one message; the env var is documented for other unattended uses.
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done

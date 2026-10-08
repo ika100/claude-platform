@@ -1,7 +1,7 @@
 ---
 spec_id: 053-contracts-settle-cross-repo-details
 title: Contracts settle cross-repo details
-status: approved
+status: done
 priority: P2
 ---
 
@@ -36,3 +36,5 @@ None.
 
 - 2026-10-08 created from issue 11 of the todo end-to-end run
 - 2026-10-08 approved
+- 2026-10-08 building
+- 2026-10-08 done
