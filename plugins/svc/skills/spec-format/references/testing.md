@@ -24,5 +24,5 @@ One test may name several criteria; one criterion may need several tests (happy 
 
 ## After that
 
-- Coders make these tests pass and never edit, skip or weaken them. If a test contradicts the spec or the contract, the coder stops and reports it; the orchestrator decides (and records the change in the spec's Changelog if the spec was wrong).
+- Coders make these tests pass and never edit, skip or weaken them. Formatting through `devbox run lint-fix` is fine: the build checks every change with `cplat spec test-diff <red commit>` (same parsed code for Python, same text without whitespace for other languages, same criterion ids) and stops on anything else. If a test contradicts the spec or the contract, the coder stops and reports it; the orchestrator decides (and records the change in the spec's Changelog if the spec was wrong).
 - Unit and integration tests for internals are added later as usual; they do not need criterion ids.

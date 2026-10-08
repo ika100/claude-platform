@@ -44,6 +44,7 @@ Then:
 - `cplat spec trace <id>` must pass; otherwise send the missing ids back to the tester (once).
 - `devbox run test-fast`: the new tests fail, nothing else newly fails. A test that errors for another reason goes back to the tester.
 - `cplat spec trace <id> --json` → hold `TRACE` (criterion → test files) for Phase 2.
+- `RED=$(git log -1 --format=%H --grep 'acceptance tests for')` — the commit the acceptance tests are measured against from now on (spec 048).
 
 ## Phase 2 — Implement (parallel via git worktrees)
 
@@ -70,7 +71,7 @@ Before the first parallel batch, record `FEATURE_HEAD=$(git rev-parse HEAD)` and
 
 **Parallel batch (≥ 2 tasks):** one coder per task **in a single message**, each with `isolation: "worktree"`. Collect `(branch, worktree_path)` from those that changed something. Then for each, in order:
 1. `git merge --no-ff --no-edit <branch>` — a conflict means the plan's `files` were wrong: `git merge --abort`, stop and escalate. Never resolve it yourself.
-2. `devbox run lint-fix`, stage; `devbox run quality` — failures go back to that task's coder (lint/type fixes only).
+2. `devbox run lint-fix`, stage; then `cplat spec test-diff $RED`: acceptance tests may only have changed in formatting. Exit 1 means a test was weakened or changed: stop and show the user the file and the reason (spec 048). Then `devbox run quality` — failures go back to that task's coder (lint/type fixes only).
 3. `devbox run test-fast` — integration failures go back to the coder with the output.
 4. `git worktree remove <path>`; `git branch -d <branch>`.
 
@@ -93,6 +94,8 @@ Spawn all three **in one message**, each with `<project-map>` and `<touched-file
 3. **security** (`agents.security`): "Run `devbox run security`. If a Dockerfile changed, also `devbox run image-build && devbox run image-scan`. Document findings in `docs/security/scan-<today>.md`."
 
 Reconcile: quality failures → coder (lint/type only), tester bugs → coder; at most 2 cycles each. **CRITICAL** security findings → stop and escalate. **HIGH** → document and continue. Refresh `TOUCHED_FILES` if files changed.
+
+After the fan-out, run `cplat spec test-diff $RED` once more (the quality agent ran `lint-fix` too); exit 1 stops the build as in Phase 2.
 
 ## Phase 4 — Verify against the spec
 

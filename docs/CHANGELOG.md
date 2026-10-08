@@ -6,6 +6,8 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **Fixes from the todo end-to-end run, wave 3** (specs 048, 050): new `cplat spec test-diff <red-commit> [files]` tells formatting from real changes in acceptance tests (Python by AST with sorted imports, other languages by whitespace-free text, criterion ids must stay); `/svc:build` runs it after every `lint-fix` and stops only on a real change, so lint no longer blocks a build and tests are never quietly weakened (048). `/app:plan` pushes the spec branch and opens its PR, and `/app:build` warns when the plan on `origin/main` differs from the local one (050).
+
 - **Fixes from the todo end-to-end run, wave 2** (specs 046, 047, 053, 054): `/app:build` runs its repo agents as foreground calls, so headless runs no longer lose them after 600 s, and `docs/ADOPTING.md` has an *Unattended runs* section (046). `/svc:build` resumes an interrupted build: stale staged files are unstaged, the leftover work is committed as `wip(<task>): interrupted` and redone, and the PR asks for a squash merge (047). `plan-check` requires `### Errors` and `### Timeouts` in the contract of every multi-repo plan, so repo specs stop asking the same questions (053). `/shared:new-service` and `/shared:new-app` protect `main` with the shape's CI checks (new `ci_checks` per shape in `shapes.yml`, validated against the workflow job names; no review requirement; a warning with the manual command where the plan does not allow protection) (054).
 
 - **Fixes from the todo end-to-end run, wave 1** (specs 043–045, 049, 055–059; [run log](e2e/2026-10-08-todo-spec-driven.md)):

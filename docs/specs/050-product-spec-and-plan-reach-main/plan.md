@@ -9,18 +9,21 @@ tasks:
   covers: [AC-050.1]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t2
   title: /app:build checks the plan is on origin/main
   files: [plugins/app/commands/build.md]
   covers: [AC-050.2]
   parallel_safe: true
   depends_on: []
+  done: true
 - id: t3
   title: Contract tests
   files: [tests/cplat/test_spec_agents.py]
   covers: [AC-050.1, AC-050.2]
   parallel_safe: false
   depends_on: [t1, t2]
+  done: true
 ---
 
 ## t1 — /app:plan pushes the spec branch and opens the PR

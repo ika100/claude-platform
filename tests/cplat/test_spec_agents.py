@@ -231,3 +231,30 @@ def test_planner_writes_errors_and_timeouts_into_the_contract():
     """AC-053.2"""
     text = (APP / "agents" / "planner.md").read_text()
     assert "### Errors" in text and "### Timeouts" in text and "not list" in text
+
+
+# ---------------- wave 3 (specs 048, 050) ----------------
+
+def test_build_formats_acceptance_tests_and_checks_them():
+    """AC-048.1 AC-048.2"""
+    text = (COMMANDS / "build.md").read_text()
+    assert "cplat spec test-diff" in text and "lint-fix" in text
+
+
+@pytest.mark.parametrize("plugin", CODE_PLUGINS)
+def test_coders_may_format_acceptance_tests(plugin):
+    """AC-048.1"""
+    text = (PLUGINS / plugin / "agents" / "coder.md").read_text()
+    assert "Never edit, skip or weaken them" in text and "formatting through `devbox run lint-fix` is fine" in text
+
+
+def test_app_plan_pushes_the_spec_branch_and_opens_the_pr():
+    """AC-050.1"""
+    text = (APP / "commands" / "plan.md").read_text()
+    assert "git push -u origin docs/spec-<spec_id>" in text and "gh pr create" in text
+
+
+def test_app_build_checks_the_plan_is_on_main():
+    """AC-050.2"""
+    pre = (APP / "commands" / "build.md").read_text().split("## Pre-flight", 1)[1].split("## Loop", 1)[0]
+    assert "origin/main" in pre and "git fetch" in pre and "local file" in pre

@@ -31,7 +31,16 @@ Then verify yourself: `devbox run plan-check` and `devbox run -- uv run scripts/
 
 ## 3. Commit and hand off
 
-Commit `docs/plan/<spec_id>.md` (and `design.md` if written): `docs(plan): <spec_id> — <n> repos`. Pushing the branch and opening a PR only after asking.
+Commit `docs/plan/<spec_id>.md` (and `design.md` if written): `docs(plan): <spec_id> — <n> repos`.
+
+The approved spec and its plan must reach `main`, so every agent in a fresh clone builds from the reviewed version (spec 050). Ask, then:
+
+```bash
+git push -u origin docs/spec-<spec_id>
+gh pr create --title "docs(spec): <spec_id> — product spec and plan" --body "<criteria count, repos, levels>"
+```
+
+If `gh pr create` is not allowed here, print that exact command as the last line instead.
 
 Print the `plan.py show` output verbatim, then:
 
