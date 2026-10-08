@@ -16,7 +16,7 @@ description: "What sdlc-foundry gives you, by role, with the measured evidence a
 
 ### Developer working on one service
 
-- `/svc:build-feature` (full pipeline) and `/svc:quick-task` (small change) work the same in Python, Java, Go and Next.js repositories; the right agents are routed automatically.
+- `/svc:spec` → `/svc:plan` → `/svc:build` (spec-driven pipeline) and `/svc:quick-task` (small change) work the same in Python, Java, Go and Next.js repositories; the right agents are routed automatically.
 - You never need to know the manifests. A service repository contains code and a Dockerfile, nothing about Kubernetes.
 - `devbox run <recipe>` runs identically on your laptop, in CI and for agents.
 
@@ -61,7 +61,7 @@ Measured on one test application and Apple-silicon laptops with GitHub-hosted ru
 
 - **Claude Code and GitHub are assumed.** The commands are Claude Code plugins, the templates target GitHub Actions and GHCR. Other hosts need work.
 - **Slash commands are prompts around scripts.** The scripts are tested; the prompts that call them are not deterministic and always ask before outward actions.
-- **Cross-repository planning is plan-only.** `/app:build-feature` produces a validated plan; you run the per-repository commands.
+- **Cross-repository work is planned centrally, built per repository.** `/app:build-feature` produces a product spec and a validated plan; each repository builds its part from its own spec, and nothing merges without you.
 - **The cluster is yours.** The platform installs operators and ArgoCD on a local k3d cluster; real clusters are bootstrapped by a human once (`devbox run bootstrap`), and operators (External Secrets, CloudNativePG, Kyverno) must exist there if you use their features.
 - **Addons are deliberately small.** The Postgres addon has no backups, point-in-time recovery or pooling; observability collects and forwards but ships no alert rules; Go services expose Prometheus metrics but no OpenTelemetry traces yet.
 - **Guard rails cover what the platform renders.** Policies check Deployments; pods created by operators are out of scope.

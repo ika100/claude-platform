@@ -24,6 +24,10 @@ Print `## Phase 0 — on $WORK_BRANCH, BASE_REF=<short-sha>`.
 
 ---
 
+**Bug or spec change?** A bug is code that does not do what was intended. If the "bug" is behaviour an active spec criterion explicitly states (the spec says so, the user wants it different), it is a spec change: stop and recommend `/svc:spec --amend <NNN> <change>`.
+
+---
+
 ## Step 1 — Diagnose and fix
 
 Use the **coder** agent. Prompt prelude: the `<project-map>` block. Then:
@@ -56,7 +60,7 @@ $TOUCHED_FILES
 
 Then:
 - Run the existing test suite via `devbox run test-fast`
-- Write a regression test that would have caught this bug (anchor it on the files in `<touched-files>`)
+- Write a regression test that would have caught this bug (anchor it on the files in `<touched-files>`). If the broken behaviour is stated by a spec criterion (`docs/specs/*/spec.md`, `AC-<NNN>.<n>`), name that id in the test so `cplat spec trace` links it; never edit an existing acceptance test to make it pass
 - Confirm the bug is resolved
 
 ---

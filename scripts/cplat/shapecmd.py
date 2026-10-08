@@ -21,7 +21,7 @@ def route(repo: Path) -> dict:
     agents = {role: f"{plugin}:{role}" for role in ROLES_BY_SHAPE_PLUGIN}
     if not entry["deployable"]:
         agents.pop("deployment"), agents.pop("observability")  # nothing to deploy
-    agents.update({"product-manager": "svc:product-manager", "architect": "svc:architect",
+    agents.update({"product-manager": "svc:product-manager", "architect": "svc:architect", "reviewer": "svc:reviewer",
                    "quality": "shared:quality", "security": "shared:security"})
     if shape == "service-python":
         agents["migrations"] = "svc:migrations"

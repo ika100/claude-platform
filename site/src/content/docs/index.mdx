@@ -74,7 +74,7 @@ From that file the platform renders, per environment: Deployments with numeric n
     `/shared:new-service` creates Python, Java, Go and Next.js services, libraries and the GitOps repo from tested templates, with CI, Dockerfile, devbox recipes and agent instructions. [Shapes](/sdlc-foundry/reference/shapes/)
   </Card>
   <Card title="Agent pipeline" icon="random">
-    `/svc:build-feature` runs product manager, architect, coders, tester, security and a pull request, with the right agents for each shape. [Agents model](/sdlc-foundry/guides/agents/)
+    `/svc:spec`, `/svc:plan` and `/svc:build` go from an approved spec to failing acceptance tests, code that passes them, a check against every criterion and a pull request, with the right agents for each shape. [Agents model](/sdlc-foundry/guides/agents/)
   </Card>
   <Card title="GitOps that is generated" icon="setting">
     `/gitops:compose` edits one registry; `render.py` writes every manifest. `/gitops:promote` pins verified image tags per environment. [Concepts](/sdlc-foundry/concepts/)

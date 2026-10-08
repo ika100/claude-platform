@@ -48,9 +48,9 @@ sequenceDiagram
 
 The shape (`service-python`, `web-nextjs`, `gitops-app`, …) is looked up in `shapes.yml`; it decides the template, the plugin whose agents work on the repo, and whether the repo is deployable.
 
-## 2. Build a feature — `/svc:build-feature`
+## 2. Build a feature — `/svc:spec`, `/svc:plan`, `/svc:build`
 
-`cplat shape` detects the shape (from `.copier-answers.yml`) and prints which agent to use for each role. Then: product-manager → architect (plan with files and dependencies) → coders in parallel git worktrees → quality ‖ tester ‖ security → container-image check → PR. CI re-runs the same `devbox run` recipes and, on merge to `main`, builds the image natively for amd64 and arm64 and publishes `latest` and `sha-<7>`.
+`cplat shape` detects the shape (from `.copier-answers.yml`) and prints which agent to use for each role. A feature is a folder `docs/specs/<NNN>-<slug>/` ([ADR-026](adr/026-feature-specs.md)): `/svc:spec` has the product-manager write `spec.md` (acceptance criteria `AC-<NNN>.<n>`, open questions that you answer, then your approval); `/svc:plan` has the architect write `design.md` and `plan.md` (tasks that `cover` criteria). `/svc:build` then writes failing acceptance tests named after the criteria, runs coders in parallel git worktrees until they pass, runs quality ‖ tester ‖ security, has a reviewer check every criterion (`verification.md`), checks the container image and opens a PR. Every check on a spec — ids, coverage, drift between spec and plan, test trace, status — is `cplat spec`, not prose. CI re-runs the same `devbox run` recipes and, on merge to `main`, builds the image natively for amd64 and arm64 and publishes `latest` and `sha-<7>`.
 
 ## 3. Declare how it runs — `/gitops:compose`
 

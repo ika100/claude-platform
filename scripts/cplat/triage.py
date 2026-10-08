@@ -19,7 +19,7 @@ from core import PlatformError, Report, run
 LABELS = {
     "triage": ("fbca04", "New issue waiting for triage"),
     "needs-info": ("d4c5f9", "Waiting for details from the reporter"),
-    "tracked": ("0e8a16", "Accepted: tracked as a story in docs/backlog.md"),
+    "tracked": ("0e8a16", "Accepted: tracked by a feature spec in docs/specs/"),
     "bug": ("d73a4a", "Something is broken"),
     "enhancement": ("a2eeef", "New behaviour or improvement"),
     "question": ("d876e3", "A question, answered in the issue"),

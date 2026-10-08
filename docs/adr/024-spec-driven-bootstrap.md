@@ -1,6 +1,6 @@
 # ADR-024: Spec-driven bootstrap
 
-**Status:** Accepted
+**Status:** Accepted; the `--plan` flag, `STORY-NNN` stories and `docs/plan/` for single-repo plans are superseded by [ADR-026](026-feature-specs.md) (svc 3.0)
 **Date:** 2026-10-07
 **Builds on:** [ADR-008](008-shape-detection.md), [ADR-011](011-multi-repo-plan-format.md), [ADR-015](015-shape-registry-as-code.md)
 

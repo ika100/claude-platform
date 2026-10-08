@@ -59,7 +59,7 @@ For a one-shot run of audit + secrets-scan + bandit, use:
 devbox run security
 ```
 
-This is the recipe `/shared:check-quality` and `/svc:build-feature` use — prefer it when running all checks together.
+This is the recipe `/shared:check-quality` and `/svc:build` use — prefer it when running all checks together.
 
 ### 5. Document findings
 

@@ -1,5 +1,5 @@
 ---
-description: "Read new GitHub issues, discuss gaps with you, and route each to the backlog, quick-task, fix-bug or a reply. Usage: /shared:triage [<issue-number> | --new | --waiting]"
+description: "Read new GitHub issues, discuss gaps with you, and route each to a spec, quick-task, fix-bug or a reply. Usage: /shared:triage [<issue-number> | --new | --waiting]"
 ---
 
 Triage the repo's open issues with the platform script (all mechanics and tests live in `scripts/cplat`; you do the judgement). **Request:** $ARGUMENTS
@@ -24,10 +24,10 @@ Run `show <n> --json`. Propose exactly one class with a one-line reason:
 |---|---|---|
 | `bug` | a reproducible defect or an error message | `/svc:fix-bug` |
 | `small-change` | one pass, well scoped: no new API, schema or module | `/svc:quick-task` |
-| `feature` | new behaviour, endpoint or screen, schema change, several modules, business decisions | a story in `docs/backlog.md`, then `/svc:plan-feature` |
+| `feature` | new behaviour, endpoint or screen, schema change, several modules, business decisions | a spec in `docs/specs/` (new, or `tracks:` on an existing one), then `/svc:spec --amend` / `/svc:plan` |
 | `question` | a usage question | answer in a comment |
 | `duplicate` | same root cause as an open issue | comment with the link |
-| `wontfix` | out of scope per the backlog or the product vision | comment with the reason |
+| `wontfix` | out of scope per the specs' non-goals or the product vision | comment with the reason |
 | `needs-info` | not decidable from what is written | questions, see 3 |
 
 An urgent bug (the user says it hurts production) is still a `bug`; after the fix PR is merged, suggest `/svc:release` for a patch version. Do not start the release.
@@ -43,7 +43,7 @@ Show one table for the run: issue, class, planned action (labels, comment, story
 ## 5. Act (after confirmation)
 
 - **Labels and comments:** write comment text to a temp file and run `apply <n> --add L --remove triage --comment-file F` (labels: `bug`, `enhancement`, `question`, `duplicate`, `wontfix`, `needs-info`, `tracked`; remove `triage`, and `needs-info` when the reporter answered). Show `--dry-run` output first when the user asks.
-- **feature:** use the **product-manager** agent (`svc:product-manager`) to add the story to `docs/backlog.md` with `**Tracks:** #N`, commit it on a `docs/` branch from a clean tree, then `apply <n> --add tracked --add enhancement --remove triage --comment-file F` where the comment is `Tracked as STORY-NNN` (shown to the user first). Point the user to `/svc:plan-feature`.
+- **feature:** use the **product-manager** agent (`svc:product-manager`, `MODE: fold`) to decide between an existing spec (it adds `#N` to that spec's `tracks:`) and a new one. For a new one run `cplat spec new "<title>" --tracks N` (same prefix, `spec` instead of `triage`), then the product-manager in `MODE: new` on that folder; its open questions go to the user as in `/svc:spec`, or stay in the spec as a `draft`. Commit on a `docs/` branch from a clean tree, then `apply <n> --add tracked --add enhancement --remove triage --comment-file F` where the comment is `Tracked as spec <spec_id>` (shown to the user first). Point the user to `/svc:spec approve <NNN>` and `/svc:plan <NNN>`.
 - **bug / small-change:** run `cplat shape` first. If it reports an `svc`-style plugin (`/svc:*` available), hand the issue to `/svc:fix-bug` or `/svc:quick-task` one at a time, each from a clean `main`, with this task text: `Issue #N: <title>. <redacted summary and the user's answers>. The PR description must say "Closes #N".` Then `apply <n> --add bug --remove triage`. In a gitops-app repo or the platform repo (no such commands) describe the fix and offer a manual branch/PR instead.
 - Run issues one at a time; do not start a second pipeline before the first PR is open.
 

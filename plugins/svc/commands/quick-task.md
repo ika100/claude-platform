@@ -6,7 +6,9 @@ You are the **orchestrator** in quick-task mode. Use this for changes that don't
 
 **Task:** $ARGUMENTS
 
-If the task is large or cross-cutting (multiple modules, new public APIs, schema changes, anything that would benefit from user stories or an ADR), **stop and recommend `/svc:build-feature` instead** rather than continuing.
+If the task is large or cross-cutting (multiple modules, new public APIs, schema changes, anything that needs acceptance criteria or an ADR), **stop and recommend `/svc:spec` instead** rather than continuing.
+
+**Specs still apply.** If `docs/specs/` exists, read the titles (`ls docs/specs`) and open the spec(s) whose feature this task touches. If the task would change behaviour an active criterion (`AC-<NNN>.<n>`) states, stop: that is a spec change — recommend `/svc:spec --amend <NNN> <change>`. A task that stays within the spec's criteria (refactor, internal fix, docs) continues.
 
 ---
 
@@ -161,9 +163,10 @@ After the tester passes:
 
 ## Rules
 
-- **One coder, one pass.** If the task balloons mid-implementation (coder reports it needs more than ~3 files outside the original scope, or asks design questions), **stop and recommend `/svc:build-feature`** — don't keep stretching quick-task.
+- **One coder, one pass.** If the task balloons mid-implementation (coder reports it needs more than ~3 files outside the original scope, or asks design questions), **stop and recommend `/svc:spec`** — don't keep stretching quick-task.
+- **Acceptance tests stay as they are.** Tests that name a criterion (`AC-<NNN>.<n>`) are the spec; if one has to change, the spec changes first (`/svc:spec --amend`).
 - **Commit at Phase 3, not before.** The coder leaves the working tree dirty; Phase 3 does the single commit before pushing.
-- **No deployment, no security scan, no PRD.** Those are `/svc:build-feature` territory.
+- **No deployment, no security scan, no spec.** Those are `/svc:spec` → `/svc:build` territory.
 - **Every shell command goes through `devbox run`.**
 
 > If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

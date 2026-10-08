@@ -432,7 +432,7 @@ As a maintainer of a repo built on the platform (or of the platform itself), I w
 - [ ] Shapes without svc-style pipelines (gitops-app) and repos without a shape (the platform) get classification, discussion, labels, comments and backlog entries, but are told which command would handle a bug there (`/gitops:*` or a PR by hand) instead of an unavailable `/svc:*`.
 - [ ] Deterministic parts (listing, fetching with comments, label setup, applying a decision) are in `cplat triage` with tests using a faked `gh`.
 #### STORY-036: Plans are approved before they are built
-**Status:** planned · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
+**Status:** done (superseded by STORY-037/039: specs are approved, plans are checked against them) · **Priority:** P2 · **Depends on:** STORY-034 · **Source:** decision 2026-10-07
 
 As a founder, I want a plan to be explicitly approved before `build-feature` consumes it, so that the review step between planning and building is real and recorded.
 
@@ -459,19 +459,19 @@ As a founder, I want every check and state change of a feature spec to be a test
 - [ ] Every shape in `shapes.yml` declares `test_globs`; `shapes.py check` fails without it.
 
 #### STORY-038: Agents share one spec format and stop guessing
-**Status:** planned · **Priority:** P0 · **Depends on:** STORY-037
+**Status:** done · **Priority:** P0 · **Depends on:** STORY-037 · **Code:** `plugins/svc/skills/spec-format/`, `plugins/*/agents/`
 
 As a founder, I want the product-manager, architect, testers and a new reviewer to work from one format reference and to hand open questions back to me, so that specs are complete before they are approved.
 
 **Acceptance criteria:**
-- [ ] One format reference (a `spec-format` skill in the shared plugin) describes `spec.md`, `design.md`, `plan.md` and the per-shape test tagging; agents link to it instead of restating formats.
+- [ ] One format reference (the `spec-format` skill in the svc plugin, enabled in every repo; agents read it through `${CLAUDE_PLUGIN_ROOT}`, which only resolves inside the agent's own plugin) describes `spec.md`, `design.md`, `plan.md` and the per-shape test tagging; agents link to it instead of restating formats.
 - [ ] The product-manager is shape-agnostic, writes `spec.md`, and returns unanswered questions in `## Open questions` instead of assuming.
 - [ ] The architect writes `design.md` (with the contract) and `plan.md` with `covers` and `spec_hash`, and fixes every `cplat spec check` error before returning.
 - [ ] Every tester (svc, web, svc-java, svc-go) has an acceptance mode that writes failing tests tagged with criterion ids before the code exists.
 - [ ] A read-only `reviewer` agent compares the diff with the criteria, non-goals and plan and writes `verification.md`; `cplat shape` routes it.
 
 #### STORY-039: svc commands follow spec, plan, build, verify
-**Status:** planned · **Priority:** P0 · **Depends on:** STORY-038
+**Status:** done · **Priority:** P0 · **Depends on:** STORY-038 · **Code:** `plugins/svc/commands/{spec,plan,build,verify,specs}.md`
 
 As a contributor, I want `/svc:spec`, `/svc:plan`, `/svc:build`, `/svc:verify` and `/svc:specs`, so that each step of a feature has one obvious command and the build is driven by approved criteria.
 
