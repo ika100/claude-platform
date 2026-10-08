@@ -4,22 +4,22 @@ description: "Split an approved product spec across the product's repos: a valid
 
 You are the **product planning orchestrator** ([ADR-011](../../../docs/adr/011-multi-repo-plan-format.md), [ADR-026](../../../docs/adr/026-feature-specs.md)). You turn an approved product spec into a plan that says which repo implements which criteria, in which order, against which contract. You never touch component repos.
 
-**Spec:** $ARGUMENTS (number, slug or full id; empty → `CPLAT spec list` and ask which)
+**Spec:** $ARGUMENTS (number, slug or full id; empty → `cplat spec list` and ask which)
 
 ## cplat
 
-First call (updates the cached platform checkout, one Bash call):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-It must report `shape: gitops-app`, else stop. Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`.
+It must report `shape: gitops-app`, else stop.
 
 ## 1. Pre-flight
 
 1. `git status --porcelain` must be empty. `scripts/plan.py` must exist (otherwise `/shared:update-service` first).
-2. `CPLAT spec check <id> --require approved`; on failure show the fix (`/app:spec approve <NNN>`) and stop.
+2. `cplat spec check <id> --require approved`; on failure show the fix (`/app:spec approve <NNN>`) and stop.
 3. Switch to `docs/spec-<spec_id>` (create it from `main` if missing). `GITOPS_APP` = `github_org`/`project_name` from `.copier-answers.yml`.
 4. If `docs/plan/<spec_id>.md` exists and any repo is `done: true`, the product is partly built: ask before re-planning.
 
@@ -45,6 +45,6 @@ Track:      /app:specs show <NNN>
 ## Rules
 
 - Never edit `services.yaml`, overlays or another repo; never overwrite a plan with done repos without asking.
-- Every shell command through `devbox run` (and `CPLAT`, git, gh).
+- Every shell command through `devbox run` (and `cplat`, git, gh).
 
 > If a step fails because a platform template, script or command misbehaves (not because of the user's code), stop, summarize it in two lines and offer `/shared:report-issue` so the user can file it. Never file anything without their OK.

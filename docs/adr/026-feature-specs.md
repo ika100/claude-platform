@@ -1,6 +1,6 @@
 # ADR-026: Feature specs drive the build
 
-**Status:** Accepted (S1–S5 are built (core, agents, svc 3.0, app 1.0, template contract); S6 follows, see [STORY-037](../backlog.md) to STORY-042)
+**Status:** Accepted (S1–S6 are built (core, agents, svc 3.0, app 1.0, template contract, launcher and dogfooding); specs 037–042, see [STORY-037](../backlog.md) to STORY-042)
 **Date:** 2026-10-08
 **Builds on:** [ADR-024](024-spec-driven-bootstrap.md), [ADR-011](011-multi-repo-plan-format.md), [ADR-015](015-shape-registry-as-code.md)
 **Supersedes, when S3 ships:** the `--plan` flag of ADR-024 and the single-repo half of STORY-036

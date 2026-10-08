@@ -44,6 +44,12 @@ Each consumer repo ships a `.claude/settings.json` (templated by Copier) with a 
 
 ---
 
+## How commands run the platform script
+
+Commands never contain logic that can be code: they call `cplat <command>` and relay its output. `cplat` is the shared plugin's `bin/cplat` launcher, on the Bash PATH while the plugin is enabled. It runs `scripts/cplat` from the installed marketplace checkout, so commands use the platform version the plugins were installed from, offline; `$CPLAT_PLATFORM` (a local checkout) and `$CPLAT_REF` (a tag) override it, and only a missing checkout makes it fetch `main`. `/shared:doctor` reports the source.
+
+---
+
 ## Shapes and agent dispatch
 
 Every `/svc:*` command starts by detecting the repo's **shape** (`.copier-answers.yml`, falling back to file sniffing) and looks it up in `shapes.yml`. Coder, tester, deployment, observability and release agents are then spawned from the plugin that owns the shape (`web:coder`, `svc-java:tester`, `svc-go:release`, …; `svc:*` for Python); product-manager and architect (`svc`) and quality and security (`shared`) are shared by all shapes. `gitops-app` repos do not use `/svc:spec`, `/svc:plan` or `/svc:build`; they use `/gitops:compose`, `/gitops:promote` and `/app:spec|plan|build|specs` (`cplat shape` prints the routing). The multi-repo flow: `/app:spec` (product spec, approved) → `/app:plan` (criteria per repo, contract) → `/app:build` runs `/svc:spec --from-plan <plan> <repo-id>`, `/svc:plan`, `/svc:build` in each ready repo in parallel → you merge → `/gitops:promote`.

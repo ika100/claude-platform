@@ -99,7 +99,7 @@ def test_spec_commands_exist_with_a_usage_line(name):
 
 def test_spec_command_asks_the_user_and_never_approves_alone():
     text = (COMMANDS / "spec.md").read_text()
-    assert "AskUserQuestion" in text and "CPLAT spec approve" in text and "OPEN QUESTIONS" in text
+    assert "AskUserQuestion" in text and "cplat spec approve" in text and "OPEN QUESTIONS" in text
     assert "Never answer an open question on the user's behalf" in text
 
 
@@ -114,7 +114,7 @@ def test_build_writes_tests_first_verifies_and_resumes():
                                       "## Phase 3 — QA", "## Phase 4 — Verify", "## Phase 7 — Pull request")]
     assert phases == sorted(phases)
     assert "**Acceptance mode.**" in text and "agents.reviewer" in text
-    assert "skip tasks with `done: true`" in text and "CPLAT spec task-done" in text and "set-status <id> done" in text
+    assert "skip tasks with `done: true`" in text and "cplat spec task-done" in text and "set-status <id> done" in text
 
 
 @pytest.mark.parametrize("name", ["quick-task", "fix-bug"])
@@ -152,5 +152,5 @@ def test_planner_assigns_criteria_instead_of_writing_prompts():
 
 def test_repo_specs_come_from_the_deterministic_slice():
     text = (PLUGINS / "svc" / "commands" / "spec.md").read_text()
-    assert "CPLAT spec new --from-plan <abs plan path> <repo-id>" in text
+    assert "cplat spec new --from-plan <abs plan path> <repo-id>" in text
     assert "Product context" in (PLUGINS / "svc" / "agents" / "product-manager.md").read_text()

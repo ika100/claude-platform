@@ -2,6 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "allow": [
+      "Bash(cplat)",
+      "Bash(cplat *)",
       "Bash(gh repo create * --private *)",
       "Bash(gh repo edit * --add-topic *)",
       "Bash(gh api user *)",

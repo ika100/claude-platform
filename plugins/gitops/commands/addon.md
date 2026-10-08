@@ -5,7 +5,7 @@ description: "Declare addons for the application (postgres, observability). Usag
 Run the platform script inside the gitops-app repo. **Request:** $ARGUMENTS
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" addon <ARGS>
+cplat addon <ARGS>
 ```
 
 1. **Preview** with `--dry-run` and show it verbatim; errors carry a `fix:` line.

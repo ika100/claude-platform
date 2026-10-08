@@ -8,7 +8,7 @@ Help the user report a problem (or an idea) about the platform. **Context from t
 2. **Draft** (nothing is sent). Write the error output to a temp file under `$CLAUDE_JOB_DIR/tmp` (or `$TMPDIR`) and run:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin main && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" feedback --kind bug|idea --title "<one line>" --what "<what happened>" --command "<the command or step>" --details-file <file>
+cplat feedback --kind bug|idea --title "<one line>" --what "<what happened>" --command "<the command or step>" --details-file <file>
 ```
 
 3. **Show the draft verbatim and ask**: "File this issue on ika100/sdlc-foundry? It is a **public** repository, so everyone can read the issue." The draft already has tokens, e-mail addresses and home-directory names removed, but the user must read it first.

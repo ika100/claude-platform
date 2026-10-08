@@ -8,18 +8,18 @@ You are the **product build executor** ([ADR-023](../../../docs/adr/023-parallel
 
 ## cplat
 
-First call (updates the cached platform checkout, one Bash call):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-It must report `shape: gitops-app`, else stop. Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`.
+It must report `shape: gitops-app`, else stop.
 
 ## Pre-flight
 
-1. Resolve `<spec_id>` (`CPLAT spec list --all --json`). `CPLAT spec check <spec_id> --require approved` must pass; `docs/plan/<spec_id>.md` must exist (otherwise `/app:plan <NNN>`).
-2. `devbox run plan-check`; the plan must be `draft` or `in_progress`. `devbox run -- uv run scripts/plan.py start <spec_id>` (draft → in_progress); if the spec is `approved`, `CPLAT spec set-status <spec_id> building`. Commit both on the plan's branch or `main` as the user prefers.
+1. Resolve `<spec_id>` (`cplat spec list --all --json`). `cplat spec check <spec_id> --require approved` must pass; `docs/plan/<spec_id>.md` must exist (otherwise `/app:plan <NNN>`).
+2. `devbox run plan-check`; the plan must be `draft` or `in_progress`. `devbox run -- uv run scripts/plan.py start <spec_id>` (draft → in_progress); if the spec is `approved`, `cplat spec set-status <spec_id> building`. Commit both on the plan's branch or `main` as the user prefers.
 3. Show `devbox run -- uv run scripts/plan.py show <spec_id>` and ask the user to confirm: this opens PRs in several repositories.
 
 ## Loop (one wave per iteration)
@@ -33,7 +33,7 @@ It must report `shape: gitops-app`, else stop. Later calls: `CPLAT <args>` = `uv
 
 ## When the plan is completed
 
-`CPLAT spec set-status <spec_id> done` and `CPLAT spec index`; commit both with the plan. Show the `gitops_pin` entries and the exact `/gitops:promote` commands; do not apply pins or touch `services.yaml` or overlays yourself.
+`cplat spec set-status <spec_id> done` and `cplat spec index`; commit both with the plan. Show the `gitops_pin` entries and the exact `/gitops:promote` commands; do not apply pins or touch `services.yaml` or overlays yourself.
 
 ## Rules
 

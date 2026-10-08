@@ -6,10 +6,10 @@ Create a product with the platform script (all logic and tests live in `scripts/
 
 The manifest is a YAML file: `app` (name of the gitops-app repo), optional `org` and `visibility`, and `components` (each with `name`, `description`, `shape`, optional `data` of template options). If the user has no manifest yet, write one from what they describe (shapes are the ids in `shapes.yml`; the gitops-app repo is implicit) and show it before using it.
 
-Every call below uses this prefix, which keeps a cached checkout of the platform up to date (one Bash call each — shell state is not shared):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" new-app <ARGS>
+cplat new-app <ARGS>
 ```
 
 1. **Preview.** Run it with `--dry-run` and the user's arguments. Show the output verbatim. If it exits non-zero, show the error and its `fix:` line and stop — do not retry with guesses.

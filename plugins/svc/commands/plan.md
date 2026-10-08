@@ -4,33 +4,33 @@ description: "Plan an approved spec: the architect writes design.md and plan.md 
 
 You are the **planning orchestrator** ([ADR-026](../../../docs/adr/026-feature-specs.md)). You turn an approved spec into a checked plan the build can schedule. You write no code.
 
-**Spec:** $ARGUMENTS (number, slug or full id; empty → run `CPLAT spec list` and ask which)
+**Spec:** $ARGUMENTS (number, slug or full id; empty → run `cplat spec list` and ask which)
 
 ## cplat
 
-First call (updates the cached platform checkout, one Bash call):
+`cplat` is on the Bash PATH while the shared plugin is enabled and runs the platform script at the version your plugins were installed from (no fetch); one call per Bash invocation. First call:
 
 ```bash
-P="${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry"; { [ -d "$P/.git" ] && git -C "$P" fetch -q --depth 1 origin "${REF:-main}" && git -C "$P" checkout -q FETCH_HEAD; } || { rm -rf "$P"; git clone -q --depth 1 --branch "${REF:-main}" https://github.com/ika100/sdlc-foundry.git "$P"; }; uv run "$P/scripts/cplat/cplat.py" shape
+cplat shape
 ```
 
-Later calls: `CPLAT <args>` = `uv run "${XDG_CACHE_HOME:-$HOME/.cache}/sdlc-foundry/scripts/cplat/cplat.py" <args>`. Print its output verbatim.
+Print its output verbatim.
 
 ## 1. Pre-flight
 
 1. `git status --porcelain` must be empty.
 2. Shape from the routing JSON (`SHAPE`, `agents`). `unsupported` → stop (gitops-app: `/app:plan`). No shape → continue; the plan records none.
-3. `CPLAT spec check <id> --require approved`. If it fails, show the errors and the fix (`/svc:spec approve <NNN>` or `/svc:spec --amend …`) and stop.
+3. `cplat spec check <id> --require approved`. If it fails, show the errors and the fix (`/svc:spec approve <NNN>` or `/svc:spec --amend …`) and stop.
 4. Switch to `feature/<spec_id>` (create it from `main` if it does not exist).
 5. If `plan.md` exists and any task has `done: true`, the spec is partly built: ask before re-planning (task progress is lost; the build would redo those tasks).
-6. `SPEC_HASH=$(CPLAT spec hash <id>)`. Build `<project-map>` (`ls -d */` without `.devbox`, `.venv`, `.git`, `node_modules`).
+6. `SPEC_HASH=$(cplat spec hash <id>)`. Build `<project-map>` (`ls -d */` without `.devbox`, `.venv`, `.git`, `node_modules`).
 
 ## 2. Architect
 
 **architect** agent (`agents.architect`, or `svc:architect`), prompt: `SPEC_DIR: docs/specs/<spec_id>/`, `SHAPE`, `SPEC_HASH`, `<project-map>`, and "read the spec and the code, write design.md if warranted and plan.md, follow the spec-format references".
 
 - `BLOCKERS` other than `none` → stop. Show them and recommend `/svc:spec --amend <NNN> <answers>`; the plan is not committed.
-- `CPLAT spec check <id>`. On errors, send them verbatim to the architect (at most 2 rounds); if they persist, stop and show them.
+- `cplat spec check <id>`. On errors, send them verbatim to the architect (at most 2 rounds); if they persist, stop and show them.
 
 ## 3. Commit and show
 
