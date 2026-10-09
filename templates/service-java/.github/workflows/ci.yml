@@ -253,7 +253,7 @@ jobs:
             exit 0
           fi
           tag="sha-${GITHUB_SHA::7}"
-          for app in $(sed -n 's/^ *- *\([^ #]*\).*/\1/p' .platform-app.yml); do
+          sed -n 's/^ *- *\([^ #]*\).*/\1/p' .platform-app.yml | while read -r app; do
             gh api "repos/$app/dispatches" -f event_type=pin-dev -f "client_payload[service]=$SERVICE" -f "client_payload[tag]=$tag"
             echo "asked $app to pin dev to $SERVICE:$tag"
           done
