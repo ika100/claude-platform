@@ -1,7 +1,7 @@
 ---
 spec_id: 061-plan-checks-leave-completed-plans-alone
 title: Plan checks leave completed plans alone
-status: building
+status: done
 priority: P1
 ---
 
@@ -41,3 +41,4 @@ As a product owner upgrading the platform, I want finished plans to stay valid, 
 - 2026-10-09 open question answered: one warning line per completed plan, exit 0
 - 2026-10-09 approved
 - 2026-10-09 building
+- 2026-10-09 done

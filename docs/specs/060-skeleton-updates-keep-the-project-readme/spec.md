@@ -1,7 +1,7 @@
 ---
 spec_id: 060-skeleton-updates-keep-the-project-readme
 title: Skeleton updates keep the project README and devbox recipes
-status: building
+status: done
 priority: P1
 ---
 
@@ -52,3 +52,4 @@ As a contributor, I want the recipes I added to `devbox.json` to survive an upda
 - 2026-10-09 open question answered: the template's recipe wins on update; the report shows the project's old line
 - 2026-10-09 approved
 - 2026-10-09 building
+- 2026-10-09 done

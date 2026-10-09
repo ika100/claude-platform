@@ -1,7 +1,7 @@
 ---
 spec_id: 062-dev-runs-every-merged-build
 title: dev runs every merged build
-status: building
+status: done
 priority: P1
 ---
 
@@ -43,3 +43,4 @@ As a developer, I want every merge to `main` to reach `dev` without a manual ste
 - 2026-10-09 open questions answered: the service's CI opens a pin PR to sha-<7> in the gitops-app, auto-merged after its CI passes (AC-062.6 added)
 - 2026-10-09 approved
 - 2026-10-09 building
+- 2026-10-09 done
