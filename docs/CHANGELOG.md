@@ -6,6 +6,18 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+## [4.1.0] — 2026-10-09
+
+**Second end-to-end run, fixed.** A second feature on the existing todo product with v4.0.0 ([run log](e2e/2026-10-09-todo-second-feature.md)) found four high issues; this release fixes them (specs 060–063):
+- **Updates keep your project's content.** The README and your own `devbox.json` recipes are no longer dropped.
+- **Plans finished before v4 pass the checks again.**
+- **`dev` follows `main`.** Every merge opens a pin PR to `sha-<7>` in the gitops-app, and it merges itself after CI ([ADR-027](adr/027-dev-follows-main-through-pin-prs.md)).
+- **No more false alarms from `cplat spec test-diff`** on plan files.
+
+**Action for existing products:** after `/plugin marketplace update`, run `/shared:update-service` in the gitops-app and in every service, then set the `GITOPS_TOKEN` secret in each service repo, using the command the update prints. Until then `dev` stays on its last pin, and the service's CI prints a notice saying why.
+
+**Plugins:** svc 3.0.1, app 1.0.1, gitops 1.4.1, shared 0.11.1, web / svc-java / svc-go 0.2.5.
+
 - **Fixes from end-to-end run 2** ([run log](e2e/2026-10-09-todo-second-feature.md), specs 060–063):
   - **060 — updates keep project content.** `README.md` is project-owned in every template (`_skip_if_exists`, checked by `shapes.py`); new repos still get it. `/shared:update-service` merges `devbox.json` instead of overwriting it: the template's recipes, packages and env vars win, the project's own are kept without reformatting, and the report lists kept entries and every replaced recipe with its old line.
   - **061 — completed plans pass.** The gitops-list and contract rules of specs 045 and 053 apply to `draft` and `in_progress` plans; `completed` and `abandoned` ones get one warning line. Errors name the exact heading line to add.
