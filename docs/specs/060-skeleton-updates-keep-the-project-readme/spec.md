@@ -1,7 +1,7 @@
 ---
 spec_id: 060-skeleton-updates-keep-the-project-readme
 title: Skeleton updates keep the project README and devbox recipes
-status: draft
+status: approved
 priority: P1
 ---
 
@@ -24,8 +24,8 @@ As a contributor, I want the recipes I added to `devbox.json` to survive an upda
 - **AC-060.3** Given the templates, when `shapes.py check` runs, then a template that does not treat `README.md` as project-owned fails the check.
 - **AC-060.4** Given an update in which the template's README changed since the repo's platform version, when `/shared:update-service` runs, then its report says the README was kept and prints the command that shows the template's current version.
 - **AC-060.5** Given a repo whose `devbox.json` has a script or package that the template does not define, when `/shared:update-service` runs, then that script or package is still in `devbox.json` afterwards.
-- **AC-060.6** Given a script or package the template defines, when the template's version changed since the repo's platform version, then `/shared:update-service` updates it in `devbox.json`.
-- **AC-060.7** Given an update that changed or kept anything in `devbox.json` other than taking the template's file, when it reports, then it lists the kept project entries and any project change to a template recipe that it replaced.
+- **AC-060.6** Given a script or package the template defines, when the template's version changed since the repo's platform version, then `/shared:update-service` updates it in `devbox.json`, also when the project had changed that entry (the template's version wins).
+- **AC-060.7** Given an update that changed or kept anything in `devbox.json` other than taking the template's file, when it reports, then it lists the kept project entries and, for each template recipe it replaced, the project's old line.
 
 ## Non-goals
 
@@ -36,7 +36,7 @@ As a contributor, I want the recipes I added to `devbox.json` to survive an upda
 
 - ~~Should `README.md` be fully project-owned (seeded at creation, never updated), or should the platform keep a managed block between markers that updates while the rest stays the project's? (suggested: fully project-owned — platform-specific guidance already lives in `CLAUDE.md` and the docs; affects AC-060.1 and AC-060.4)~~ Answered: fully project-owned: README.md in _skip_if_exists of every template; the update report points to the template's version.
 
-- When the project changed a recipe that the template also defines (e.g. added a flag to `test`), whose version wins on update? (suggested: the template's, listed in the report with the project's old line, so platform fixes always arrive and nothing is lost silently; affects AC-060.6, AC-060.7)
+~~When the project changed a recipe that the template also defines (e.g. added a flag to `test`), whose version wins on update? (suggested: the template's, listed in the report with the project's old line, so platform fixes always arrive and nothing is lost silently; affects AC-060.6, AC-060.7)~~ Answered: the template's version wins; the report shows the project's old line.
 
 ## References
 
@@ -49,3 +49,5 @@ As a contributor, I want the recipes I added to `devbox.json` to survive an upda
 - 2026-10-08 open question answered: fully project-owned: README.md in _skip_if_exists of every template; the update report points to the template's version.
 - 2026-10-08 approved
 - 2026-10-09 amended from end-to-end run 2: devbox.json project recipes survive updates (AC-060.5–7); back to draft for re-approval
+- 2026-10-09 open question answered: the template's recipe wins on update; the report shows the project's old line
+- 2026-10-09 approved

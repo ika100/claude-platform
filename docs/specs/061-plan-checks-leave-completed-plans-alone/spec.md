@@ -1,7 +1,7 @@
 ---
 spec_id: 061-plan-checks-leave-completed-plans-alone
 title: Plan checks leave completed plans alone
-status: draft
+status: approved
 priority: P1
 ---
 
@@ -17,7 +17,7 @@ As a product owner upgrading the platform, I want finished plans to stay valid, 
 
 ## Acceptance criteria
 
-- **AC-061.1** Given a plan with status `completed` or `abandoned` that lacks `gitops:` lists or the `### Errors` / `### Timeouts` headings, when `plan.py validate` runs, then it passes (the structural checks that every plan needs, such as frontmatter keys and repo ids, still apply).
+- **AC-061.1** Given a plan with status `completed` or `abandoned` that lacks `gitops:` lists or the `### Errors` / `### Timeouts` headings, when `plan.py validate` runs, then it exits 0 and prints one warning line for that plan naming what is missing (the structural checks that every plan needs, such as frontmatter keys and repo ids, still apply).
 - **AC-061.2** Given a plan with status `draft` or `in_progress` that lacks them, when `plan.py validate` runs, then it fails as today.
 - **AC-061.3** Given an active plan whose contract misses `### Errors` or `### Timeouts`, when `plan.py validate` fails, then the message names the missing heading and shows the exact heading line to add.
 - **AC-061.4** Given ika100/todo's completed plan 001 as it was before the run-2 workaround, when the gitops-app template's `test-fast` runs after an update to the fixed version, then it passes (fixture test).
@@ -29,7 +29,7 @@ As a product owner upgrading the platform, I want finished plans to stay valid, 
 
 ## Open questions
 
-- Should a completed plan that misses the new sections get a warning (printed, exit 0) so the gap stays visible, or be skipped silently? (suggested: one warning line per plan; affects AC-061.1)
+~~Should a completed plan that misses the new sections get a warning (printed, exit 0) so the gap stays visible, or be skipped silently? (suggested: one warning line per plan; affects AC-061.1)~~ Answered: one warning line per plan, exit 0.
 
 ## References
 
@@ -38,3 +38,5 @@ As a product owner upgrading the platform, I want finished plans to stay valid, 
 ## Changelog
 
 - 2026-10-09 created from end-to-end run 2
+- 2026-10-09 open question answered: one warning line per completed plan, exit 0
+- 2026-10-09 approved
