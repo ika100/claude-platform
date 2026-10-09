@@ -6,6 +6,8 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **Field report: end-to-end run 2** ([run log](e2e/2026-10-09-todo-second-feature.md)): a second feature ("update a notice" → edit a todo's title) on the existing todo product with the released v4.0.0 — spec ambiguity caught as a question, both repos built test-first and verified, deployed and checked live; ~68 min active, $12.10. 17 findings, 4 high: v4's `plan.py` rejects completed pre-v4 plans, skeleton updates drop project `devbox.json` recipes (like the README, spec 060), `dev` never deploys new `latest` images, and `cplat spec test-diff` flags `plan.md`.
+
 ## [4.0.0] — 2026-10-08
 
 **Spec-driven development.** A feature is now built from an approved spec ([ADR-026](adr/026-feature-specs.md)): `/svc:spec` writes `docs/specs/<NNN>-<slug>/spec.md` with numbered acceptance criteria and asks *you* its open questions; `/svc:plan` plans the approved spec; `/svc:build` writes failing tests from the criteria first, builds until they pass, has a reviewer verify every criterion and opens the PR. Products work the same way across repos with `/app:spec`, `/app:plan` and `/app:build`. Every check is the tested `cplat spec`; every generated repo checks its specs in CI.
