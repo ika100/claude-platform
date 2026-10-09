@@ -23,7 +23,8 @@ Measured on the todo end-to-end run (2026-10-06/07, Apple silicon laptop, GitHub
 | `devbox run cluster-up` from scratch | ≈ 2.5 min | ≈ 2.5 min incl. Gateway provider |
 | Platform e2e (`tests/e2e/run.sh`, local) | — | ≈ 6 min (2 image builds + k3d + rollout + probes) |
 | Platform CI (PR) | 3–4 min | ≤ 4 min incl. unit + e2e smoke |
-| Spec-driven product, empty folder → verified on a local cluster (3 repos, 1 product spec, 6 PRs) | — | **60.5 min measured** 2026-10-08, 10 agent sessions, $17.48 ([run log](e2e/2026-10-08-todo-spec-driven.md)) |
+| Spec-driven product, empty folder → verified on a local cluster (3 repos, 1 product spec, 6 PRs) | — | **60.5 min measured** 2026-10-08, 10 agent sessions, $17.48 ([run log](e2e/2026-10-08-todo-spec-driven.md); summed per step, slightly high — resumed sessions report cumulative cost) |
+| Second feature on an existing product with v4.0.0 (upgrade 3 repos, product spec, 2 repo builds, deploy) | — | **~68 min active** 2026-10-09 (16.5 h wall clock incl. waiting for the user and an overnight usage-limit pause), 10 agent sessions, $12.10 counted per session ([run log](e2e/2026-10-09-todo-second-feature.md)) |
 
 ## Defect history
 
