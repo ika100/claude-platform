@@ -10,21 +10,21 @@ tasks:
   covers: [AC-060.2, AC-060.3]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t2
   title: update.py merges devbox.json and reports README and recipes
   files: [scripts/cplat/update.py, tests/cplat/test_update_doctor.py]
   covers: [AC-060.1, AC-060.4, AC-060.5, AC-060.6, AC-060.7]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t3
   title: Command and docs describe what an update keeps
   files: [plugins/shared/commands/update-service.md, docs/ADOPTING.md, docs/CHANGELOG.md]
   covers: [AC-060.4, AC-060.7]
   parallel_safe: false
   depends_on: [t1, t2]
-  done: false
+  done: true
 ---
 
 ## t1 — README.md project-owned in every template, enforced by shapes.py

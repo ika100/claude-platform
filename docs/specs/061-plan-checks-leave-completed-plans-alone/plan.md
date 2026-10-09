@@ -5,23 +5,23 @@ summary: plan.py applies the 045/053 rules to active plans only and says which h
 tasks:
 - id: t1
   title: Status-dependent rules and precise messages in plan.py
-  files: [templates/gitops-app/scripts/plan.py, tests/cplat/test_plan.py, tests/cplat/fixtures/plans/001-todo-list.md]
+  files: [templates/gitops-app/scripts/plan.py, tests/cplat/test_plan.py, tests/cplat/fixtures/plans/001-todo-list.md, tests/cplat/fixtures/specs/001-todo-list/spec.md]
   covers: [AC-061.1, AC-061.2, AC-061.3, AC-061.4]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t2
   title: Changelog
   files: [docs/CHANGELOG.md]
   covers: [AC-061.1]
   parallel_safe: false
   depends_on: [t1]
-  done: false
+  done: true
 ---
 
 ## t1 — Status-dependent rules and precise messages in plan.py
 
-**Files:** templates/gitops-app/scripts/plan.py, tests/cplat/test_plan.py, tests/cplat/fixtures/plans/001-todo-list.md
+**Files:** templates/gitops-app/scripts/plan.py, tests/cplat/test_plan.py, tests/cplat/fixtures/plans/001-todo-list.md, tests/cplat/fixtures/specs/001-todo-list/spec.md
 **Covers:** AC-061.1, AC-061.2, AC-061.3, AC-061.4
 **Goal:** Finished plans pass with one warning; active plans fail as today, with messages that say what to add.
 

@@ -71,7 +71,7 @@ Before the first parallel batch, record `FEATURE_HEAD=$(git rev-parse HEAD)` and
 
 **Parallel batch (≥ 2 tasks):** one coder per task **in a single message**, each with `isolation: "worktree"`. Collect `(branch, worktree_path)` from those that changed something. Then for each, in order:
 1. `git merge --no-ff --no-edit <branch>` — a conflict means the plan's `files` were wrong: `git merge --abort`, stop and escalate. Never resolve it yourself.
-2. `devbox run lint-fix`, stage; then `cplat spec test-diff $RED`: acceptance tests may only have changed in formatting. Exit 1 means a test was weakened or changed: stop and show the user the file and the reason (spec 048). Then `devbox run quality` — failures go back to that task's coder (lint/type fixes only).
+2. `devbox run lint-fix`, stage; then `cplat spec test-diff $RED`: acceptance tests may only have changed in formatting. Exit 1 means a test was weakened or changed: stop and show the user the file and the reason (spec 048); never decide yourself that it is a false alarm — since spec 063 it only looks at test files, so a failure is real. Then `devbox run quality` — failures go back to that task's coder (lint/type fixes only).
 3. `devbox run test-fast` — integration failures go back to the coder with the output.
 4. `git worktree remove <path>`; `git branch -d <branch>`.
 

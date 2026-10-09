@@ -209,3 +209,48 @@ def test_a_single_repo_plan_needs_no_contract(spec_repo):
     one = SPEC_PLAN_BARE.replace("  - {id: shop-web, shape: web-nextjs, summary: UI, acs: [AC-012.2], depends_on: [], done: false}\n", "")
     out = check(spec_repo, one.replace("acs: [AC-012.1]", "acs: [AC-012.1, AC-012.2]"))
     assert out.returncode == 0, out.stderr
+
+
+# ---------------- spec 061: plan checks leave completed plans alone ----------------
+
+FIXTURES = Path(__file__).parent / "fixtures"
+OLD_STYLE = (SPEC_PLAN_BARE + "\n## Contract\n\nPOST /x -> 201\n\n### Error format\n\nproblem+json\n")   # pre-v4: no ### Errors / ### Timeouts
+
+
+@pytest.mark.parametrize("status", ["completed", "abandoned"])
+def test_a_finished_plan_without_the_v4_sections_passes_with_one_warning(spec_repo, status):
+    """AC-061.1"""
+    done = "done: true" if status == "completed" else "done: false"
+    text = _with_gitops([]).replace("    gitops:\n", "").replace("status: draft", f"status: {status}").replace("done: false", done)
+    text = text.replace("\n### Errors\n", "\n### Error format\n").replace("\n### Timeouts\n", "\n### Limits\n")
+    out = check(spec_repo, text)
+    assert out.returncode == 0, out.stderr
+    warnings = [ln for ln in (out.stdout + out.stderr).splitlines() if ln.startswith("WARNING")]
+    assert len(warnings) == 1 and "012-billing" in warnings[0], warnings
+    assert "gitops" in warnings[0] and "### Errors" in warnings[0] and "### Timeouts" in warnings[0]
+
+
+@pytest.mark.parametrize("status", ["draft", "in_progress"])
+def test_an_active_plan_without_the_v4_sections_still_fails(spec_repo, status):
+    """AC-061.2"""
+    out = check(spec_repo, OLD_STYLE.replace("status: draft", f"status: {status}"))
+    assert out.returncode == 1 and "### Timeouts" in out.stderr
+
+
+def test_the_error_shows_the_heading_line_to_add(spec_repo):
+    """AC-061.3"""
+    out = check(spec_repo, SPEC_PLAN_BARE + CONTRACT.replace("### Timeouts", "### Other"))
+    assert out.returncode == 1
+    assert "add a line `### Timeouts` under `## Contract`" in out.stderr
+    out = check(spec_repo, SPEC_PLAN_BARE)
+    assert "add `## Contract` with the headings `### Errors` and `### Timeouts`" in out.stderr
+
+
+def test_the_todo_plan_written_before_v4_passes(repo):
+    """AC-061.4: ika100/todo's completed plan 001 (b7feaf8), as it was before the run-2 hand edit."""
+    (repo / "docs" / "plan" / "billing.md").unlink()
+    shutil.copy(FIXTURES / "plans" / "001-todo-list.md", repo / "docs" / "plan" / "001-todo-list.md")
+    shutil.copytree(FIXTURES / "specs", repo / "docs" / "specs")
+    out = plan(repo, "validate")
+    assert out.returncode == 0, out.stderr
+    assert "WARNING: docs/plan/001-todo-list.md" in out.stdout + out.stderr

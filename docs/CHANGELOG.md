@@ -6,6 +6,12 @@ Format: each section lists changes for a tagged release. Plugin and template ver
 
 ## [Unreleased]
 
+- **Fixes from end-to-end run 2** ([run log](e2e/2026-10-09-todo-second-feature.md), specs 060–063):
+  - **060 — updates keep project content.** `README.md` is project-owned in every template (`_skip_if_exists`, checked by `shapes.py`); new repos still get it. `/shared:update-service` merges `devbox.json` instead of overwriting it: the template's recipes, packages and env vars win, the project's own are kept without reformatting, and the report lists kept entries and every replaced recipe with its old line.
+  - **061 — completed plans pass.** The gitops-list and contract rules of specs 045 and 053 apply to `draft` and `in_progress` plans; `completed` and `abandoned` ones get one warning line. Errors name the exact heading line to add.
+  - **062 — dev follows main** ([ADR-027](adr/027-dev-follows-main-through-pin-prs.md)). Service CI gets a `pin-dev` job that asks the gitops-app (`repository_dispatch`, secret `GITOPS_TOKEN`) to pin `dev` to `sha-<7>`. The gitops-app's new `pin-dev` workflow and `scripts/pin.py` open a pin PR that merges itself after CI. New gitops repos get auto-merge, new services print the token step, `/shared:update-service` names it for existing ones, and `/shared:status` shows open pin PRs. **Action for existing products:** update the gitops-app and every service, then set `GITOPS_TOKEN` in each service repo; until then `dev` stays on its last pin and CI prints a notice.
+  - **063 — `cplat spec test-diff` only looks at test files** (the shape's `test_globs`, never `docs/` or `*.md`), so `plan.md` changes from `task-done` no longer fail it; `/svc:build` forbids treating a failure as a false alarm.
+
 - **Field report: end-to-end run 2** ([run log](e2e/2026-10-09-todo-second-feature.md)): a second feature ("update a notice" → edit a todo's title) on the existing todo product with the released v4.0.0 — spec ambiguity caught as a question, both repos built test-first and verified, deployed and checked live; ~68 min active, $12.10. 17 findings, 4 high: v4's `plan.py` rejects completed pre-v4 plans, skeleton updates drop project `devbox.json` recipes (like the README, spec 060), `dev` never deploys new `latest` images, and `cplat spec test-diff` flags `plan.md`.
 
 ## [4.0.0] — 2026-10-08

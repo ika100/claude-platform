@@ -10,29 +10,29 @@ tasks:
   covers: [AC-062.1, AC-062.2, AC-062.6]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t2
   title: pin-dev job in the four deployable service templates
-  files: [templates/service-python/.github/workflows/ci.yml, templates/service-java/.github/workflows/ci.yml,
-    templates/service-go/.github/workflows/ci.yml, templates/web-nextjs/.github/workflows/ci.yml, scripts/shapes.py, tests/cplat/test_spec_driven.py]
+  files: [templates/service-python/.github/workflows/ci.yml, templates/service-java/.github/workflows/ci.yml, templates/service-go/.github/workflows/ci.yml,
+    templates/web-nextjs/.github/workflows/ci.yml, scripts/shapes.py, tests/cplat/test_spec_driven.py]
   covers: [AC-062.1, AC-062.4]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t3
   title: new-service / new-app set up auto-merge and name the token step
   files: [scripts/cplat/newsvc.py, scripts/cplat/newapp.py, scripts/cplat/update.py, tests/cplat/test_newsvc.py, tests/cplat/test_newapp.py]
   covers: [AC-062.4]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t4
   title: status shows the intended pin and an open pin PR
   files: [scripts/cplat/status.py, tests/cplat/test_gitops.py]
   covers: [AC-062.3]
   parallel_safe: false
   depends_on: [t1]
-  done: false
+  done: true
 - id: t5
   title: ADR-027, docs, agents and commands describe dev following main
   files: [docs/adr/027-dev-follows-main-through-pin-prs.md, docs/adr/README.md, docs/USER-JOURNEY.md, docs/HOW-IT-WORKS.md,
@@ -42,7 +42,7 @@ tasks:
   covers: [AC-062.5]
   parallel_safe: false
   depends_on: [t1, t2, t3, t4]
-  done: false
+  done: true
 ---
 
 ## t1 — gitops-app pin.py and the pin-dev workflow

@@ -357,13 +357,16 @@ def formatting_only(old: str, new: str, name: str) -> tuple[bool, str]:
 
 
 def test_diff(root: Path, base: str, files: list[str]) -> dict[str, tuple[bool, str]]:
-    """Each changed test file (default: test files that name a criterion of a `building` spec) against `base`."""
+    """Each changed test file against `base`. Default: files under the shape's `test_globs` (never `docs/` or `*.md`, spec 063)
+    that name a criterion of a `building` spec."""
     import subprocess
     if not files:
         changed = subprocess.run(["git", "-C", str(root), "diff", "--name-only", base], capture_output=True, text=True,
                                  check=True).stdout.split()
         ids = {a for s in all_specs(root) if s.status == "building" for a in (x.id for x in s.acs())}
-        files = [f for f in changed if (root / f).is_file() and not _ignored(Path(f))
+        tests = {str(p.relative_to(root)) for g in test_globs(repo_shape(root)) for p in root.glob(g)}   # spec 063
+        files = [f for f in changed if f in tests and (root / f).is_file() and not _ignored(Path(f))
+                 and not f.startswith("docs/") and not f.endswith(".md")
                  and set(AC_ANY.findall((root / f).read_text(errors="ignore"))) & ids]
     out = {}
     for f in files:

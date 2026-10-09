@@ -9,14 +9,14 @@ tasks:
   covers: [AC-063.1, AC-063.2, AC-063.3]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 - id: t2
   title: Build keeps stopping on a test-diff failure (contract test) and changelog
   files: [tests/cplat/test_spec_agents.py, docs/CHANGELOG.md]
   covers: [AC-063.4]
   parallel_safe: true
   depends_on: []
-  done: false
+  done: true
 ---
 
 ## t1 — test-diff default selection limited to test_globs

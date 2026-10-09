@@ -32,3 +32,4 @@ Decisions that shape how the platform works, with the context and the alternativ
 | [024](024-spec-driven-bootstrap.md) | Spec-driven bootstrap: new repos start with plan-feature, build-feature consumes the plan (superseded in part by 026) |
 | [025](025-issue-triage.md) | Issue triage: `/shared:triage` classifies, discusses and routes issues; labels are the state |
 | [026](026-feature-specs.md) | Feature specs drive the build: spec folders, AC ids, tests first, `cplat spec` |
+| [027](027-dev-follows-main-through-pin-prs.md) | dev follows main: service CI asks the gitops-app for an auto-merging pin PR to `sha-<7>` |

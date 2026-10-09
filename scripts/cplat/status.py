@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 
 import yaml
@@ -51,10 +52,26 @@ def argo_state(context: str | None) -> dict[str, str]:
     return {i["metadata"]["name"]: f"{i['status'].get('sync', {}).get('status', '?')}/{i['status'].get('health', {}).get('status', '?')}" for i in items}
 
 
+def pin_prs(repo: Path) -> dict[str, str]:
+    """Spec 062: open pin/dev-<service>-<sha7> PRs in the gitops-app repo -> "#<n> sha-<sha7>" per service."""
+    url = sh(["git", "-C", str(repo), "remote", "get-url", "origin"]) or ""
+    m = re.search(r"github\.com[:/](.+?)(?:\.git)?$", url)
+    if not m:
+        return {}
+    out = sh(["gh", "pr", "list", "-R", m.group(1), "--state", "open", "--json", "number,headRefName", "--limit", "100"])
+    found: dict[str, str] = {}
+    for pr in json.loads(out) if out else []:
+        m = re.match(r"pin/dev-(.+)-([0-9a-f]{7})$", pr.get("headRefName", ""))
+        if m:
+            found.setdefault(m.group(1), f"#{pr['number']} sha-{m.group(2)}")
+    return found
+
+
 def collect(repo: Path, app: str | None, context: str | None) -> tuple[str, list[dict]]:
     app_dir = gitops.find_app(repo, app)
     data = yaml.safe_load((app_dir / "services.yaml").read_text()) or {}
     argo = argo_state(context)
+    pins = pin_prs(repo)
     rows = []
     for s in data.get("services") or []:
         envs = s.get("environments") or ["dev"]
@@ -64,24 +81,25 @@ def collect(repo: Path, app: str | None, context: str | None) -> tuple[str, list
                 continue
             rows.append({"service": s["name"], "env": env, "tag": pinned_tag(app_dir, env, s["name"]) or "?",
                          "ci": ci, "argo": argo.get(f"{s['name']}-{env}", "-" if not context else "missing"),
-                         "exposed": bool(s.get("expose"))})
+                         "exposed": bool(s.get("expose")), "pin_pr": pins.get(s["name"], "-") if env == "dev" else "-"})
     cfg_file = app_dir / "app.yaml"
     declared = list(((yaml.safe_load(cfg_file.read_text()) or {}).get("addons") or {})) if cfg_file.is_file() else []
     for name in declared:   # an addon runs in every environment where a service uses it
         for env in ENVS:
             if any((name == "observability" or name in (s.get("uses") or [])) and env in (s.get("environments") or ["dev"]) for s in data.get("services") or []):
                 rows.append({"service": f"{name} (addon)", "env": env, "tag": "-", "ci": "-",
-                             "argo": argo.get(f"addon-{name}-{env}", "-" if not context else "missing"), "exposed": False})
+                             "argo": argo.get(f"addon-{name}-{env}", "-" if not context else "missing"), "exposed": False, "pin_pr": "-"})
     return app_dir.name, rows
 
 
 def render_table(app: str, rows: list[dict], stamp: dict, context: str | None) -> str:
     head = f"## {app} (gitops-app) — platform {core.platform_version()} available, repo stamped {stamp.get('platform', 'none')}"
-    cols = ["service", "env", "tag", "ci", "argo"]
-    widths = {c: max(len(c), *(len(str(r[c])) for r in rows)) if rows else len(c) for c in cols}
-    lines = [head, ""] + ["  " + "  ".join(c.ljust(widths[c]) for c in cols), "  " + "  ".join("-" * widths[c] for c in cols)]
+    cols = ["service", "env", "tag", "ci", "argo", "pin_pr"]
+    title = {"pin_pr": "pin PR"}
+    widths = {c: max(len(title.get(c, c)), *(len(str(r.get(c, "-"))) for r in rows)) if rows else len(title.get(c, c)) for c in cols}
+    lines = [head, ""] + ["  " + "  ".join(title.get(c, c).ljust(widths[c]) for c in cols), "  " + "  ".join("-" * widths[c] for c in cols)]
     for r in rows:
-        lines.append("  " + "  ".join(str(r[c]).ljust(widths[c]) for c in cols))
+        lines.append("  " + "  ".join(str(r.get(c, "-")).ljust(widths[c]) for c in cols))
     if not rows:
         lines.append("  (no services yet — /gitops:compose add <service>)")
     if not context:
