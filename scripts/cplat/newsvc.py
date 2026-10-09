@@ -127,6 +127,8 @@ def plan(req: dict) -> Report:
             r.will_do.append(f"[outward] create {req['visibility'].upper()} GitHub repo {req['org']}/{req['name']} and push")
             if req["entry"]["deployable"]:
                 r.will_do.append("[outward] add topic deployable-service (so it can be composed into a gitops-app)")
+            if req["shape"] == "gitops-app":
+                r.will_do.append("[outward] let pin PRs merge themselves: auto-merge on, Actions may open PRs (spec 062)")
             r.will_do.append("[outward] protect main: require the CI checks " + ", ".join(req["entry"].get("ci_checks") or []) + " (no review requirement)")
         else:
             r.will_do.append("gh is not available: skip GitHub steps and print the commands instead")
@@ -153,6 +155,21 @@ def protection_cmd(slug: str, checks: list[str]) -> list[str]:
     cmd = ["gh", "api", "-X", "PUT", f"repos/{slug}/branches/main/protection", "-F", "required_status_checks[strict]=false"]
     cmd += [f for c in checks for f in ("-f", f"required_status_checks[contexts][]={c}")]
     return cmd + ["-F", "enforce_admins=false", "-F", "required_pull_request_reviews=null", "-F", "restrictions=null"]
+
+
+def pin_settings_cmds(slug: str) -> list[list[str]]:
+    """Spec 062: the gitops-app's pin-dev workflow opens PRs with GITHUB_TOKEN and lets them merge themselves."""
+    return [["gh", "api", "-X", "PATCH", f"repos/{slug}", "-F", "allow_auto_merge=true"],
+            ["gh", "api", "-X", "PUT", f"repos/{slug}/actions/permissions/workflow",
+             "-f", "default_workflow_permissions=read", "-F", "can_approve_pull_request_reviews=true"]]
+
+
+def token_step(app: str, services: list[str]) -> str:
+    """Spec 062: the one manual step — a token the services' CI uses to ask the gitops-app to pin dev."""
+    sets = (f"gh secret set GITOPS_TOKEN -R {services[0]}" if len(services) == 1 else
+            f"for r in {' '.join(s.split('/')[-1] for s in services)}; do gh secret set GITOPS_TOKEN -R {services[0].split('/')[0]}/$r; done")
+    return (f"let dev follow main (spec 062): create a fine-grained token at https://github.com/settings/personal-access-tokens/new "
+            f"with repository access {app} only and Contents: Read and write, then paste it into: {sets}")
 
 
 def execute(req: dict) -> Report:
@@ -209,6 +226,13 @@ def execute(req: dict) -> Report:
             reason = (res.stderr or res.stdout or "").strip().splitlines()[-1:] or ["unknown error"]
             r.did.append(f"WARNING: could not protect main ({reason[0]}); private repos on free plans cannot use branch protection")
             r.next_steps.append("protect main by hand when your plan allows it: " + " ".join(shlex.quote(c) for c in protect))
+        if req["shape"] == "gitops-app":
+            failed = [c for c in pin_settings_cmds(slug) if run(c, check=False).returncode != 0]
+            if failed:
+                r.did.append("WARNING: could not turn on auto-merge for pin PRs (needs admin rights on the repo)")
+                r.next_steps.append("let pin PRs merge themselves (spec 062): " + " && ".join(" ".join(shlex.quote(x) for x in c) for c in failed))
+            else:
+                r.did.append("allows pin PRs to merge themselves after CI (auto-merge on, Actions may open PRs)")
         r.undo.append(f"gh repo delete {slug} --yes   (needs the delete_repo scope: gh auth refresh -s delete_repo)")
     elif req["want_github"]:
         cmds_if_manual = [f"gh repo create {slug} --{req['visibility']} --source=. --remote=origin --push"]
@@ -217,6 +241,8 @@ def execute(req: dict) -> Report:
         r.did.append("skipped GitHub (gh missing)")
         r.next_steps.append("install and log in to gh, then run: " + " && ".join(cmds_if_manual))
     r.undo.append(f"rm -rf {target}")
+    if req["app"] and req["entry"]["deployable"] and req["shape"] != "gitops-app":
+        r.next_steps.append(token_step(req["app"], [slug]))
     r.next_steps = _next_steps(req) + r.next_steps
     r.data = {"path": str(target), "shape": req["shape"], "repo": slug if req["github"] else None}
     return r

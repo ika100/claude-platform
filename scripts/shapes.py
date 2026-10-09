@@ -135,6 +135,13 @@ def check_contract(shapes: list[dict]) -> list[str]:
             errs.append(f"{sid}: devbox.json has no spec-check recipe (ADR-026)")
         if "docs/specs/**" not in (tdir / "copier.yml").read_text():
             errs.append(f"{sid}: copier.yml must list docs/specs/** in _skip_if_exists (project-owned, ADR-026)")
+        ci = tdir / ".github" / "workflows" / "ci.yml"
+        if s.get("deployable") and sid != "gitops-app" and ci.is_file() and not re.search(
+                r"^  pin-dev:\n(?:    .*\n)*?    needs: docker-publish$", ci.read_text(), re.M):
+            errs.append(f"{sid}: ci.yml needs a `pin-dev` job after docker-publish (dev follows main, spec 062)")
+        skip = (yaml.safe_load((tdir / "copier.yml").read_text()) or {}).get("_skip_if_exists") or []
+        if "README.md" not in skip:
+            errs.append(f"{sid}: copier.yml must list README.md in _skip_if_exists (project-owned after creation, spec 060)")
         for form in ("bug_report.yml", "feature_request.yml", "config.yml"):
             if not (tdir / ".github" / "ISSUE_TEMPLATE" / form).is_file():
                 errs.append(f"{sid}: template has no .github/ISSUE_TEMPLATE/{form} (ADR-025)")

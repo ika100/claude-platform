@@ -206,3 +206,12 @@ def test_real_local_render_of_a_small_app(tmp_path):
         assert out == shape
     assert "acme/mini" in (tmp_path / "mini-api" / ".platform-app.yml").read_text()
     assert not (tmp_path / "mini-lib" / ".platform-app.yml").exists()
+
+
+def test_a_new_product_names_one_token_step_for_all_services(tmp_path, monkeypatch, capsys):
+    """AC-062.4: one token, set in every deployable component."""
+    Fakes(monkeypatch)
+    assert newapp.main(run_args(tmp_path)) == 0
+    out = capsys.readouterr().out
+    step = next(ln for ln in out.splitlines() if "GITOPS_TOKEN" in ln)
+    assert "acme/shop" in step and "for r in shop-api shop-go shop-web" in step and "gh secret set GITOPS_TOKEN -R acme/$r" in step

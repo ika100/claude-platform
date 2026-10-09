@@ -480,3 +480,79 @@ def test_the_compose_command_offers_set():
     """AC-045.1: `set` is reachable through /gitops:compose, not only from /app:build."""
     text = (core.PLATFORM_ROOT / "plugins" / "gitops" / "commands" / "compose.md").read_text()
     assert "add|set|remove" in text.split("\n", 2)[1] and "`set <service>`" in text
+
+
+# ---------------- spec 062: dev runs every merged build ----------------
+
+def run_pin(repo, *args):
+    return subprocess.run(["uv", "run", "scripts/pin.py", *args], cwd=repo, capture_output=True, text=True)
+
+
+def test_pin_sets_an_immutable_dev_tag_that_survives_a_render(gitops_repo, gh):
+    """AC-062.2: dev is pinned to sha-<7> in git, and a re-render keeps it."""
+    composed(gitops_repo, "todo-api")
+    out = run_pin(gitops_repo, "dev", "todo-api", "sha-abc1234")
+    assert out.returncode == 0, out.stderr
+    k = yaml.safe_load((dev_dir(gitops_repo) / "kustomization.yaml").read_text())
+    assert k["images"][0]["newTag"] == "sha-abc1234"
+    assert subprocess.run(["uv", "run", "scripts/render.py"], cwd=gitops_repo, capture_output=True).returncode == 0
+    assert yaml.safe_load((dev_dir(gitops_repo) / "kustomization.yaml").read_text())["images"][0]["newTag"] == "sha-abc1234"
+    assert render_check(gitops_repo).returncode == 0
+
+
+@pytest.mark.parametrize("args, msg", [
+    (["dev", "todo-x", "sha-abc1234"], "unknown service"),
+    (["staging", "todo-api", "sha-abc1234"], "does not run in staging"),
+    (["dev", "todo-api", "latest"], "immutable"),
+    (["dev", "todo-api", "sha-xyz"], "immutable"),
+])
+def test_pin_refuses_what_it_cannot_pin(gitops_repo, gh, args, msg):
+    """AC-062.2: only immutable tags of composed services in their environments."""
+    composed(gitops_repo, "todo-api")
+    out = run_pin(gitops_repo, *args)
+    assert out.returncode != 0 and msg in out.stderr
+
+
+def _workflow(repo, name):
+    return yaml.safe_load((repo / ".github" / "workflows" / name).read_text())
+
+
+def test_the_pin_workflow_opens_an_auto_merging_pr_checked_by_ci(gitops_repo):
+    """AC-062.1: a dispatched {service, tag} becomes a PR that CI checks and that merges itself."""
+    wf = _workflow(gitops_repo, "pin-dev.yml")
+    on = wf.get("on", wf.get(True))
+    assert on["repository_dispatch"]["types"] == ["pin-dev"]
+    perms = wf["permissions"]
+    assert perms["contents"] == "write" and perms["pull-requests"] == "write" and perms["actions"] == "write"
+    run = "\n".join(s.get("run", "") for job in wf["jobs"].values() for s in job["steps"])
+    assert "scripts/pin.py dev" in run and "render.py --check" in run
+    assert "gh pr create" in run and "gh workflow run ci.yml --ref" in run and "gh pr merge" in run and "--auto" in run
+    assert "workflow_dispatch" in (_workflow(gitops_repo, "ci.yml").get("on") or _workflow(gitops_repo, "ci.yml")[True])
+
+
+def test_a_failing_pin_never_reaches_main(gitops_repo):
+    """AC-062.6: the pin only lands through the PR's auto-merge, which waits for the required checks."""
+    text = (gitops_repo / ".github" / "workflows" / "pin-dev.yml").read_text()
+    assert "HEAD:main" not in text and "push origin main" not in text and "--admin" not in text
+    assert "pin/dev-" in text and ("Signed-off-by" in text or "--signoff" in text)
+
+
+def test_status_shows_the_intended_pin_when_dev_is_unhealthy(gitops_repo, gh, monkeypatch):
+    """AC-062.3: a pinned build whose rollout fails shows its tag and that it is not healthy; an open pin PR is visible."""
+    import status
+    composed(gitops_repo, "todo-api")
+    assert run_pin(gitops_repo, "dev", "todo-api", "sha-abc1234").returncode == 0
+    answers = {
+        ("gh", "run"): "completed success",
+        ("git", "-C"): "https://github.com/acme/todo-gitops.git",
+        ("gh", "pr"): json.dumps([{"number": 12, "headRefName": "pin/dev-todo-api-def5678"},
+                                  {"number": 9, "headRefName": "feature/x"}]),
+        ("kubectl", "--context"): json.dumps({"items": [{"metadata": {"name": "todo-api-dev"},
+                                                         "status": {"sync": {"status": "Synced"}, "health": {"status": "Degraded"}}}]}),
+    }
+    monkeypatch.setattr(status, "sh", lambda cmd: answers.get((cmd[0], cmd[1])))
+    app, rows = status.collect(gitops_repo, None, "k3d-x")
+    dev = next(r for r in rows if r["service"] == "todo-api" and r["env"] == "dev")
+    assert dev["tag"] == "sha-abc1234" and dev["argo"] == "Synced/Degraded" and dev["pin_pr"] == "#12 sha-def5678"
+    table = status.render_table(app, rows, {"platform": "4.1.0"}, "k3d-x")
+    assert "pin PR" in table and "#12 sha-def5678" in table and "Degraded" in table

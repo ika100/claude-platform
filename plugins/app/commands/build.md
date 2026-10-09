@@ -39,7 +39,7 @@ It must report `shape: gitops-app`, else stop.
 
 ## When the plan is completed
 
-`cplat spec set-status <spec_id> done` and `cplat spec index`; commit both with the plan. Show the `gitops_pin` entries and the exact `/gitops:promote` commands; do not apply pins or touch `services.yaml` or overlays yourself.
+`cplat spec set-status <spec_id> done` and `cplat spec index`; commit both with the plan. Show the `gitops_pin` entries and the exact `/gitops:promote` commands; do not apply pins or touch `services.yaml` or overlays yourself. `dev` gets the merged builds on its own: each service's CI opens a pin PR in this repo that merges itself after CI (spec 062). Say that (never claim it picks up the latest image by itself) and point to `/shared:status` (its `pin PR` column) to see whether the pins have landed.
 
 ## Rules
 

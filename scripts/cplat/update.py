@@ -92,6 +92,155 @@ def drop_new_project_owned_files(repo: Path, patterns: list[str]) -> list[str]:
     return dropped
 
 
+def _cmd(v) -> str:
+    return " && ".join(v) if isinstance(v, list) else str(v)
+
+
+def merge_devbox(project: dict, template: dict) -> tuple[dict, list[str], list[tuple[str, str]]]:
+    """Spec 060: the template's devbox.json wins; recipes, packages and env vars only the project has are kept.
+    Returns (merged, kept labels, replaced (label, project's old value))."""
+    import copy
+    merged = copy.deepcopy(template)
+    kept: list[str] = []
+    replaced: list[tuple[str, str]] = []
+
+    mine = (project.get("shell") or {}).get("scripts") or {}
+    theirs = (template.get("shell") or {}).get("scripts") or {}
+    for name, cmd in mine.items():
+        if name not in theirs:
+            merged.setdefault("shell", {}).setdefault("scripts", {})[name] = cmd
+            kept.append(f"scripts {name}")
+        elif _cmd(cmd) != _cmd(theirs[name]):
+            replaced.append((f"scripts {name}", _cmd(cmd)))
+
+    pkgs, tpkgs = project.get("packages"), template.get("packages")
+    if isinstance(pkgs, list) and isinstance(tpkgs, list):
+        tnames = {p.split("@", 1)[0]: p for p in tpkgs}
+        for p in pkgs:
+            name = p.split("@", 1)[0]
+            if name not in tnames:
+                merged["packages"].append(p)
+                kept.append(f"packages {p}")
+            elif p != tnames[name]:
+                replaced.append((f"packages {name}", p))
+    elif isinstance(pkgs, dict) and isinstance(tpkgs, dict):
+        for name, ver in pkgs.items():
+            if name not in tpkgs:
+                merged["packages"][name] = ver
+                kept.append(f"packages {name}")
+            elif ver != tpkgs[name]:
+                replaced.append((f"packages {name}", str(ver)))
+
+    tenv = template.get("env") or {}
+    for name, val in (project.get("env") or {}).items():
+        if name not in tenv:
+            merged.setdefault("env", {})[name] = val
+            kept.append(f"env {name}")
+        elif val != tenv[name]:
+            replaced.append((f"env {name}", str(val)))
+    return merged, kept, replaced
+
+
+def _readme_changed(template: str, old: str | None) -> bool:
+    """True when the template's README changed since the repo's platform version, or that version is unknown."""
+    path = f"templates/{template}/README.md.jinja"
+    if not old:
+        return True
+    rc = run(["git", "diff", "--quiet", f"v{old}", "--", path], cwd=PLATFORM_ROOT, check=False).returncode
+    return rc != 0
+
+
+def merge_devbox_file(repo: Path, before: str | None) -> tuple[list[str], list[tuple[str, str]], str | None]:
+    """Merge the project's devbox.json (before the update) into the rendered one. Rewrites only when something is kept."""
+    import json
+    path = repo / "devbox.json"
+    if before is None or not path.is_file():
+        return [], [], None
+    try:
+        project = json.loads(before)
+    except ValueError:
+        return [], [], "devbox.json was not valid JSON: replaced by the template's file — re-add your recipes from `git show HEAD~1:devbox.json`"
+    text = path.read_text()
+    merged, kept, replaced = merge_devbox(project, json.loads(text))
+    if kept:
+        path.write_text(_insert_kept(text, json.loads(text), merged))
+    return kept, replaced, None
+
+
+def _close(text: str, start: int) -> int:
+    """Index of the bracket closing the one at `start`, skipping JSON strings."""
+    depth, i, in_str = 0, start, False
+    while i < len(text):
+        c = text[i]
+        if in_str:
+            if c == "\\":
+                i += 1
+            elif c == '"':
+                in_str = False
+        elif c == '"':
+            in_str = True
+        elif c in "[{":
+            depth += 1
+        elif c in "]}":
+            depth -= 1
+            if depth == 0:
+                return i
+        i += 1
+    raise ValueError("unbalanced JSON")
+
+
+def _insert_kept(text: str, template: dict, merged: dict) -> str:
+    """Add the kept entries to the rendered template text without reformatting it (templates align their recipes);
+    falls back to a plain dump when the text cannot be edited safely."""
+    import json
+    out = text
+    try:
+        for section, path in (("scripts", ("shell", "scripts")), ("packages", ("packages",)), ("env", ("env",))):
+            new, old = merged, template
+            for k in path:
+                new, old = (new or {}).get(k), (old or {}).get(k)
+            if new == old:
+                continue
+            m = re.search(rf'"{section}"\s*:\s*([\[{{])', out)
+            if not m or old is None:
+                raise ValueError(section)
+            end = _close(out, m.start(1))
+            body = out[m.start(1) + 1:end]
+            indent = (re.findall(r"\n([ \t]+)\S", body) or ["  "])[-1]
+            if isinstance(new, list):
+                extra = [json.dumps(v) for v in new[len(old):]]
+            else:
+                extra = [f"{json.dumps(k)}: {json.dumps(v)}" for k, v in new.items() if k not in old]
+            head = body.rstrip()
+            sep = "," if head.strip() else ""
+            insert = sep + "".join(f"\n{indent}{e}" + ("," if i < len(extra) - 1 else "") for i, e in enumerate(extra))
+            tail = body[len(head):]
+            out = out[:m.start(1) + 1] + head + insert + tail + out[end:]
+        if json.loads(out) == merged:
+            return out
+    except ValueError:
+        pass
+    return json.dumps(merged, indent=2) + "\n"
+
+
+def pin_dev_steps(repo: Path, shape: str) -> list[str]:
+    """Spec 062: what an existing repo needs once the update brings dev-follows-main."""
+    import newsvc
+    url = run(["git", "remote", "get-url", "origin"], cwd=repo, check=False).stdout.strip()
+    m = re.search(r"github\.com[:/](.+?)(?:\.git)?$", url)
+    slug = m.group(1) if m else f"<org>/{repo.name}"
+    if shape == "gitops-app" and (repo / ".github/workflows/pin-dev.yml").is_file():
+        return ["let pin PRs merge themselves (spec 062): " + " && ".join(" ".join(c) for c in newsvc.pin_settings_cmds(slug))]
+    app_file = repo / ".platform-app.yml"
+    ci_file = repo / ".github" / "workflows" / "ci.yml"
+    if app_file.is_file() and ci_file.is_file() and "\n  pin-dev:" in ci_file.read_text():
+        apps = re.findall(r"^\s*-\s*([^\s#]+)", app_file.read_text(), re.M)
+        if m is None:
+            slug = f"{apps[0].split('/')[0]}/{repo.name}" if apps else slug
+        return [newsvc.token_step(app, [slug]) for app in apps]
+    return []
+
+
 def plan(req: dict) -> Report:
     was = req["old"] or "none — this repo has no .platform-version stamp yet"
     r = Report(title=f"Update {req['repo'].name} ({req['shape']}) from platform {was} → {req['new']}")
@@ -99,7 +248,8 @@ def plan(req: dict) -> Report:
     if cur in ("main", "master"):
         r.will_do.append(f"create review branch {branch_name(req['repo'])}")
     r.will_do.append(f"re-apply templates/{req['template']} with the repo's recorded answers" + (f" plus {', '.join(req['data'])}" if req["data"] else ""))
-    r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, devbox.json, CLAUDE.md, …); project-owned files (app code, tests, ADRs) are never touched, and new starter files in those paths are not added")
+    r.will_do.append("OVERWRITE skeleton files (CI, Dockerfile, CLAUDE.md, …); project-owned files (README, app code, tests, ADRs) are never touched, and new starter files in those paths are not added")
+    r.will_do.append("MERGE devbox.json: the template's recipes and packages, plus the ones only this repo has")
     if req["migrate"]:
         r.will_do.append("DELETE k8s/ (v1 → v2 migration: manifests are generated in the product's gitops-app repo; recoverable from git history)")
     r.will_do.append("restore the stable template source in .copier-answers.yml and stamp .platform-version")
@@ -116,12 +266,16 @@ def execute(req: dict) -> Report:
         run(["git", "checkout", "-q", "-b", branch], cwd=repo)
         r.did.append(f"created branch {branch}")
     before = (repo / ".copier-answers.yml").read_text()
+    devbox_before = (repo / "devbox.json").read_text() if (repo / "devbox.json").is_file() else None
+    ci_file = repo / ".github" / "workflows" / "ci.yml"
+    had_pin_dev = (ci_file.is_file() and "\n  pin-dev:" in ci_file.read_text()) or (repo / ".github/workflows/pin-dev.yml").is_file()
 
     cmd = [*core.find_copier(), "copy", str(PLATFORM_ROOT / "templates" / req["template"]), ".", "--data-file", ".copier-answers.yml",
            "--overwrite", "--defaults", "--trust", "--skip-tasks"]
     for kv in req["data"]:
         cmd += ["--data", kv]
     run(cmd, cwd=repo)
+    kept, replaced, devbox_note = merge_devbox_file(repo, devbox_before)
     dropped = drop_new_project_owned_files(repo, project_owned_patterns(req["template"]))
     if dropped:
         r.did.append(f"left out {len(dropped)} new starter file(s) in project-owned paths (app code, tests, docs): {', '.join(dropped[:4])}{' ...' if len(dropped) > 4 else ''}")
@@ -135,7 +289,10 @@ def execute(req: dict) -> Report:
 
     new_keys = sorted(set(re.findall(r"^([a-z_]+):", answers.read_text(), re.M)) - set(re.findall(r"^([a-z_]+):", before, re.M)))
     changed = [ln[3:] for ln in run(["git", "status", "--porcelain"], cwd=repo).stdout.splitlines()]
-    modified = [ln[3:] for ln in run(["git", "status", "--porcelain"], cwd=repo).stdout.splitlines() if ln[:2].strip() == "M"]
+    modified = [ln[3:] for ln in run(["git", "status", "--porcelain"], cwd=repo).stdout.splitlines() if ln[:2].strip() == "M"
+                and not (ln[3:] == "devbox.json" and not replaced and not devbox_note)]   # merged, nothing lost (spec 060)
+    if kept:
+        r.did.append("kept in devbox.json: " + "; ".join(kept))
     if not changed:
         if cur in ("main", "master"):  # do not leave an empty review branch behind
             run(["git", "checkout", "-q", cur], cwd=repo)
@@ -146,7 +303,18 @@ def execute(req: dict) -> Report:
     run(["git", *core.git_identity(repo), "commit", "-q", "-m", f"chore: update skeleton from platform {req['new']}"], cwd=repo)
     r.did.append(f"re-applied the template; {len(changed)} file(s) changed, committed on {branch if cur in ('main','master') else cur}")
     notes = core.changelog_between(req["old"], req["new"])
-    r.data = {"changed": changed, "modified": modified, "new_answers": new_keys, "changelog": notes}
+    r.data = {"changed": changed, "modified": modified, "new_answers": new_keys, "changelog": notes,
+              "devbox": {"kept": kept, "replaced": [{"entry": k, "was": v} for k, v in replaced]}}
+    if replaced:
+        r.next_steps.append("replaced in devbox.json (the template's version wins): " +
+                            "; ".join(f"{k} (was {v!r})" for k, v in replaced) + " — re-add yours under a new recipe name if you need it")
+    if devbox_note:
+        r.next_steps.append(devbox_note)
+    if not had_pin_dev:
+        r.next_steps += pin_dev_steps(repo, req["shape"])
+    if (repo / "README.md").is_file() and _readme_changed(req["template"], req["old"]):
+        r.next_steps.append(f"README.md kept (project-owned, spec 060); the template's current version: "
+                            f"git -C {PLATFORM_ROOT} show HEAD:templates/{req['template']}/README.md.jinja")
     if modified:
         r.next_steps.append("review MODIFIED skeleton files for lost local customisations: " + ", ".join(modified[:12]) + " — keep yours with `git checkout HEAD~1 -- <file>`")
     if new_keys:

@@ -250,3 +250,69 @@ def test_spec_check_on_an_old_tag_says_it_predates_and_uses_main(tmp_path):
     assert out.returncode == 0
     assert lines[0] == "spec-check: platform v1.0.0 predates spec checks (ADR-026); using main"
     assert lines[1] == "spec-check: the platform has no spec checks yet; skipped"
+
+
+# ---------------- spec 060: skeleton updates keep the project README ----------------
+
+@pytest.mark.parametrize("shape", IDS)
+def test_readme_is_seeded_but_project_owned(shape):
+    """AC-060.2: a new repo still gets the template's README; AC-060.1: an update skips it."""
+    t = template(shape)
+    assert (t / "README.md.jinja").is_file() or (t / "README.md").is_file()
+    assert "README.md" in yaml.safe_load((t / "copier.yml").read_text())["_skip_if_exists"]
+
+
+def test_the_shape_contract_requires_a_project_owned_readme(tmp_path, monkeypatch):
+    """AC-060.3: a template that lets updates overwrite README.md fails `shapes.py check`."""
+    import shutil
+
+    import shapes
+    entry = next(s for s in shapes.load() if s["id"] == "service-go")
+    shutil.copytree(ROOT / "templates" / entry["template"], tmp_path / "templates" / entry["template"])
+    for extra in ("scripts", "plugins"):   # the contract also reads detection and plugin files
+        shutil.copytree(ROOT / extra, tmp_path / extra, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy(ROOT / "shapes.yml", tmp_path / "shapes.yml")
+    monkeypatch.setattr(shapes, "ROOT", tmp_path)
+    before = set(shapes.check_contract([entry]))
+    cfg = tmp_path / "templates" / entry["template"] / "copier.yml"
+    cfg.write_text(re.sub(r"^  - README\.md\b.*\n", "", cfg.read_text(), flags=re.M))
+    new = set(shapes.check_contract([entry])) - before
+    assert any("README.md" in e for e in new), new
+
+
+# ---------------- spec 062: dev runs every merged build ----------------
+
+DEPLOYABLE = [s["id"] for s in SHAPES if s.get("deployable") and s["id"] != "gitops-app"]
+
+
+@pytest.mark.parametrize("shape", DEPLOYABLE)
+def test_every_merge_to_main_asks_the_gitops_app_to_pin_dev(shape, tmp_path):
+    """AC-062.1 AC-062.4: the rendered CI has a pin-dev job after the image is published, on main only, never red without a token."""
+    newsvc.main([f"pin-{shape}", "d", "--type", shape, "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme",
+                 "--app", "acme/shop"])
+    wf = yaml.safe_load((tmp_path / f"pin-{shape}" / ".github" / "workflows" / "ci.yml").read_text())
+    job = wf["jobs"]["pin-dev"]
+    assert job["needs"] == "docker-publish" and "refs/heads/main" in job["if"] and "tags" not in job["if"]
+    run = "\n".join(s.get("run", "") for s in job["steps"])
+    assert "repos/$app/dispatches" in run and "event_type=pin-dev" in run and "sha-${GITHUB_SHA::7}" in run
+    assert ".platform-app.yml" in run and "::notice::" in run and "gh secret set GITOPS_TOKEN" in run
+    assert "secrets.GITOPS_TOKEN" in str(job["steps"])
+    assert job["name"] not in (next(s for s in SHAPES if s["id"] == shape).get("ci_checks") or [])   # never a required check
+
+
+def test_the_shape_contract_requires_the_pin_dev_job(tmp_path, monkeypatch):
+    """AC-062.4: a deployable template without the job fails `shapes.py check`."""
+    import shutil
+
+    import shapes
+    entry = next(s for s in shapes.load() if s["id"] == "service-go")
+    shutil.copytree(ROOT / "templates" / entry["template"], tmp_path / "templates" / entry["template"])
+    for extra in ("scripts", "plugins"):
+        shutil.copytree(ROOT / extra, tmp_path / extra, ignore=shutil.ignore_patterns("__pycache__"))
+    shutil.copy(ROOT / "shapes.yml", tmp_path / "shapes.yml")
+    monkeypatch.setattr(shapes, "ROOT", tmp_path)
+    before = set(shapes.check_contract([entry]))
+    ci = tmp_path / "templates" / entry["template"] / ".github" / "workflows" / "ci.yml"
+    ci.write_text(ci.read_text().split("\n  pin-dev:\n", 1)[0] + "\n")
+    new = set(shapes.check_contract([entry])) - before
+    assert any("pin-dev" in e for e in new), new

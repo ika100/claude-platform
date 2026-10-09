@@ -116,7 +116,7 @@ If you also want skeleton updates (CI workflow, devbox recipes, Dockerfile, CLAU
 
    Only `_src_path` (its `templates/<shape>` tail drives shape detection) and the answers matter; omitted answers take the template defaults.
 
-2. Commit that file, then run `/shared:update-service`. It works on a review branch, re-applies the template, and **overwrites skeleton files** (`devbox.json`, CI workflow, Dockerfile, k8s base except `deployment.yaml`, `CLAUDE.md`, `.claude/settings.json`, lint config). Project-owned files (`src/`, `app/`, `cmd/`, `internal/`, `tests/`, `docs/adr/`, `pyproject.toml`/`pom.xml`/`go.mod`/`package.json`) are never touched.
+2. Commit that file, then run `/shared:update-service`. It works on a review branch, re-applies the template, and **overwrites skeleton files** (CI workflow, Dockerfile, k8s base except `deployment.yaml`, `CLAUDE.md`, `.claude/settings.json`, lint config). Project-owned files (`README.md`, `src/`, `app/`, `cmd/`, `internal/`, `tests/`, `docs/`, `pyproject.toml`/`pom.xml`/`go.mod`/`package.json`) are never touched; the report says when the template's README changed and how to see it. `devbox.json` is **merged** (spec 060): the template's recipes, packages and env vars win, and the ones only your repo has are kept. The report lists what was kept, and for every template recipe it replaced, your old line.
 
 3. Review the diff. For each skeleton file where you had customisations, `git diff <file>` and either keep the template version or `git checkout -- <file>` to restore yours (then consider whether the customisation belongs in the template). Commit, push, PR.
 

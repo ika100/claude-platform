@@ -190,3 +190,41 @@ def test_every_shape_lists_ci_checks_that_exist_in_its_workflow():
         assert s.get("ci_checks"), s["id"]
         for name in s["ci_checks"]:
             assert f"name: {name}\n" in ci, f"{s['id']}: no job named '{name}'"
+
+
+# ---------------- spec 062: dev runs every merged build ----------------
+
+def test_a_new_gitops_app_allows_pin_prs_to_merge_themselves(tmp_path, monkeypatch, capsys):
+    """AC-062.4: auto-merge on, and Actions may open pull requests."""
+    calls = _gh_recorder(monkeypatch)
+    assert newsvc.main(["pin-app", "d", "--gitops", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    flat = [" ".join(c) for c in calls]
+    assert any("-X PATCH repos/acme/pin-app" in c and "allow_auto_merge=true" in c for c in flat)
+    assert any("repos/acme/pin-app/actions/permissions/workflow" in c and "can_approve_pull_request_reviews=true" in c for c in flat)
+    assert "allows pin PRs" in capsys.readouterr().out
+
+
+def test_settings_failure_warns_with_the_commands(tmp_path, monkeypatch, capsys):
+    """AC-062.4"""
+    import subprocess
+    real = newsvc.run
+
+    def fake(cmd, **kw):
+        if cmd[0] == "gh":
+            rc = 1 if "allow_auto_merge=true" in cmd else 0
+            return subprocess.CompletedProcess(cmd, rc, "", "HTTP 403" if rc else "")
+        return real(cmd, **kw)
+    monkeypatch.setattr(newsvc, "run", fake)
+    monkeypatch.setattr(newsvc.core, "has_gh", lambda: True)
+    assert newsvc.main(["pin-app2", "d", "--gitops", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    out = capsys.readouterr().out
+    assert "could not turn on auto-merge" in out and "gh api -X PATCH repos/acme/pin-app2 -F allow_auto_merge=true" in out
+
+
+def test_a_linked_service_names_the_one_token_step(tmp_path, capsys):
+    """AC-062.4: the only manual step, with the exact command."""
+    assert newsvc.main(["pin-svc", "d", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme", "--app", "acme/shop"]) == 0
+    out = capsys.readouterr().out
+    assert "gh secret set GITOPS_TOKEN -R acme/pin-svc" in out and "acme/shop" in out and "Contents" in out
+    assert newsvc.main(["nopin-svc", "d", "--no-github", "--skip-tasks", "--dir", str(tmp_path), "--org", "acme"]) == 0
+    assert "GITOPS_TOKEN" not in capsys.readouterr().out

@@ -552,6 +552,51 @@ def test_test_diff_cli_compares_against_a_commit(tmp_path, capsys):
     assert "tests/test_x.py: changed" in capsys.readouterr().out
 
 
+
+# ---------------- spec 063: test-diff looks only at test files ----------------
+
+def _committed_repo(tmp_path):
+    import subprocess
+    make(tmp_path, status="building")
+    (tmp_path / "tests").mkdir()
+    (tmp_path / "tests" / "test_x.py").write_text(PY_BEFORE)
+    g = lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)  # noqa: E731
+    g("init", "-q"); g("add", "."); g("-c", "user.email=a@b", "-c", "user.name=a", "commit", "-qm", "red")
+    return tmp_path / "docs" / "specs" / "007-price-alerts"
+
+
+def test_test_diff_ignores_plan_and_spec_documents(tmp_path, capsys):
+    """AC-063.1: `done: true` in plan.md (which names criteria) is not an acceptance-test change."""
+    d = _committed_repo(tmp_path)
+    assert spec.main(["--repo", str(tmp_path), "task-done", "007", "t1"]) == 0   # what the build does after each task
+    (d / "verification.md").write_text("AC-007.1 passes\n")
+    (d / "spec.md").write_text((d / "spec.md").read_text() + "\n- AC-007.1 noted\n")
+    capsys.readouterr()
+    assert spec.main(["--repo", str(tmp_path), "test-diff", "HEAD"]) == 0
+    assert "no acceptance test changed" in capsys.readouterr().out
+
+
+def test_test_diff_still_fails_on_a_changed_test(tmp_path, capsys):
+    """AC-063.2: a test under the shape's test_globs that changed beyond formatting fails."""
+    d = _committed_repo(tmp_path)
+    assert spec.main(["--repo", str(tmp_path), "task-done", "007", "t1"]) == 0   # what the build does after each task
+    f = tmp_path / "tests" / "test_x.py"
+    f.write_text(PY_BEFORE.replace("200.01", "1"))
+    capsys.readouterr()
+    assert spec.main(["--repo", str(tmp_path), "test-diff", "HEAD"]) == 1
+    out = capsys.readouterr().out
+    assert "tests/test_x.py: changed" in out and "plan.md" not in out
+
+
+def test_test_diff_never_selects_docs_even_under_broad_globs(tmp_path, monkeypatch):
+    """AC-063.3: without a recorded shape (default globs) nothing under docs/ or *.md is selected."""
+    d = _committed_repo(tmp_path)
+    monkeypatch.setattr(spec, "test_globs", lambda shape: ["**/*"])
+    assert spec.main(["--repo", str(tmp_path), "task-done", "007", "t1"]) == 0   # what the build does after each task
+    (tmp_path / "tests" / "NOTES.md").write_text("AC-007.1\n")
+    assert spec.test_diff(tmp_path, "HEAD", []) == {}
+
+
 # ---------------- spec 052: repo specs know the gitops wiring ----------------
 
 def _with_gitops_entry(product):

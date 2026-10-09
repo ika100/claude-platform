@@ -1,7 +1,7 @@
 ---
 spec_id: 063-acceptance-test-diff-looks-only-at-test
 title: Acceptance-test diff looks only at test files
-status: approved
+status: done
 priority: P1
 ---
 
@@ -38,3 +38,5 @@ As a reviewer, I want the acceptance-test check to fire only when an acceptance 
 
 - 2026-10-09 created from end-to-end run 2
 - 2026-10-09 approved
+- 2026-10-09 building
+- 2026-10-09 done

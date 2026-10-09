@@ -167,7 +167,7 @@ Wiring and exposure are decided here, in the product repo — not in the service
 /gitops:compose set taskboard-web --env FEATURE_X=on     # later: change a service that is already composed
 ```
 
-`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port, or the next free one that `cluster-up` prints; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** tracks each image's `latest`.
+`--expose` publishes `taskboard-web` through the Gateway: after the PR merges, `http://taskboard-web.taskboard-dev.localhost:8088/` (the local cluster's port, or the next free one that `cluster-up` prints; `*.localhost` needs no DNS setup) serves the UI. Edit `replicas`, `resources` or `secretRefs` in `services.yaml` any time and run `devbox run render` (or ask Claude). Merge the PR; Argo creates the Applications. **dev** follows each service's `main`: every merge opens a pin PR to its `sha-<7>` in this repo that merges itself after CI ([ADR-027](adr/027-dev-follows-main-through-pin-prs.md); set the `GITOPS_TOKEN` secret that `/shared:new-service` names).
 
 ---
 

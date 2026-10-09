@@ -281,3 +281,29 @@ def test_build_asks_only_for_missing_gitops_wiring():
     """AC-052.2"""
     text = (COMMANDS / "build.md").read_text()
     assert "Provided by the product" in text and "only for" in text
+
+
+def test_build_stops_on_an_acceptance_test_change():
+    """AC-063.4: every `cplat spec test-diff` step in /svc:build stops on exit 1 instead of judging it."""
+    build = (PLUGINS / "svc" / "commands" / "build.md").read_text()
+    steps = [p for p in re.split(r"\n(?=\d+\. |After |## )", build) if "cplat spec test-diff" in p]
+    assert len(steps) >= 2
+    for step in steps:
+        assert re.search(r"exit 1 (means .*?: )?stop|exit 1 stops", step, re.S | re.I), step[:200]
+    assert "never decide yourself that it is a false alarm" in build
+
+
+STALE_DEV = re.compile(r"dev\W{0,6}(tracks|runs|follows)\W{0,6}(each image's\s+)?`?latest|`dev`: `latest`|dev already runs latest|bump-dev\.yml", re.I)
+
+
+def test_nothing_claims_dev_tracks_latest():
+    """AC-062.5: docs, plugins and templates describe dev following main through pin PRs."""
+    hits = []
+    for base in ("docs", "plugins", "templates", "site/src/content/docs"):
+        for p in (ROOT / base).rglob("*"):
+            if p.suffix in {".md", ".jinja", ".mdx"} and "e2e" not in p.parts and "specs" not in p.parts and p.name != "CHANGELOG.md" \
+                    and not p.name.startswith("e2e-"):   # field reports quote what happened
+                hits += [f"{p.relative_to(ROOT)}: {m.group(0)}" for m in STALE_DEV.finditer(p.read_text(errors="ignore"))]
+    assert not hits, hits
+    assert "pin PR" in (ROOT / "docs" / "HOW-IT-WORKS.md").read_text()
+    assert (ROOT / "docs" / "adr" / "027-dev-follows-main-through-pin-prs.md").is_file()
